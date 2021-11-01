@@ -1,0 +1,36 @@
+.workspace-leaf-content[data-type="cook"]{
+  .view-content {
+    font-family: inherit;
+  }
+
+  .method-image {
+    display: block;
+  }
+
+  .cm-s-obsidian .cm-ingredient,
+  .cm-s-obsidian .cm-cookware {
+    color: var(--text-accent);
+    font-weight: 600;
+  }
+
+  .cm-s-obsidian .cm-formatting {
+    color: var(--text-faint);
+  }
+
+
+  .cm-s-obsidian .cm-measurement,
+  .cm-s-obsidian .cm-timer,
+  .cm-s-obsidian .cm-unit {
+    color:var(--text-muted)
+  }
+
+  .cm-s-obsidian .cm-metadata,
+  .cm-s-obsidian .cm-metadata-key {
+    font-family: var(--font-monospace);
+  }
+
+  .cm-s-obsidian .cm-metadata-key {
+    font-weight: 600;
+  }
+
+}
