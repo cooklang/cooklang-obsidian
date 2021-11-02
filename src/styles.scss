@@ -2,34 +2,71 @@
   .view-content {
     font-family: inherit;
   }
+  .cook-preview-view,
+  .cook-source-view {
+    // TODO base this on .is-readable-line-width when I can figure out how to read that
+    max-width: 700px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .main-image {
+    width: 100vw;
+    aspect-ratio: 1.618;
+    object-fit: cover;
+  }
 
   .method-image {
     display: block;
+    margin-top: 1em;
+    max-width: 100%;
+    max-height: calc(16vw);
   }
 
-  .cm-s-obsidian .cm-ingredient,
-  .cm-s-obsidian .cm-cookware {
+  ol.method {
+    margin-left: 0;
+    padding-right: 0;
+    list-style-type: none;
+    padding: 0;
+  }
+
+  ol.method>li {
+    counter-increment: step-counter;
+  }
+
+  ol.method>li::before {
+    content: "Step " counter(step-counter);
+    font-weight: 600;
+    display: block;
+    font-size: 1.17em;
+    margin-block-start: 1em;
+    margin-block-end: 1em;
+    margin-inline-start: 0px;
+    margin-inline-end: 0px;
+  }
+
+  .cm-ingredient,
+  .cm-cookware {
     color: var(--text-accent);
     font-weight: 600;
   }
 
-  .cm-s-obsidian .cm-formatting {
+  .cm-formatting {
     color: var(--text-faint);
   }
 
-
-  .cm-s-obsidian .cm-measurement,
-  .cm-s-obsidian .cm-timer,
-  .cm-s-obsidian .cm-unit {
+  .cm-measurement,
+  .cm-timer,
+  .cm-unit {
     color:var(--text-muted)
   }
 
-  .cm-s-obsidian .cm-metadata,
-  .cm-s-obsidian .cm-metadata-key {
+  .cm-metadata,
+  .cm-metadata-key {
     font-family: var(--font-monospace);
   }
 
-  .cm-s-obsidian .cm-metadata-key {
+  .cm-metadata-key {
     font-weight: 600;
   }
 
