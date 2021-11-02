@@ -2,7 +2,7 @@
 [![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/deathau/cooklang-obsidian?style=for-the-badge&sort=semver)](https://github.com/deathau/cooklang-obsidian/releases/latest)
 ![GitHub All Releases](https://img.shields.io/github/downloads/deathau/cooklang-obsidian/total?style=for-the-badge)
 
-A plugin for [Obsidian](https://obsidian.md) adding support for [CoogLang](https://cooklang.org)
+A plugin for [Obsidian](https://obsidian.md) adding support for [CookLang](https://cooklang.org)
 
 ![Screenshot](https://github.com/deathau/cooklang-obsidian/raw/main/screenshot.png)
 
