@@ -17,6 +17,24 @@ export default class CookPlugin extends Plugin {
     // register the view and extensions
     this.registerView("cook", this.cookViewCreator);
     this.registerExtensions(["cook"], "cook");
+
+    this.addCommand({
+      id: "convert-to-cook",
+      name: "Convert markdown file to `.cook`",
+      checkCallback: (checking:boolean) => {
+        const file = this.app.workspace.getActiveFile();
+        if(checking) {
+          return file.extension === "md";
+        }
+        else {
+          // replace last instance of .md with .cook
+          this.app.vault.rename(file,file.path.replace(/\.md$/, ".cook")).then(
+            () => {
+              this.app.workspace.activeLeaf.openFile(file);
+            })
+        }
+      }
+    })
   }
 
   // function to create the view
@@ -207,7 +225,7 @@ class CookView extends TextFileView {
       img.src = this.app.vault.getResourcePath(recipe.image);
       destEl.appendChild(img);
     }
-    
+
     const hi = createEl('h2');
     hi.innerText = "Ingredients";
     hi.addClass('ingredients-header')
