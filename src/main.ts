@@ -2,9 +2,8 @@ import './styles.scss'
 import { Plugin, WorkspaceLeaf, addIcon, TextFileView, setIcon, TFile } from 'obsidian';
 import './lib/codemirror'
 import './mode/cook/cook'
-import * as internal from 'stream';
 
-export default class IniPlugin extends Plugin {
+export default class CookPlugin extends Plugin {
 
   settings: any;
 
@@ -25,15 +24,15 @@ export default class IniPlugin extends Plugin {
     return new CookView(leaf);
   }
 
-  // this function used the regular 'document' svg,
-  // but adds the supplied extension into the icon as well
+  // this function provides the icon for the document
+  // I added a modification of the CookLang icon with no colours or shadows
   addDocumentIcon = (extension: string) => {
     addIcon(`document-${extension}`, `
     <svg viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M30 48C39.9411 48 48 39.9411 48 30H12C12 39.9411 20.0589 48 30 48Z" fill="#ffffff"/>
-    <circle cx="18" cy="18" r="4" fill="#ffffff"/>
-    <circle cx="42" cy="18" r="4" fill="#ffffff"/>
-    <circle cx="30" cy="16" r="4" fill="#ffffff"/>
+    <path d="M30 48C39.9411 48 48 39.9411 48 30H12C12 39.9411 20.0589 48 30 48Z" fill="currentColor"/>
+    <circle cx="18" cy="18" r="4" fill="currentColor"/>
+    <circle cx="42" cy="18" r="4" fill="currentColor"/>
+    <circle cx="30" cy="16" r="4" fill="currentColor"/>
     </svg>
     `);
   }
@@ -143,6 +142,7 @@ class CookView extends TextFileView {
     return "document-cook";
   }
 
+  // parse the cooklang code and display it in the preview
   parseCooklang(source:string, destEl:HTMLElement) {
 
     const recipe = new Recipe();
@@ -201,11 +201,13 @@ class CookView extends TextFileView {
 
     destEl.innerHTML = '';
 
-    const img = createEl('img');
-    img.addClass('main-image');
-    img.src = this.app.vault.getResourcePath(recipe.image);
-    destEl.appendChild(img);
-
+    if(recipe.image){
+      const img = createEl('img');
+      img.addClass('main-image');
+      img.src = this.app.vault.getResourcePath(recipe.image);
+      destEl.appendChild(img);
+    }
+    
     const hi = createEl('h2');
     hi.innerText = "Ingredients";
     hi.addClass('ingredients-header')
