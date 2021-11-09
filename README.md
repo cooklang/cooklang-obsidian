@@ -28,11 +28,16 @@ much, feel free to throw some coins in my hat via the following:
 
 # Roadmap
 This is the stuff I would ideally like to include in this plugin that isn't available as yet:
-- [ ] Better formatting of the recipe preview.
-- [ ] Options for how/whether to display cookware, timers and metadata.
-- [ ] Links between the recipe steps and the ingredients in the list.
-- [ ] Ingredient unit conversion.
-- [ ] Functionality to create a shopping list, including support for `.conf` files.
+- [ ] Improve editor/preview mode buttons/state/etc to be more like markdown
+- [ ] Command to convert `.md` to `.cook`
+    - [ ] Maybe also `cook` code block support?
+- [ ] Include option for showing quantities inline in the method
+    - [ ] Option to link between ingredients and method?
+- [ ] Include options for showing ingredients list, tools list and time
+    - [ ] (calculate total time)
+- [ ] Unit conversion (metric <-> imperial)
+- [ ] Scaling up/down (check spec)
+- [ ] Shopping list and `.conf` file support (needs designing)
 - [ ] Better metadata support.
     - [ ] Making source links clickable.
     - [ ] Support for Obsidian tagging.
