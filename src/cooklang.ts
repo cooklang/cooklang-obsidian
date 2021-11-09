@@ -60,6 +60,37 @@ export class Recipe {
   method: string[] = [];
   image: TFile;
   methodImages: Map<Number, TFile> = new Map<Number, TFile>();
+
+  calculateTotalTime() {
+    let time = 0;
+    this.timers.forEach(timer => {
+      let amount:number = 0;
+      if(parseFloat(timer.amount) + '' == timer.amount) amount = parseFloat(timer.amount);
+      else if(timer.amount.contains('/')){
+        const split = timer.amount.split('/');
+        if(split.length == 2){
+          const num = parseFloat(split[0]);
+          const den = parseFloat(split[1]);
+          if(num && den){
+            amount = num / den;
+          }
+        }
+      }
+
+      if(amount > 0){
+        if(timer.unit.toLowerCase().startsWith('s')){
+          time += amount;
+        }
+        else if(timer.unit.toLowerCase().startsWith('m')) {
+          time += amount * 60;
+        }
+        else if(timer.unit.toLowerCase().startsWith('h')) {
+          time += amount * 60 * 60;
+        }
+      }
+    });
+    return time;
+  }
 }
 
 // a class representing an ingredient
@@ -81,7 +112,16 @@ export class Ingredient {
   unit: string = null;
 
   methodOutput = () => {
-    return `<span class='ingredient'>${this.name}</span>`;
+    let s = `<span class='ingredient'>`;
+    if (this.amount !== null) {
+      s += `<span class='amount'>${this.amount} </span>`;
+    }
+    if (this.unit !== null) {
+      s += `<span class='unit'>${this.unit} </span>`;
+    }
+
+    s += `${this.name}</span>`;
+    return s;
   }
   listOutput = () => {
     let s = ``;
@@ -133,7 +173,7 @@ export class Timer {
   }
 
   methodOutput = () => {
-    return `<span class='time time-amount'>${this.amount}</span> <span class='time-unit'>${this.unit}</span>`;
+    return `<span class='time'><span class='time-amount'>${this.amount}</span> <span class='time-unit'>${this.unit}</span></span>`;
   }
   listOutput = () => {
     return `<span class='time-amount'>${this.amount}</span> <span class='time-unit'>${this.unit}</span>`;

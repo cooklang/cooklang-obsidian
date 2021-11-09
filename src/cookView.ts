@@ -1,8 +1,10 @@
 import { CookLang, Recipe } from './cooklang'
 import { TextFileView, setIcon, TFile, Keymap, WorkspaceLeaf } from 'obsidian'
+import { CookLangSettings } from './settings';
 
 // This is the custom view
 export class CookView extends TextFileView {
+  settings: CookLangSettings;
   viewEl: HTMLElement;
   previewEl: HTMLElement;
   sourceEl: HTMLElement;
@@ -12,8 +14,9 @@ export class CookView extends TextFileView {
   changeModeButton: HTMLElement;
   currentView: 'source' | 'preview';
 
-  constructor(leaf: WorkspaceLeaf) {
+  constructor(leaf: WorkspaceLeaf, settings: CookLangSettings) {
     super(leaf);
+    this.settings = settings;
     // Get View Container Element
     this.viewEl = this.containerEl.getElementsByClassName('view-content')[0] as HTMLElement;
     // Add Preview Mode Container
@@ -148,62 +151,101 @@ export class CookView extends TextFileView {
     // we can't render what we don't have...
     if (!recipe) return;
 
-    // add any files following the cooklang conventions to the recipe object
-    // https://cooklang.org/docs/spec/#adding-pictures
-    const otherFiles: TFile[] = this.file.parent.children.filter(f => (f instanceof TFile) && (f.basename == this.file.basename || f.basename.startsWith(this.file.basename + '.')) && f.name != this.file.name) as TFile[];
-    otherFiles.forEach(f => {
-      // convention specifies JPEGs and PNGs. Added GIFs as well. Why not?
-      if (f.extension == "jpg" || f.extension == "jpeg" || f.extension == "png" || f.extension == "gif") {
-        // main recipe image
-        if (f.basename == this.file.basename) recipe.image = f;
-        else {
-          const split = f.basename.split('.');
-          // individual step images
-          if (split.length == 2 && parseInt(split[1])) {
-            recipe.methodImages.set(parseInt(split[1]), f);
+    if(this.settings.showImages) {
+      // add any files following the cooklang conventions to the recipe object
+      // https://cooklang.org/docs/spec/#adding-pictures
+      const otherFiles: TFile[] = this.file.parent.children.filter(f => (f instanceof TFile) && (f.basename == this.file.basename || f.basename.startsWith(this.file.basename + '.')) && f.name != this.file.name) as TFile[];
+      otherFiles.forEach(f => {
+        // convention specifies JPEGs and PNGs. Added GIFs as well. Why not?
+        if (f.extension == "jpg" || f.extension == "jpeg" || f.extension == "png" || f.extension == "gif") {
+          // main recipe image
+          if (f.basename == this.file.basename) recipe.image = f;
+          else {
+            const split = f.basename.split('.');
+            // individual step images
+            if (split.length == 2 && parseInt(split[1])) {
+              recipe.methodImages.set(parseInt(split[1]), f);
+            }
           }
         }
+      })
+      
+      // if there is a main image, put it as a banner image at the top
+      if (recipe.image) {
+        const img = createEl('img');
+        img.addClass('main-image');
+        img.src = this.app.vault.getResourcePath(recipe.image);
+        this.previewEl.appendChild(img);
       }
-    })
-
-    // if there is a main image, put it as a banner image at the top
-    if (recipe.image) {
-      const img = createEl('img');
-      img.addClass('main-image');
-      img.src = this.app.vault.getResourcePath(recipe.image);
-      this.previewEl.appendChild(img);
     }
 
-    // Add the Ingredients header
-    const hi = createEl('h2');
-    hi.innerText = "Ingredients";
-    hi.addClass('ingredients-header')
-    this.previewEl.appendChild(hi);
+    if(this.settings.showIngredientList) {
+      // Add the Ingredients header
+      const h = createEl('h2');
+      h.innerText = "Ingredients";
+      h.addClass('ingredients-header')
+      this.previewEl.appendChild(h);
 
-    // Add the ingredients list
-    const iul = createEl('ul');
-    iul.addClass('ingredients');
-    recipe.ingredients.forEach(ingredient => {
-      const ili = createEl('li');
-      if (ingredient.amount !== null) {
-        const span = createEl('span');
-        span.addClass('amount');
-        span.innerText = ingredient.amount;
-        ili.appendChild(span);
-        ili.appendText(' ');
-      }
-      if (ingredient.unit !== null) {
-        const span = createEl('span');
-        span.addClass('unit');
-        span.innerText = ingredient.unit;
-        ili.appendChild(span);
-        ili.appendText(' ');
-      }
+      // Add the ingredients list
+      const ul = createEl('ul');
+      ul.addClass('ingredients');
+      recipe.ingredients.forEach(ingredient => {
+        const li = createEl('li');
+        if (ingredient.amount !== null) {
+          const span = createEl('span');
+          span.addClass('amount');
+          span.innerText = ingredient.amount;
+          li.appendChild(span);
+          li.appendText(' ');
+        }
+        if (ingredient.unit !== null) {
+          const span = createEl('span');
+          span.addClass('unit');
+          span.innerText = ingredient.unit;
+          li.appendChild(span);
+          li.appendText(' ');
+        }
 
-      ili.appendText(ingredient.name);
-      iul.appendChild(ili);
-    })
-    this.previewEl.appendChild(iul);
+        li.appendText(ingredient.name);
+        ul.appendChild(li);
+      })
+      this.previewEl.appendChild(ul);
+    }
+
+    if(this.settings.showCookwareList) {
+      // Add the Cookware header
+      const h = createEl('h2');
+      h.innerText = "Cookware";
+      h.addClass('cookware-header')
+      this.previewEl.appendChild(h);
+
+      // Add the Cookware list
+      const ul = createEl('ul');
+      ul.addClass('cookware');
+      recipe.cookware.forEach(item => {
+        const li = createEl('li');
+
+        li.appendText(item.name);
+        ul.appendChild(li);
+      })
+      this.previewEl.appendChild(ul);
+    }
+
+    if(this.settings.showTotalTime) {
+      let time = recipe.calculateTotalTime();
+      if(time > 0) {
+        // Add the Timers header
+        const h = createEl('h2');
+        h.innerText = "Total Time";
+        h.addClass('time-header')
+        this.previewEl.appendChild(h);
+
+        const p = createEl('p');
+        p.addClass('time');
+        p.innerText = this.formatTime(time);
+        this.previewEl.appendChild(p);
+      }
+    }
 
     // add the method header
     const hm = createEl('h2');
@@ -218,7 +260,12 @@ export class CookView extends TextFileView {
     recipe.method.forEach(line => {
       const mli = createEl('li');
       mli.innerHTML = line;
-      if (recipe.methodImages.has(i)) {
+      if (!this.settings.showQuantitiesInline) {
+        mli.querySelector('.amount')?.remove();
+        mli.querySelector('.unit')?.remove();
+      }
+
+      if (this.settings.showImages && recipe.methodImages.has(i)) {
         const img = createEl('img');
         img.addClass('method-image');
         img.src = this.app.vault.getResourcePath(recipe.methodImages.get(i));
@@ -228,5 +275,16 @@ export class CookView extends TextFileView {
       mol.appendChild(mli);
     });
     this.previewEl.appendChild(mol);
+  }
+
+  formatTime(time: number) {
+    let minutes = Math.floor(time / 60);
+    let hours = Math.floor(minutes / 60);
+    minutes = minutes % 60;
+
+    let result = "";
+    if (hours > 0) result += hours + " hours ";
+    if (minutes > 0) result += minutes + " minutes ";
+    return result;
   }
 }

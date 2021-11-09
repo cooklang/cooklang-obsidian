@@ -3,14 +3,15 @@ import { Plugin, WorkspaceLeaf, addIcon } from 'obsidian';
 import './lib/codemirror'
 import './mode/cook/cook'
 import { CookView } from './cookView'
+import { CookLangSettings, CookSettingsTab } from './settings'
 
 export default class CookPlugin extends Plugin {
 
-  settings: any;
+  settings: CookLangSettings;
 
   async onload() {
     super.onload();
-    this.settings = await this.loadData() || {} as any;
+    this.settings = Object.assign(new CookLangSettings(), await this.loadData());
 
     // register a custom icon
     this.addDocumentIcon("cook");
@@ -18,6 +19,8 @@ export default class CookPlugin extends Plugin {
     // register the view and extensions
     this.registerView("cook", this.cookViewCreator);
     this.registerExtensions(["cook"], "cook");
+
+    this.addSettingTab(new CookSettingsTab(this.app, this));
 
     // register the convert to cook command
     this.addCommand({
@@ -40,7 +43,15 @@ export default class CookPlugin extends Plugin {
 
   // function to create the view
   cookViewCreator = (leaf: WorkspaceLeaf) => {
-    return new CookView(leaf);
+    return new CookView(leaf, this.settings);
+  }
+
+  reloadCookViews() {
+    this.app.workspace.getLeavesOfType('cook').forEach(leaf => {
+      const cookView = leaf.view as CookView;
+      cookView.settings = this.settings;
+      if(cookView.recipe) cookView.renderPreview(cookView.recipe);
+    });
   }
 
   // this function provides the icon for the document

@@ -23,6 +23,11 @@
     max-height: calc(16vw);
   }
 
+  ul.ingredients,
+  ul.cookware {
+    column-count: 2;
+  }
+
   ol.method {
     margin-left: 0;
     padding-right: 0;
@@ -43,6 +48,12 @@
     margin-block-end: 1em;
     margin-inline-start: 0px;
     margin-inline-end: 0px;
+  }
+
+  span.time,
+  span.ingredient,
+  span.cookware {
+    font-weight: 600;
   }
 
   .cm-ingredient,
