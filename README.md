@@ -7,7 +7,7 @@ A plugin for [Obsidian](https://obsidian.md) adding support for [CookLang](https
 ![Screenshot](https://github.com/deathau/cooklang-obsidian/raw/main/screenshot.png)
 
 ## Installation
-- This plugin is not yet available as a community plugin.
+- This plugin has been submitted community plugins repo. Once approved, you can install it from Communinty Plugins within Obsidian.
 - You can install with the [Beta Reviewers Auto-update Tester (BRAT)](https://github.com/TfTHacker/obsidian42-brat) plugin by using the path `deathau/cooklang-obsidian`.
 - You can build and install the plugin manually by checking out the files to `<your vault>/.obsidian/plugins/cooklang-obsidian` and running `npm install` and then `npm run build`.
 
