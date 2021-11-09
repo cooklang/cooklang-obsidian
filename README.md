@@ -28,13 +28,13 @@ much, feel free to throw some coins in my hat via the following:
 
 # Roadmap
 This is the stuff I would ideally like to include in this plugin that isn't available as yet:
-- [ ] Improve editor/preview mode buttons/state/etc to be more like markdown
-- [ ] Command to convert `.md` to `.cook`
+- [x] Improve editor/preview mode buttons to be more like markdown
+- [x] Command to convert `.md` to `.cook`
     - [ ] Maybe also `cook` code block support?
-- [ ] Include option for showing quantities inline in the method
+- [x] Include option for showing quantities inline in the method
     - [ ] Option to link between ingredients and method?
-- [ ] Include options for showing ingredients list, tools list and time
-    - [ ] (calculate total time)
+- [x] Include options for showing ingredients list, tools list and time
+    - [x] (calculate total time)
 - [ ] Unit conversion (metric <-> imperial)
 - [ ] Scaling up/down (check spec)
 - [ ] Shopping list and `.conf` file support (needs designing)
@@ -44,6 +44,18 @@ This is the stuff I would ideally like to include in this plugin that isn't avai
 - [ ] (Maybe, pending feedback) Markdown formatting support.
 
 # Version History
+## 0.1.0
+- Improve editor/preview mode buttons to be more like markdown views
+    - You can even ctrl/cmd click to open in new pane!
+- Include options for showing ingredients list, tools list and time
+- Include option for showing quantities inline in the method
+
+## 0.0.4
+- Command to convert `.md` to `.cook`
+
+## 0.0.3
+- Fixes an issue preventing preview mode from working if no image is present
+
 ## 0.0.1
 Initial release!
 - You can open and edit `.cook` files
