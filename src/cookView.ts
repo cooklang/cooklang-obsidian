@@ -261,8 +261,8 @@ export class CookView extends TextFileView {
       const mli = createEl('li');
       mli.innerHTML = line;
       if (!this.settings.showQuantitiesInline) {
-        mli.querySelector('.amount')?.remove();
-        mli.querySelector('.unit')?.remove();
+        mli.querySelectorAll('.amount')?.forEach(el => el.remove());
+        mli.querySelectorAll('.unit')?.forEach(el => el.remove());
       }
 
       if (this.settings.showImages && recipe.methodImages.has(i)) {
