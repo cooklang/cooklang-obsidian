@@ -22,6 +22,30 @@ export default class CookPlugin extends Plugin {
 
     this.addSettingTab(new CookSettingsTab(this.app, this));
 
+    // commands:
+    // - Create new recipe
+    // - Create recipe in new pane
+    // - Convert markdown file to `.cook`
+
+    this.addCommand({
+      id: "create-cook",
+      name: "Create new recipe",
+      callback: async () => {
+        const newFile = await this.cookFileCreator();
+        this.app.workspace.activeLeaf.openFile(newFile);
+      }
+    })
+
+    this.addCommand({
+      id: "create-cook-new-pane",
+      name: "Create recipe in new pane",
+      callback: async () => {
+        const newFile = await this.cookFileCreator();
+        const leaf = await this.app.workspace.splitActiveLeaf();
+        leaf.openFile(newFile);
+      }
+    })
+
     // register the convert to cook command
     this.addCommand({
       id: "convert-to-cook",
@@ -39,6 +63,32 @@ export default class CookPlugin extends Plugin {
         }
       }
     })
+  }
+
+  cookFileCreator = async () => {
+    let newFileFolderPath = null;
+    const newFileLocation = (this.app.vault as any).config.newFileLocation;
+    if(!newFileLocation || newFileLocation === "root") {
+      newFileFolderPath = '/';
+    }
+    else if(newFileLocation === "current") {
+      newFileFolderPath = (this.app.workspace.activeLeaf.view as any)?.file?.parent?.path;
+    }
+    else{
+      newFileFolderPath = (this.app.vault as any).config.newFileFolderPath;
+    }
+
+    if(!newFileFolderPath) newFileFolderPath = '/';
+    else if(!newFileFolderPath.endsWith('/')) newFileFolderPath += '/';
+
+    const originalPath = newFileFolderPath;
+    newFileFolderPath = newFileFolderPath + 'Untitled.cook';
+    let i = 0;
+    while(this.app.vault.getAbstractFileByPath(newFileFolderPath)) {
+      newFileFolderPath = `${originalPath}Untitled ${++i}.cook`;
+    }
+    const newFile = await this.app.vault.create(newFileFolderPath, '');
+    return newFile;
   }
 
   // function to create the view
