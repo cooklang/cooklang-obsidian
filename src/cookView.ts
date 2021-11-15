@@ -172,93 +172,60 @@ export class CookView extends TextFileView {
       
       // if there is a main image, put it as a banner image at the top
       if (recipe.image) {
-        const img = createEl('img');
-        img.addClass('main-image');
+        const img = this.previewEl.createEl('img', { cls: 'main-image' });
         img.src = this.app.vault.getResourcePath(recipe.image);
-        this.previewEl.appendChild(img);
       }
     }
 
     if(this.settings.showIngredientList) {
       // Add the Ingredients header
-      const h = createEl('h2');
-      h.innerText = "Ingredients";
-      h.addClass('ingredients-header')
-      this.previewEl.appendChild(h);
+      this.previewEl.createEl('h2', { cls: 'ingredients-header', text: 'Ingredients' });
 
       // Add the ingredients list
-      const ul = createEl('ul');
-      ul.addClass('ingredients');
+      const ul = this.previewEl.createEl('ul', { cls: 'ingredients' });
       recipe.ingredients.forEach(ingredient => {
-        const li = createEl('li');
+        const li = ul.createEl('li');
         if (ingredient.amount !== null) {
-          const span = createEl('span');
-          span.addClass('amount');
-          span.innerText = ingredient.amount;
-          li.appendChild(span);
+          li.createEl('span', { cls: 'amount', text: ingredient.amount});
           li.appendText(' ');
         }
         if (ingredient.unit !== null) {
-          const span = createEl('span');
-          span.addClass('unit');
-          span.innerText = ingredient.unit;
-          li.appendChild(span);
+          li.createEl('span', { cls: 'unit', text: ingredient.unit});
           li.appendText(' ');
         }
-
+        
         li.appendText(ingredient.name);
-        ul.appendChild(li);
       })
-      this.previewEl.appendChild(ul);
     }
 
     if(this.settings.showCookwareList) {
       // Add the Cookware header
-      const h = createEl('h2');
-      h.innerText = "Cookware";
-      h.addClass('cookware-header')
-      this.previewEl.appendChild(h);
+      this.previewEl.createEl('h2', { cls: 'cookware-header', text: 'Cookware' });
 
       // Add the Cookware list
-      const ul = createEl('ul');
-      ul.addClass('cookware');
+      const ul = this.previewEl.createEl('ul', { cls: 'cookware' });
       recipe.cookware.forEach(item => {
-        const li = createEl('li');
-
-        li.appendText(item.name);
-        ul.appendChild(li);
+        ul.createEl('li', { text: item.name });
       })
-      this.previewEl.appendChild(ul);
     }
 
     if(this.settings.showTotalTime) {
       let time = recipe.calculateTotalTime();
       if(time > 0) {
         // Add the Timers header
-        const h = createEl('h2');
-        h.innerText = "Total Time";
-        h.addClass('time-header')
-        this.previewEl.appendChild(h);
-
-        const p = createEl('p');
-        p.addClass('time');
-        p.innerText = this.formatTime(time);
-        this.previewEl.appendChild(p);
+        this.previewEl.createEl('h2', { cls: 'time-header', text: 'Total Time' });
+        this.previewEl.createEl('p', { cls: 'time', text: this.formatTime(time) });
       }
     }
 
     // add the method header
-    const hm = createEl('h2');
-    hm.innerText = "Method";
-    hm.addClass('method-header');
-    this.previewEl.appendChild(hm);
+    this.previewEl.createEl('h2', { cls: 'method-header', text: 'Method' });
 
     // add the method list
-    const mol = createEl('ol');
-    mol.addClass('method');
+    const mol = this.previewEl.createEl('ol', { cls: 'method' });
     let i = 1;
     recipe.method.forEach(line => {
-      const mli = createEl('li');
+      const mli = mol.createEl('li');
       mli.innerHTML = line;
       if (!this.settings.showQuantitiesInline) {
         mli.querySelectorAll('.amount')?.forEach(el => el.remove());
@@ -266,15 +233,11 @@ export class CookView extends TextFileView {
       }
 
       if (this.settings.showImages && recipe.methodImages.has(i)) {
-        const img = createEl('img');
-        img.addClass('method-image');
+        const img = mli.createEl('img', { cls: 'method-image' });
         img.src = this.app.vault.getResourcePath(recipe.methodImages.get(i));
-        mli.append(img);
       }
       i++;
-      mol.appendChild(mli);
     });
-    this.previewEl.appendChild(mol);
   }
 
   formatTime(time: number) {
