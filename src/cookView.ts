@@ -17,12 +17,10 @@ export class CookView extends TextFileView {
   constructor(leaf: WorkspaceLeaf, settings: CookLangSettings) {
     super(leaf);
     this.settings = settings;
-    // Get View Container Element
-    this.viewEl = this.containerEl.getElementsByClassName('view-content')[0] as HTMLElement;
     // Add Preview Mode Container
-    this.previewEl = this.viewEl.createDiv({ cls: 'cook-preview-view', attr: { 'style': 'display: none' } });
+    this.previewEl = this.contentEl.createDiv({ cls: 'cook-preview-view', attr: { 'style': 'display: none' } });
     // Add Source Mode Container
-    this.sourceEl = this.viewEl.createDiv({ cls: 'cook-source-view', attr: { 'style': 'display: block' } });
+    this.sourceEl = this.contentEl.createDiv({ cls: 'cook-source-view', attr: { 'style': 'display: block' } });
     // Add container for CodeMirror editor
     this.editorEl = this.sourceEl.createEl('textarea', { cls: 'cook-cm-editor' });
     // Create CodeMirror Editor with specific config
@@ -45,7 +43,7 @@ export class CookView extends TextFileView {
     this.changeModeButton = this.addAction('lines-of-text', 'Preview (Ctrl+Click to open in new pane)', (evt) => this.switchMode(evt), 17);
 
     // undocumented: Get the current default view mode to switch to
-    let defaultViewMode = (this.app.vault as any).config.defaultViewMode || 'source';
+    let defaultViewMode = (this.app.vault as any).getConfig('defaultViewMode');
     this.switchMode(null, defaultViewMode);
   }
 
@@ -58,9 +56,11 @@ export class CookView extends TextFileView {
     // if we held ctrl/cmd or middle clicked, open in new pane
     if (evt && Keymap.isModEvent(evt)) {
       this.app.workspace.duplicateLeaf(this.leaf).then(() => {
-        const cookLeaf = this.app.workspace.activeLeaf.view as CookView;
-        cookLeaf.currentView = this.currentView;
-        cookLeaf.switchMode(null, mode);
+        const cookLeaf = this.app.workspace.activeLeaf?.view;
+        if(cookLeaf && cookLeaf instanceof CookView) {
+          cookLeaf.currentView = this.currentView;
+          cookLeaf.switchMode(null, mode);
+        }
       });
     }
     else {
@@ -146,7 +146,7 @@ export class CookView extends TextFileView {
   renderPreview(recipe: Recipe) {
 
     // clear the preview before adding the rest
-    this.previewEl.innerHTML = '';
+    this.previewEl.empty();
 
     // we can't render what we don't have...
     if (!recipe) return;

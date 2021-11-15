@@ -32,7 +32,7 @@ export default class CookPlugin extends Plugin {
       name: "Create new recipe",
       callback: async () => {
         const newFile = await this.cookFileCreator();
-        this.app.workspace.activeLeaf.openFile(newFile);
+        this.app.workspace.getLeaf().openFile(newFile);
       }
     })
 
@@ -41,8 +41,7 @@ export default class CookPlugin extends Plugin {
       name: "Create recipe in new pane",
       callback: async () => {
         const newFile = await this.cookFileCreator();
-        const leaf = await this.app.workspace.splitActiveLeaf();
-        leaf.openFile(newFile);
+        const leaf = await this.app.workspace.getLeaf(true).openFile(newFile);
       }
     })
 
@@ -52,10 +51,11 @@ export default class CookPlugin extends Plugin {
       name: "Convert markdown file to `.cook`",
       checkCallback: (checking:boolean) => {
         const file = this.app.workspace.getActiveFile();
+        const isMd = file.extension === "md";
         if(checking) {
-          return file.extension === "md";
+          return isMd;
         }
-        else {
+        else if(isMd) {
           // replace last instance of .md with .cook
           this.app.vault.rename(file,file.path.replace(/\.md$/, ".cook")).then(() => {
             this.app.workspace.activeLeaf.openFile(file);
@@ -67,15 +67,15 @@ export default class CookPlugin extends Plugin {
 
   cookFileCreator = async () => {
     let newFileFolderPath = null;
-    const newFileLocation = (this.app.vault as any).config.newFileLocation;
+    const newFileLocation = (this.app.vault as any).getConfig('newFileLocation');
     if(!newFileLocation || newFileLocation === "root") {
       newFileFolderPath = '/';
     }
     else if(newFileLocation === "current") {
-      newFileFolderPath = (this.app.workspace.activeLeaf.view as any)?.file?.parent?.path;
+      newFileFolderPath = this.app.workspace.getActiveFile()?.parent?.path;
     }
     else{
-      newFileFolderPath = (this.app.vault as any).config.newFileFolderPath;
+      newFileFolderPath = (this.app.vault as any).getConfig('newFileFolderPath');
     }
 
     if(!newFileFolderPath) newFileFolderPath = '/';
@@ -98,9 +98,10 @@ export default class CookPlugin extends Plugin {
 
   reloadCookViews() {
     this.app.workspace.getLeavesOfType('cook').forEach(leaf => {
-      const cookView = leaf.view as CookView;
-      cookView.settings = this.settings;
-      if(cookView.recipe) cookView.renderPreview(cookView.recipe);
+      if(leaf.view instanceof CookView) {
+        leaf.view.settings = this.settings;
+        if(leaf.view.recipe) leaf.view.renderPreview(leaf.view.recipe);
+      }
     });
   }
 
