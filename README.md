@@ -44,6 +44,10 @@ This is the stuff I would ideally like to include in this plugin that isn't avai
 - [ ] (Maybe, pending feedback) Markdown formatting support.
 
 # Version History
+## 0.1.1
+- **Fixed:** Turning off inline measurements now actually removes all of them.
+- **New:** Added commands to add new recipe files.
+
 ## 0.1.0
 - Improve editor/preview mode buttons to be more like markdown views
     - You can even ctrl/cmd click to open in new pane!
