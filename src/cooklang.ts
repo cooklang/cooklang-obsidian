@@ -9,6 +9,10 @@ export class CookLang {
     source.split('\n').forEach(line => {
 
       let match:RegExpExecArray;
+
+      // clear comments
+      line = line.replace(/(--.*)|(\[-.+?-\])/, '');
+
       // skip blank lines
       if(line.trim().length === 0) return;
       // metadata lines
@@ -17,10 +21,6 @@ export class CookLang {
       }
       // method lines
       else {
-        // clear comments
-        line = line.replace(/\/\/.*/, '');
-        if(line.trim().length === 0) return;
-
         // ingredients on a line
         while(match = Ingredient.regex.exec(line)){
           const ingredient = new Ingredient(match[0]);

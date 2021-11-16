@@ -52,12 +52,15 @@ CodeMirror.defineMode("cook", function() {
         if(ch === ':') state.position = "metadata"
       }
       else {
-        if (ch === "/") {
-          if (stream.eat("/")) {
+        if (ch === "-") {
+          if (stream.eat("-")) {
             stream.skipToEnd();
             return "comment";
           }
         }
+
+        if (stream.match(/\[-.+?-\]/))
+          return "comment";
 
         if(stream.match(/^@([^@#~]+?(?={))/))
           return "ingredient";
