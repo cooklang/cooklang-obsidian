@@ -1,5 +1,5 @@
 import { CookLang, Recipe } from './cooklang'
-import { TextFileView, setIcon, TFile, Keymap, WorkspaceLeaf } from 'obsidian'
+import { TextFileView, setIcon, TFile, Keymap, WorkspaceLeaf, ViewStateResult } from 'obsidian'
 import { CookLangSettings } from './settings';
 
 // This is the custom view
@@ -44,24 +44,37 @@ export class CookView extends TextFileView {
 
     // undocumented: Get the current default view mode to switch to
     let defaultViewMode = (this.app.vault as any).getConfig('defaultViewMode');
-    this.switchMode(null, defaultViewMode);
+    this.setState({ ...this.getState(), mode: defaultViewMode }, {});
+  }
+
+  getState(): any {
+    return super.getState();
+  }
+
+  setState(state: any, result: ViewStateResult): Promise<void>{
+    return super.setState(state, result).then(() => {
+      if (state.mode) this.switchMode(state.mode);
+    });
   }
 
   // function to switch between source and preview mode
-  switchMode(evt?: MouseEvent, force?: 'source' | 'preview') {
-    let mode = force;
+  switchMode(arg: 'source' | 'preview' | MouseEvent) {
+    let mode = arg;
     // if force mode not provided, switch to opposite of current mode
-    if (!mode) mode = this.currentView === 'source' ? 'preview' : 'source';
+    if (!mode || mode instanceof MouseEvent) mode = this.currentView === 'source' ? 'preview' : 'source';
 
-    // if we held ctrl/cmd or middle clicked, open in new pane
-    if (evt && Keymap.isModEvent(evt)) {
-      this.app.workspace.duplicateLeaf(this.leaf).then(() => {
-        const cookLeaf = this.app.workspace.activeLeaf?.view;
-        if(cookLeaf && cookLeaf instanceof CookView) {
-          cookLeaf.currentView = this.currentView;
-          cookLeaf.switchMode(null, mode);
-        }
-      });
+    if (arg instanceof MouseEvent) {
+      if (Keymap.isModEvent(arg)) {
+        this.app.workspace.duplicateLeaf(this.leaf).then(() => {
+          const cookLeaf = this.app.workspace.activeLeaf?.view;
+          if (cookLeaf) {
+            cookLeaf.setState({ ...cookLeaf.getState(), mode: mode }, {});
+          }
+        });
+      }
+      else {
+        this.setState({ ...this.getState(), mode: mode }, {});
+      }
     }
     else {
       // switch to preview mode
