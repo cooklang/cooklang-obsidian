@@ -41,7 +41,7 @@ export default class CookPlugin extends Plugin {
       name: "Create recipe in new pane",
       callback: async () => {
         const newFile = await this.cookFileCreator();
-        const leaf = await this.app.workspace.getLeaf(true).openFile(newFile);
+        await this.app.workspace.getLeaf(true).openFile(newFile);
       }
     })
 

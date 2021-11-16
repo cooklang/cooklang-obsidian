@@ -5,10 +5,8 @@ import { CookLangSettings } from './settings';
 // This is the custom view
 export class CookView extends TextFileView {
   settings: CookLangSettings;
-  viewEl: HTMLElement;
   previewEl: HTMLElement;
   sourceEl: HTMLElement;
-  editorEl: HTMLTextAreaElement;
   editor: CodeMirror.Editor;
   recipe: Recipe;
   changeModeButton: HTMLElement;
@@ -21,12 +19,10 @@ export class CookView extends TextFileView {
     this.previewEl = this.contentEl.createDiv({ cls: 'cook-preview-view', attr: { 'style': 'display: none' } });
     // Add Source Mode Container
     this.sourceEl = this.contentEl.createDiv({ cls: 'cook-source-view', attr: { 'style': 'display: block' } });
-    // Add container for CodeMirror editor
-    this.editorEl = this.sourceEl.createEl('textarea', { cls: 'cook-cm-editor' });
     // Create CodeMirror Editor with specific config
-    this.editor = CodeMirror.fromTextArea(this.editorEl, {
-      lineNumbers: false,
-      lineWrapping: true,
+    this.editor = CodeMirror.fromTextArea(this.sourceEl.createEl('textarea', { cls: 'cook-cm-editor' }), {
+      lineNumbers: (this.app.vault as any).getConfig('showLineNumber'),
+      lineWrapping: (this.app.vault as any).getConfig('lineWrap'),
       scrollbarStyle: null,
       keyMap: "default",
       theme: "obsidian"
@@ -52,6 +48,7 @@ export class CookView extends TextFileView {
   }
 
   setState(state: any, result: ViewStateResult): Promise<void>{
+    console.log(state);
     return super.setState(state, result).then(() => {
       if (state.mode) this.switchMode(state.mode);
     });
@@ -66,7 +63,11 @@ export class CookView extends TextFileView {
     if (arg instanceof MouseEvent) {
       if (Keymap.isModEvent(arg)) {
         this.app.workspace.duplicateLeaf(this.leaf).then(() => {
-          const cookLeaf = this.app.workspace.activeLeaf?.view;
+          const viewState = this.app.workspace.activeLeaf?.getViewState();
+          if (viewState) {
+            viewState.state = { ...viewState.state, mode: mode };
+            this.app.workspace.activeLeaf?.setViewState(viewState);
+          }
           if (cookLeaf) {
             cookLeaf.setState({ ...cookLeaf.getState(), mode: mode }, {});
           }
