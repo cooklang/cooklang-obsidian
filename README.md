@@ -44,6 +44,9 @@ This is the stuff I would ideally like to include in this plugin that isn't avai
 - [ ] (Maybe, pending feedback) Markdown formatting support.
 
 # Version History
+## 0.2.0
+- Changed comment syntax according to spec changes
+- 
 ## 0.1.1
 - **Fixed:** Turning off inline measurements now actually removes all of them.
 - **New:** Added commands to add new recipe files.
