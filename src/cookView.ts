@@ -1,4 +1,4 @@
-import { CookLang, Recipe } from './cooklang'
+import { cooklang } from './cooklang'
 import { TextFileView, setIcon, TFile, Keymap, WorkspaceLeaf, ViewStateResult } from 'obsidian'
 import { CookLangSettings } from './settings';
 
@@ -8,7 +8,7 @@ export class CookView extends TextFileView {
   previewEl: HTMLElement;
   sourceEl: HTMLElement;
   editor: CodeMirror.Editor;
-  recipe: Recipe;
+  recipe: cooklang.recipe;
   changeModeButton: HTMLElement;
   currentView: 'source' | 'preview';
 
@@ -68,9 +68,6 @@ export class CookView extends TextFileView {
             viewState.state = { ...viewState.state, mode: mode };
             this.app.workspace.activeLeaf?.setViewState(viewState);
           }
-          if (cookLeaf) {
-            cookLeaf.setState({ ...cookLeaf.getState(), mode: mode }, {});
-          }
         });
       }
       else {
@@ -105,7 +102,7 @@ export class CookView extends TextFileView {
   getViewData() {
     this.data = this.editor.getValue();
     // may as well parse the recipe while we're here.
-    this.recipe = CookLang.parse(this.data);
+    this.recipe = new cooklang.recipe(this.data);
     return this.data;
   }
 
@@ -119,7 +116,7 @@ export class CookView extends TextFileView {
     }
 
     this.editor.setValue(data);
-    this.recipe = CookLang.parse(data);
+    this.recipe = new cooklang.recipe(data);
     // if we're in preview view, also render that
     if (this.currentView === 'preview') this.renderPreview(this.recipe);
   }
@@ -129,7 +126,7 @@ export class CookView extends TextFileView {
     this.previewEl.empty();
     this.editor.setValue('');
     this.editor.clearHistory();
-    this.recipe = new Recipe();
+    this.recipe = new cooklang.recipe();
     this.data = null;
   }
 
@@ -157,7 +154,7 @@ export class CookView extends TextFileView {
   }
 
   // render the preview view
-  renderPreview(recipe: Recipe) {
+  renderPreview(recipe: cooklang.recipe) {
 
     // clear the preview before adding the rest
     this.previewEl.empty();
@@ -177,8 +174,9 @@ export class CookView extends TextFileView {
           else {
             const split = f.basename.split('.');
             // individual step images
-            if (split.length == 2 && parseInt(split[1])) {
-              recipe.methodImages.set(parseInt(split[1]), f);
+            let s:number;
+            if (split.length == 2 && (s = parseInt(split[1])) >= 0 && s < recipe.steps.length) {
+              recipe.steps[s].image = f;
             }
           }
         }
@@ -237,20 +235,40 @@ export class CookView extends TextFileView {
 
     // add the method list
     const mol = this.previewEl.createEl('ol', { cls: 'method' });
-    let i = 1;
-    recipe.method.forEach(line => {
+    recipe.steps.forEach(step => {
       const mli = mol.createEl('li');
-      mli.innerHTML = line;
-      if (!this.settings.showQuantitiesInline) {
-        mli.querySelectorAll('.amount')?.forEach(el => el.remove());
-        mli.querySelectorAll('.unit')?.forEach(el => el.remove());
-      }
+      const mp = mli.createEl('p');
+      step.line.forEach(s => {
+        if (typeof s === "string") mp.append(s);
+        else if (s instanceof cooklang.ingredient) {
+          const ispan = mp.createSpan({ cls: 'ingredient' });
+          if (this.settings.showQuantitiesInline) {
+            if (s.amount) {
+              ispan.createSpan({ cls: 'amount', text: s.amount });
+              ispan.appendText(' ');
+            }
+            if (s.unit) {
+              ispan.createSpan({ cls: 'unit', text: s.unit });
+              ispan.appendText(' ');
+            }
+          }
+          ispan.appendText(s.name)
+        }
+        else if (s instanceof cooklang.cookware) {
+          mp.createSpan({ cls: 'ingredient', text: s.name });
+        }
+        else if (s instanceof cooklang.timer) {
+          const tspan = mp.createSpan({ cls: 'ingredient' });
+          tspan.createSpan({ cls: 'time-amount', text: s.amount });
+          tspan.appendText(' ');
+          tspan.createSpan({ cls: 'time-unit', text: s.unit });
+        }
+      });
 
-      if (this.settings.showImages && recipe.methodImages.has(i)) {
+      if (this.settings.showImages && step.image) {
         const img = mli.createEl('img', { cls: 'method-image' });
-        img.src = this.app.vault.getResourcePath(recipe.methodImages.get(i));
+        img.src = this.app.vault.getResourcePath(step.image);
       }
-      i++;
     });
   }
 

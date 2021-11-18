@@ -1,203 +1,191 @@
-import { TFile } from 'obsidian';
+export namespace cooklang {
+  const COMMENT_REGEX = /(--.*)|(\[-(.|\n)+?-\])/g
+  const INGREDIENT_REGEX = /@(?:([^@#~]+?)(?:{(.*?)}|{}))|@(.+?\b)/
+  const COOKWARE_REGEX = /#(?:([^@#~]+?)(?:{}))|#(.+?\b)/
+  const TIMER_REGEX = /~{([0-9]+(?:\/[0-9]+)?)%(.+?)}/
+  const METADATA_REGEX = /^>>\s*(.*?):\s*(.*)$/
 
-// utility class for parsing cooklang files
-export class CookLang {
-  static parse(source:string) {
+  // a base class containing the raw string
+  export class base {
+    raw: string
 
-    const recipe = new Recipe();
-
-    source.split('\n').forEach(line => {
-
-      let match:RegExpExecArray;
-
-      // clear comments
-      line = line.replace(/(--.*)|(\[-.+?-\])/, '');
-
-      // skip blank lines
-      if(line.trim().length === 0) return;
-      // metadata lines
-      else if(match = Metadata.regex.exec(line)){
-        recipe.metadata.push(new Metadata(match[0]));
-      }
-      // method lines
-      else {
-        // ingredients on a line
-        while(match = Ingredient.regex.exec(line)){
-          const ingredient = new Ingredient(match[0]);
-          recipe.ingredients.push(ingredient);
-          line = line.replace(match[0], ingredient.methodOutput());
-        }
-
-        // cookware on a line
-        while(match = Cookware.regex.exec(line)){
-          const c = new Cookware(match[0]);
-          recipe.cookware.push(c);
-          line = line.replace(match[0], c.methodOutput());
-        }
-
-        // timers on a line
-        while(match = Timer.regex.exec(line)){
-          const t = new Timer(match[0]);
-          recipe.timers.push(t);
-          line = line.replace(match[0], t.methodOutput());
-        }
-
-        // add in the method line
-        recipe.method.push(line.trim());
-      }
-    });
-
-    return recipe;
+    constructor(s: string | string[]) {
+      if (s instanceof Array) this.raw = s[0];
+      else this.raw = s
+    }
   }
-}
 
-// a class representing a recipe
-export class Recipe {
-  metadata: Metadata[] = [];
-  ingredients: Ingredient[] = [];
-  cookware: Cookware[] = [];
-  timers: Timer[] = [];
-  method: string[] = [];
-  image: TFile;
-  methodImages: Map<Number, TFile> = new Map<Number, TFile>();
+  // ingredients
+  export class ingredient extends base {
+    name: string
+    amount: string
+    unit: string
 
-  calculateTotalTime() {
-    let time = 0;
-    this.timers.forEach(timer => {
-      let amount:number = 0;
-      if(parseFloat(timer.amount) + '' == timer.amount) amount = parseFloat(timer.amount);
-      else if(timer.amount.contains('/')){
-        const split = timer.amount.split('/');
-        if(split.length == 2){
+    constructor(s: string | string[]) {
+      super(s)
+      const match = s instanceof Array ? s : INGREDIENT_REGEX.exec(s)
+      if (!match || match.length != 4) throw `error parsing ingredient: '${s}'`
+      this.name = (match[1] || match[3]).trim()
+      const attrs = match[2]?.split('%')
+      this.amount = attrs && attrs.length > 0 ? attrs[0].trim() : null
+      this.unit = attrs && attrs.length > 1 ? attrs[1].trim() : null
+    }
+  }
+
+  // cookware
+  export class cookware extends base {
+    name: string
+
+    constructor(s: string | string[]) {
+      super(s)
+      const match = s instanceof Array ? s : COOKWARE_REGEX.exec(s)
+      if (!match || match.length != 3) throw `error parsing cookware: '${s}'`
+      this.name = (match[1] || match[2]).trim()
+    }
+  }
+
+  // timer
+  export class timer extends base {
+    amount: string
+    unit: string
+    seconds: number
+
+    constructor(s: string | string[]) {
+      super(s)
+      const match = s instanceof Array ? s : TIMER_REGEX.exec(s)
+      if (!match || match.length != 3) throw `error parsing timer: '${s}'`
+      this.amount = match[1].trim()
+      this.unit = match[2].trim()
+      this.seconds = timer.parseTime(this.amount, this.unit);
+    }
+
+    static parseTime(s: string, unit: string = 'm') {
+      let time = 0;
+      let amount: number = 0;
+      if (parseFloat(s) + '' == s) amount = parseFloat(s);
+      else if (s.includes('/')) {
+        const split = s.split('/');
+        if (split.length == 2) {
           const num = parseFloat(split[0]);
           const den = parseFloat(split[1]);
-          if(num && den){
+          if (num + '' == split[0] && den + '' == split[1]) {
             amount = num / den;
           }
         }
       }
 
-      if(amount > 0){
-        if(timer.unit.toLowerCase().startsWith('s')){
-          time += amount;
+      if (amount > 0) {
+        if (unit.toLowerCase().startsWith('s')) {
+          time = amount;
         }
-        else if(timer.unit.toLowerCase().startsWith('m')) {
-          time += amount * 60;
+        else if (unit.toLowerCase().startsWith('m')) {
+          time = amount * 60;
         }
-        else if(timer.unit.toLowerCase().startsWith('h')) {
-          time += amount * 60 * 60;
+        else if (unit.toLowerCase().startsWith('h')) {
+          time = amount * 60 * 60;
         }
       }
-    });
-    return time;
-  }
-}
 
-// a class representing an ingredient
-export class Ingredient {
-  // starts with an @, ends at a word boundary or {}
-  // (also capture what's inside the {})
-  static regex = /@(?:([^@#~]+?)(?:{(.*?)}|{}))|@(.+?\b)/;
-  constructor(s: string) {
-    this.originalString = s;
-    const match = Ingredient.regex.exec(s);
-    this.name = match[1] || match[3];
-    const attrs = match[2]?.split('%');
-    this.amount = attrs && attrs.length > 0 ? attrs[0] : null;
-    this.unit = attrs && attrs.length > 1 ? attrs[1] : null;
-  }
-  originalString: string = null;
-  name: string = null;
-  amount: string = null;
-  unit: string = null;
-
-  methodOutput = () => {
-    let s = `<span class='ingredient'>`;
-    if (this.amount !== null) {
-      s += `<span class='amount'>${this.amount} </span>`;
+      return time;
     }
-    if (this.unit !== null) {
-      s += `<span class='unit'>${this.unit} </span>`;
+  }
+
+  // metadata
+  export class metadata extends base {
+    key: string
+    value: string
+
+    constructor(s: string | string[]) {
+      super(s)
+      const match = s instanceof Array ? s : METADATA_REGEX.exec(s)
+      if (!match || match.length != 3) throw `error parsing metadata: '${s}'`
+      this.key = match[1].trim()
+      this.value = match[2].trim()
+    }
+  }
+
+  // a single recipe step
+  export class step extends base {
+    line: (string | base)[] = []
+    image?: any
+
+    constructor(s: string) {
+      super(s)
+      this.line = this.parseLine(s)
     }
 
-    s += `${this.name}</span>`;
-    return s;
-  }
-  listOutput = () => {
-    let s = ``;
-    if (this.amount !== null) {
-      s += `<span class='amount'>${this.amount}</span> `;
+    // parse a single line
+    parseLine(s: string): (string | base)[] {
+      let match: string[]
+      let b: base
+      let line: (string | base)[] = []
+      // if the line is blank, return an empty line
+      if (s.trim().length === 0) return []
+      // if it's a metadata line, return that
+      else if (match = METADATA_REGEX.exec(s)) {
+        return [new metadata(match)]
+      }
+      // if it has an ingredient, pull that out
+      else if (match = INGREDIENT_REGEX.exec(s)) {
+        b = new ingredient(match)
+      }
+      // if it has an item of cookware, pull that out
+      else if (match = COOKWARE_REGEX.exec(s)) {
+        b = new cookware(match)
+      }
+      // if it has a timer, pull that out
+      else if (match = TIMER_REGEX.exec(s)) {
+        b = new timer(match)
+      }
+
+      // if we found something (ingredient, cookware, timer)
+      if (b) {
+        // split the string up to get the string left and right of what we found
+        const split = s.split(b.raw)
+        // if the line doesn't start with what we matched, we need to parse the left side
+        if (!s.startsWith(b.raw)) line.unshift(...this.parseLine(split[0]))
+        // add what we matched in the middle
+        line.push(b)
+        // if the line doesn't end with what we matched, we need to parse the right side
+        if (!s.endsWith(b.raw)) line.push(...this.parseLine(split[1]))
+
+        return line
+      }
+      // if it doesn't match any regular expressions, just return the whole string
+      return [s]
     }
-    if (this.unit !== null) {
-      s += `<span class='unit'>${this.unit}</span> `;
+  }
+
+  export class recipe extends base {
+    metadata: metadata[] = []
+    ingredients: ingredient[] = []
+    cookware: cookware[] = []
+    timers: timer[] = []
+    steps: step[] = []
+    image?: any
+
+    constructor(s?: string) {
+      super(s)
+      s?.replace(COMMENT_REGEX, '')?.split('\n')?.forEach(line => {
+        let l = new step(line);
+        if (l.line.length != 0) {
+          if (l.line.length == 1 && l.line[0] instanceof metadata) {
+            this.metadata.push(l.line[0])
+          }
+          else {
+            l.line.forEach(b => {
+              if (b instanceof ingredient) this.ingredients.push(b)
+              else if (b instanceof cookware) this.cookware.push(b)
+              else if (b instanceof timer) this.timers.push(b)
+            })
+            this.steps.push(l);
+          }
+        }
+      })
     }
 
-    s += this.name;
-    return s;
-  }
-}
-
-// a class representing an item of cookware
-export class Cookware {
-  // starts with a #, ends at a word boundary or {}
-  static regex = /#(?:([^@#~]+?)(?:{}))|#(.+?\b)/;
-  originalString: string = null;
-  name: string = null;
-
-  constructor(s: string) {
-    this.originalString = s;
-    const match = Cookware.regex.exec(s);
-    this.name = match[1] || match[2];
-  }
-
-  methodOutput = () => {
-    return `<span class='cookware'>${this.name}</span>`;
-  }
-  listOutput = () => {
-    return this.name;
-  }
-}
-
-// a class representing a timer
-export class Timer {
-  // contained within ~{}
-  static regex = /~{([0-9]+)%(.+?)}/;
-  originalString: string = null;
-  amount: string = null;
-  unit: string = null;
-
-  constructor(s: string) {
-    const match = Timer.regex.exec(s);
-    this.amount = match[1];
-    this.unit = match[2];
-  }
-
-  methodOutput = () => {
-    return `<span class='time'><span class='time-amount'>${this.amount}</span> <span class='time-unit'>${this.unit}</span></span>`;
-  }
-  listOutput = () => {
-    return `<span class='time-amount'>${this.amount}</span> <span class='time-unit'>${this.unit}</span>`;
-  }
-}
-
-// a class representing metadata item
-export class Metadata {
-  // starts with >>
-  static regex = />>\s*(.*?):\s*(.*)/;
-  originalString: string = null;
-  key: string = null;
-  value: string = null;
-
-  constructor(s: string) {
-    const match = Metadata.regex.exec(s);
-    this.key = match[1].trim();
-    this.value = match[2].trim();
-  }
-
-  methodOutput = () => {
-    return `<span class='metadata metadata-key'>${this.key}</span> <span class='metadata metadata-value'>${this.value}</span>`;
-  }
-  listOutput = () => {
-    return `<span class='metadata-key'>${this.key}</span> <span class='metadata-value'>${this.value}</span>`;
+    calculateTotalTime() {
+      return this.timers.reduce((a,b) => a + b.seconds, 0)
+    }
   }
 }
