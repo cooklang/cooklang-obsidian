@@ -1,4 +1,4 @@
-import { cooklang } from './cooklang'
+import { Cookware, Ingredient, Recipe, Timer } from 'cooklang'
 import { TextFileView, setIcon, TFile, Keymap, WorkspaceLeaf, ViewStateResult } from 'obsidian'
 import { CookLangSettings } from './settings';
 
@@ -8,7 +8,7 @@ export class CookView extends TextFileView {
   previewEl: HTMLElement;
   sourceEl: HTMLElement;
   editor: CodeMirror.Editor;
-  recipe: cooklang.recipe;
+  recipe: Recipe;
   changeModeButton: HTMLElement;
   currentView: 'source' | 'preview';
 
@@ -102,7 +102,7 @@ export class CookView extends TextFileView {
   getViewData() {
     this.data = this.editor.getValue();
     // may as well parse the recipe while we're here.
-    this.recipe = new cooklang.recipe(this.data);
+    this.recipe = new Recipe(this.data);
     return this.data;
   }
 
@@ -116,7 +116,7 @@ export class CookView extends TextFileView {
     }
 
     this.editor.setValue(data);
-    this.recipe = new cooklang.recipe(data);
+    this.recipe = new Recipe(data);
     // if we're in preview view, also render that
     if (this.currentView === 'preview') this.renderPreview(this.recipe);
   }
@@ -126,7 +126,7 @@ export class CookView extends TextFileView {
     this.previewEl.empty();
     this.editor.setValue('');
     this.editor.clearHistory();
-    this.recipe = new cooklang.recipe();
+    this.recipe = new Recipe();
     this.data = null;
   }
 
@@ -154,7 +154,7 @@ export class CookView extends TextFileView {
   }
 
   // render the preview view
-  renderPreview(recipe: cooklang.recipe) {
+  renderPreview(recipe: Recipe) {
 
     // clear the preview before adding the rest
     this.previewEl.empty();
@@ -162,9 +162,11 @@ export class CookView extends TextFileView {
     // we can't render what we don't have...
     if (!recipe) return;
 
+    console.log(recipe);
+
     if(this.settings.showImages) {
       // add any files following the cooklang conventions to the recipe object
-      // https://cooklang.org/docs/spec/#adding-pictures
+      // https://org/docs/spec/#adding-pictures
       const otherFiles: TFile[] = this.file.parent.children.filter(f => (f instanceof TFile) && (f.basename == this.file.basename || f.basename.startsWith(this.file.basename + '.')) && f.name != this.file.name) as TFile[];
       otherFiles.forEach(f => {
         // convention specifies JPEGs and PNGs. Added GIFs as well. Why not?
@@ -240,7 +242,7 @@ export class CookView extends TextFileView {
       const mp = mli.createEl('p');
       step.line.forEach(s => {
         if (typeof s === "string") mp.append(s);
-        else if (s instanceof cooklang.ingredient) {
+        else if (s instanceof Ingredient) {
           const ispan = mp.createSpan({ cls: 'ingredient' });
           if (this.settings.showQuantitiesInline) {
             if (s.amount) {
@@ -254,10 +256,10 @@ export class CookView extends TextFileView {
           }
           ispan.appendText(s.name)
         }
-        else if (s instanceof cooklang.cookware) {
+        else if (s instanceof Cookware) {
           mp.createSpan({ cls: 'ingredient', text: s.name });
         }
-        else if (s instanceof cooklang.timer) {
+        else if (s instanceof Timer) {
           const tspan = mp.createSpan({ cls: 'ingredient' });
           tspan.createSpan({ cls: 'time-amount', text: s.amount });
           tspan.appendText(' ');
