@@ -1,5 +1,5 @@
 import { Cookware, Ingredient, Recipe, Timer } from 'cooklang'
-import { TextFileView, setIcon, TFile, Keymap, WorkspaceLeaf, ViewStateResult } from 'obsidian'
+import { TextFileView, setIcon, TFile, Keymap, WorkspaceLeaf, ViewStateResult, Notice } from 'obsidian'
 import { CookLangSettings } from './settings';
 
 // This is the custom view
@@ -203,8 +203,8 @@ export class CookView extends TextFileView {
           li.createEl('span', { cls: 'amount', text: ingredient.amount});
           li.appendText(' ');
         }
-        if (ingredient.unit !== null) {
-          li.createEl('span', { cls: 'unit', text: ingredient.unit});
+        if (ingredient.units !== null) {
+          li.createEl('span', { cls: 'unit', text: ingredient.units});
           li.appendText(' ');
         }
         
@@ -249,8 +249,8 @@ export class CookView extends TextFileView {
               ispan.createSpan({ cls: 'amount', text: s.amount });
               ispan.appendText(' ');
             }
-            if (s.unit) {
-              ispan.createSpan({ cls: 'unit', text: s.unit });
+            if (s.units) {
+              ispan.createSpan({ cls: 'unit', text: s.units });
               ispan.appendText(' ');
             }
           }
@@ -263,7 +263,7 @@ export class CookView extends TextFileView {
           const tspan = mp.createSpan({ cls: 'ingredient' });
           tspan.createSpan({ cls: 'time-amount', text: s.amount });
           tspan.appendText(' ');
-          tspan.createSpan({ cls: 'time-unit', text: s.unit });
+          tspan.createSpan({ cls: 'time-unit', text: s.units });
         }
       });
 
