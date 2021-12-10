@@ -1,6 +1,9 @@
 import { Cookware, Ingredient, Recipe, Timer } from 'cooklang'
 import { TextFileView, setIcon, TFile, Keymap, WorkspaceLeaf, ViewStateResult, Notice } from 'obsidian'
 import { CookLangSettings } from './settings';
+import { Howl } from 'howler';
+import alarmMp3 from './alarm.mp3'
+import timerMp3 from './timer.mp3'
 
 // This is the custom view
 export class CookView extends TextFileView {
@@ -11,10 +14,15 @@ export class CookView extends TextFileView {
   recipe: Recipe;
   changeModeButton: HTMLElement;
   currentView: 'source' | 'preview';
+  alarmAudio:Howl
+  timerAudio:Howl
 
   constructor(leaf: WorkspaceLeaf, settings: CookLangSettings) {
     super(leaf);
     this.settings = settings;
+
+    this.alarmAudio = new Howl({ src: [alarmMp3], loop: false, preload: true });
+    this.timerAudio = new Howl({ src: [timerMp3], loop: true, preload: true });
     // Add Preview Mode Container
     this.previewEl = this.contentEl.createDiv({ cls: 'cook-preview-view', attr: { 'style': 'display: none' } });
     // Add Source Mode Container
@@ -48,7 +56,7 @@ export class CookView extends TextFileView {
   }
 
   setState(state: any, result: ViewStateResult): Promise<void>{
-    console.log(state);
+    // console.log(state);
     return super.setState(state, result).then(() => {
       if (state.mode) this.switchMode(state.mode);
     });
@@ -162,8 +170,6 @@ export class CookView extends TextFileView {
     // we can't render what we don't have...
     if (!recipe) return;
 
-    console.log(recipe);
-
     if(this.settings.showImages) {
       // add any files following the cooklang conventions to the recipe object
       // https://org/docs/spec/#adding-pictures
@@ -223,6 +229,37 @@ export class CookView extends TextFileView {
       })
     }
 
+    if (this.settings.showTimersList) {
+      // Add the Cookware header
+      this.previewEl.createEl('h2', { cls: 'timers-header', text: 'Timers' });
+
+      // Add the Cookware list
+      const ul = this.previewEl.createEl('ul', { cls: 'timers' });
+      recipe.timers.forEach(item => {
+        const li = ul.createEl('li');
+        const a = li.createEl('a', { cls: 'timer', attr: { 'data-timer': item.seconds } })
+        if (item.name) {
+          a.createEl('span', { cls: 'timer-name', text: item.name })
+          a.appendText(' ');
+        }
+        a.appendText('(')
+        if (item.amount !== null) {
+          a.createEl('span', { cls: 'amount', text: item.amount });
+          a.appendText(' ');
+        }
+        if (item.units !== null) {
+          a.createEl('span', { cls: 'unit', text: item.units });
+        }
+        a.appendText(')')
+
+        a.addEventListener('click', (ev) => {
+          //@ts-ignore
+          const timerSeconds: number = parseFloat(a.dataset.timer)
+          this.makeTimer(a, timerSeconds, item.name);
+        })
+      })
+    }
+
     if(this.settings.showTotalTime) {
       let time = recipe.calculateTotalTime();
       if(time > 0) {
@@ -260,10 +297,19 @@ export class CookView extends TextFileView {
           mp.createSpan({ cls: 'ingredient', text: s.name });
         }
         else if (s instanceof Timer) {
-          const tspan = mp.createSpan({ cls: 'ingredient' });
+          const containerSpan = mp.createSpan()
+          const tspan = containerSpan.createSpan({ cls: 'timer', attr: { 'data-timer': s.seconds } });
           tspan.createSpan({ cls: 'time-amount', text: s.amount });
           tspan.appendText(' ');
           tspan.createSpan({ cls: 'time-unit', text: s.units });
+
+          if (this.settings.showTimersInline) {
+            tspan.addEventListener('click', (ev) => {
+              //@ts-ignore
+              const timerSeconds: number = parseFloat(tspan.dataset.timer)
+              this.makeTimer(tspan, timerSeconds, s.name);
+            })
+          }
         }
       });
 
@@ -274,7 +320,68 @@ export class CookView extends TextFileView {
     });
   }
 
-  formatTime(time: number) {
+  
+
+  makeTimer(el: Element, seconds: number, name: string) {
+    if (el.nextElementSibling && el.nextElementSibling.hasClass('countdown')) {
+      // this timer already exists. Play/pause it?
+      (el.nextElementSibling.querySelector('button:first-child') as HTMLElement).click()
+      return;
+    }
+    const timerAudioId = this.settings.timersTick ? this.timerAudio?.play() : null;
+    const timerContainerEl = el.createSpan({cls:'countdown'})
+    if (el.nextSibling) el.parentElement.insertBefore(el.nextSibling, timerContainerEl)
+    else el.parentElement.appendChild(timerContainerEl)
+    const pauseEl = timerContainerEl.createEl('button', { text: 'pause', cls: 'pause-button' })
+    const stopEl = timerContainerEl.createEl('button', { text: 'stop', cls: 'stop-button' })
+    const timerEl = timerContainerEl.createSpan({ text: this.formatTimeForTimer(seconds), attr: { 'data-percent': 100 } });
+    let end = new Date(new Date().getTime() + (seconds * 1000))
+    let interval: NodeJS.Timeout
+    let stop: Function = () => {
+      if (this.settings.timersTick) this.timerAudio?.stop(timerAudioId);
+      clearInterval(interval)
+      timerContainerEl.remove()
+    }
+    interval = setInterval(this.updateTimer.bind(this), 500, timerEl, seconds, end, stop, name)
+
+    let paused = false;
+    let remaining:number = null;
+    pauseEl.addEventListener('click', (ev) => {
+      if (paused) {
+        end = new Date(new Date().getTime() + remaining)
+        this.updateTimer(timerEl, seconds, end, stop, name)
+        interval = setInterval(this.updateTimer.bind(this), 500, timerEl, seconds, end, stop, name)
+        if (this.settings.timersTick) this.timerAudio?.play(timerAudioId)
+        pauseEl.setText('pause')
+        pauseEl.className = 'pause-button'
+        paused = false
+      }
+      else {
+        clearInterval(interval);
+        remaining = end.getTime() - new Date().getTime()
+        if (this.settings.timersTick) this.timerAudio?.pause(timerAudioId)
+        pauseEl.setText('resume')
+        pauseEl.className = 'resume-button'
+        paused = true;
+      }
+    })
+    stopEl.addEventListener('click', () => stop())
+  }
+
+  updateTimer(el: Element, totalSeconds:number, end: Date, stop: Function, name: string) {
+    const now = new Date()
+    const time = (end.getTime() - now.getTime()) / 1000
+    if (time <= 0) {
+      new Notice(name ? `${name} timer has finished!` : `Timer has finished!`);
+      if (this.settings.timersRing) this.alarmAudio?.play()
+      stop()
+    }
+    el.setText(this.formatTimeForTimer(time))
+    el.setAttr('data-percent', Math.floor((time / totalSeconds) * 100))
+  }
+
+  formatTime(time: number, showSeconds:boolean = false) {
+    let seconds = Math.floor(time % 60);
     let minutes = Math.floor(time / 60);
     let hours = Math.floor(minutes / 60);
     minutes = minutes % 60;
@@ -282,6 +389,24 @@ export class CookView extends TextFileView {
     let result = "";
     if (hours > 0) result += hours + " hours ";
     if (minutes > 0) result += minutes + " minutes ";
+    if (showSeconds && seconds > 0) result += seconds + " seconds ";
+    return result;
+  }
+
+  formatTimeForTimer(time: number) {
+    let seconds = Math.floor(time % 60);
+    let minutes = Math.floor(time / 60);
+    let hours = Math.floor(minutes / 60);
+    minutes = minutes % 60;
+
+    let result = "";
+    if (hours > 0) result += hours;
+    if (hours > 0 && minutes >= 0) result += ":";
+    if (hours > 0 && minutes >= 0 && minutes < 10) result += "0";
+    if (minutes > 0) result += minutes;
+    if (minutes > 0) result += ":";
+    if (minutes > 0 && seconds >= 0 && seconds < 10) result += "0";
+    if ( seconds >= 0) result += seconds;
     return result;
   }
 }
