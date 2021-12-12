@@ -7,8 +7,7 @@ A plugin for [Obsidian](https://obsidian.md) adding support for [CookLang](https
 ![Screenshot](https://github.com/deathau/cooklang-obsidian/raw/main/screenshot.png)
 
 ## Installation
-- This plugin has been submitted community plugins repo. Once approved, you can install it from Communinty Plugins within Obsidian.
-- You can install with the [Beta Reviewers Auto-update Tester (BRAT)](https://github.com/TfTHacker/obsidian42-brat) plugin by using the path `deathau/cooklang-obsidian`.
+- This plugin has been submitted community plugins repo. You can install it from Communinty Plugins within Obsidian.
 - You can build and install the plugin manually by checking out the files to `<your vault>/.obsidian/plugins/cooklang-obsidian` and running `npm install` and then `npm run build`.
 
 ## Security
@@ -44,9 +43,16 @@ This is the stuff I would ideally like to include in this plugin that isn't avai
 - [ ] (Maybe, pending feedback) Markdown formatting support.
 
 # Version History
+## 0.3.0
+- Separated out the CookLang parsing code into its own library, and brought it up to date with the latest CookLang spec (so things like named timers are now supported properly)
+- Added more options for displaying timers
+- Added the ability to click on a timer and show a countdown
+    - it also optionally plays a sound while the timer is running and when it's finished
+    - This feature is still pretty new and probably needs more testing
+
 ## 0.2.0
 - Changed comment syntax according to spec changes
-- 
+
 ## 0.1.1
 - **Fixed:** Turning off inline measurements now actually removes all of them.
 - **New:** Added commands to add new recipe files.
