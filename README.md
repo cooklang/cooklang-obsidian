@@ -17,14 +17,6 @@ The source code of this plugin is available on GitHub for you to audit yourself,
 
 I can assure you here that I do nothing to collect your data, send information to the internet or otherwise do anything nefarious with your system. However, be aware that I *could*, and without auditing the code yourself, you only have my word that I don't.
 
-## Support me
-This is an open-source plugin I made *for fun*. It's completely free.
-However, if you absolutely *have* to send me money because you like it that
-much, feel free to throw some coins in my hat via the following:
-
-[![GitHub Sponsors](https://img.shields.io/github/sponsors/deathau?style=social)](https://github.com/sponsors/deathau)
-[![Paypal](https://img.shields.io/badge/paypal-deathau-yellow?style=social&logo=paypal)](https://paypal.me/deathau)
-
 # Roadmap
 This is the stuff I would ideally like to include in this plugin that isn't available as yet:
 - [x] Improve editor/preview mode buttons to be more like markdown
