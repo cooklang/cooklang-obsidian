@@ -30,7 +30,7 @@ export class CookView extends TextFileView {
     // Create CodeMirror Editor with specific config
     this.editor = CodeMirror.fromTextArea(this.sourceEl.createEl('textarea', { cls: 'cook-cm-editor' }), {
       lineNumbers: (this.app.vault as any).getConfig('showLineNumber'),
-      lineWrapping: (this.app.vault as any).getConfig('lineWrap'),
+      lineWrapping: this.settings.lineWrap,
       scrollbarStyle: null,
       keyMap: "default",
       theme: "obsidian"

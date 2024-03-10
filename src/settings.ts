@@ -46,6 +46,17 @@ export class CookSettingsTab extends PluginSettingTab {
         }));
 
     new Setting(containerEl)
+      .setName('Line Wrap')
+      .setDesc('Wrap long lines')
+      .addToggle(toggle => toggle
+        .setValue(this.plugin.settings.lineWrap)
+        .onChange((value: boolean) => {
+          this.plugin.settings.lineWrap = value;
+          this.plugin.saveData(this.plugin.settings);
+          this.plugin.reloadCookViews();
+        }));
+
+    new Setting(containerEl)
       .setName('Show ingredient list')
       .setDesc('Show the list of ingredients at the top of the recipe')
       .addToggle(toggle => toggle
