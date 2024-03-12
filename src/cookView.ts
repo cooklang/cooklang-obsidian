@@ -23,10 +23,18 @@ export class CookView extends TextFileView {
 
     this.alarmAudio = new Howl({ src: [alarmMp3], loop: false, preload: true });
     this.timerAudio = new Howl({ src: [timerMp3], loop: true, preload: true });
-    // Add Preview Mode Container
-    this.previewEl = this.contentEl.createDiv({ cls: 'cook-preview-view', attr: { 'style': 'display: none' } });
-    // Add Source Mode Container
-    this.sourceEl = this.contentEl.createDiv({ cls: 'cook-source-view', attr: { 'style': 'display: block' } });
+    if ((this.app.vault as any).getConfig('readableLineLength')) {
+      // Add Preview Mode Container
+      this.previewEl = this.contentEl.createDiv({ cls: 'cook-preview-view', attr: { 'style': 'display: none' } });
+      // Add Source Mode Container
+      this.sourceEl = this.contentEl.createDiv({ cls: 'cook-source-view', attr: { 'style': 'display: block' } });
+    }
+    else {
+      // Add Source Mode Container
+      this.previewEl = this.contentEl.createDiv({ cls: 'cook-preview-view-full', attr: { 'style': 'display: none' } });
+      // Add Source Mode Container
+      this.sourceEl = this.contentEl.createDiv({ cls: 'cook-source-view-full', attr: { 'style': 'display: block' } });
+    }
     // Create CodeMirror Editor with specific config
     this.editor = CodeMirror.fromTextArea(this.sourceEl.createEl('textarea', { cls: 'cook-cm-editor' }), {
       lineNumbers: (this.app.vault as any).getConfig('showLineNumber'),
