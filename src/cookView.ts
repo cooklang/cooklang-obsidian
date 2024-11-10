@@ -294,7 +294,7 @@ export class CookView extends TextFileView {
           ispan.appendText(s.name)
         }
         else if (s instanceof Cookware) {
-          mp.createSpan({ cls: 'ingredient', text: s.name });
+          mp.createSpan({ cls: 'cookware', text: s.name });
         }
         else if (s instanceof Timer) {
           const containerSpan = mp.createSpan()
