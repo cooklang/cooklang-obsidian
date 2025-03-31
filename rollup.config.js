@@ -1,7 +1,7 @@
 import typescript from '@rollup/plugin-typescript';
 import {nodeResolve} from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
-import scss from 'rollup-plugin-scss';
+import postcss from 'rollup-plugin-postcss';
 import url from '@rollup/plugin-url';
 
 const isProd = (process.env.BUILD === 'production');
@@ -27,7 +27,11 @@ export default {
     typescript(),
     nodeResolve({browser: true}),
     commonjs(),
-    scss({ output: './styles.css', sass: require('sass') }),
+    postcss({
+      extract: 'styles.css',
+      modules: false,
+      use: ['sass'],
+    }),
     url({ include: ['**/*.mp3'], limit: 100000 })
   ]
 };

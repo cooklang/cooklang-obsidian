@@ -21,8 +21,10 @@
     "cooklang": "^0.3.0",
     "howler": "^2.2.3",
     "obsidian": "^0.12.0",
+    "postcss": "^8.4.31",
+    "postcss-scss": "^4.0.9",
     "rollup": "^2.35.1",
-    "rollup-plugin-scss": "^3.0.0",
+    "rollup-plugin-postcss": "^4.0.2",
     "sass": "^1.30.0",
     "tslib": "^2.2.0",
     "typescript": "^4.2.4"
