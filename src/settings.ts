@@ -2,11 +2,11 @@ import { App, Plugin, PluginSettingTab, Setting } from 'obsidian';
 import { CookView } from './cookView';
 
 declare class CookPlugin extends Plugin {
-  settings: CookLangSettings;
+  settings: CooklangSettings;
   reloadCookViews(): void;
 }
 
-export class CookLangSettings {
+export class CooklangSettings {
   showImages: boolean = true;
   showIngredientList: boolean = true;
   showCookwareList: boolean = true;

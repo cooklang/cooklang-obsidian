@@ -1,6 +1,6 @@
 import { Cookware, Ingredient, Recipe, Timer } from 'cooklang'
 import { TextFileView, setIcon, TFile, Keymap, WorkspaceLeaf, ViewStateResult, Notice } from 'obsidian'
-import { CookLangSettings } from './settings';
+import { CooklangSettings } from './settings';
 import { Howl } from 'howler';
 import alarmMp3 from './alarm.mp3'
 import timerMp3 from './timer.mp3'
@@ -10,7 +10,7 @@ declare const CodeMirror: any;
 
 // This is the custom view
 export class CookView extends TextFileView {
-  settings: CookLangSettings;
+  settings: CooklangSettings;
   previewEl: HTMLElement;
   sourceEl: HTMLElement;
   editor: any; // Using any for CodeMirror.Editor since it's loaded globally
@@ -21,7 +21,7 @@ export class CookView extends TextFileView {
   timerAudio: Howl;
   data: string = '';
 
-  constructor(leaf: WorkspaceLeaf, settings: CookLangSettings) {
+  constructor(leaf: WorkspaceLeaf, settings: CooklangSettings) {
     super(leaf);
     this.settings = settings;
 

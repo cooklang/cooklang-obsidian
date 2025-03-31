@@ -1,10 +1,10 @@
-# CookLang Editor Obsidian Plugin
-[![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/deathau/cooklang-obsidian?style=for-the-badge&sort=semver)](https://github.com/deathau/cooklang-obsidian/releases/latest)
-![GitHub All Releases](https://img.shields.io/github/downloads/deathau/cooklang-obsidian/total?style=for-the-badge)
+# Cooklang Editor Obsidian Plugin
+[![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/deathau/cooklang-obsidian?style=for-the-badge&sort=semver)](https://github.com/cooklang/cooklang-obsidian/releases/latest)
+![GitHub All Releases](https://img.shields.io/github/downloads/cooklang/cooklang-obsidian/total?style=for-the-badge)
 
-A plugin for [Obsidian](https://obsidian.md) adding support for [CookLang](https://cooklang.org)
+A plugin for [Obsidian](https://obsidian.md) adding support for [Cooklang](https://cooklang.org)
 
-![Screenshot](https://github.com/deathau/cooklang-obsidian/raw/main/screenshot.png)
+![Screenshot](https://github.com/cooklang/cooklang-obsidian/raw/main/screenshot.png)
 
 ## Installation
 - This plugin has been submitted community plugins repo. You can install it from Communinty Plugins within Obsidian.
@@ -35,8 +35,12 @@ This is the stuff I would ideally like to include in this plugin that isn't avai
 - [ ] (Maybe, pending feedback) Markdown formatting support.
 
 # Version History
+
+## 0.4.0
+- Fixed build and publishing
+
 ## 0.3.0
-- Separated out the CookLang parsing code into its own library, and brought it up to date with the latest CookLang spec (so things like named timers are now supported properly)
+- Separated out the Cooklang parsing code into its own library, and brought it up to date with the latest Cooklang spec (so things like named timers are now supported properly)
 - Added more options for displaying timers
 - Added the ability to click on a timer and show a countdown
     - it also optionally plays a sound while the timer is running and when it's finished
@@ -67,4 +71,4 @@ Initial release!
 - There is an edit view with syntax highlighting
 - There is also a preview view which displays the ingredients and amounts at the top like a traditional recipe
 and numbers the steps.
-- If images are provided (as per the [CookLang convention](https://cooklang.org/docs/spec/#adding-pictures) ) they will also be displayed.
+- If images are provided (as per the [Cooklang convention](https://cooklang.org/docs/spec/#adding-pictures) ) they will also be displayed.

@@ -1,18 +1,18 @@
 import './styles.scss'
 import { Plugin, WorkspaceLeaf, addIcon } from 'obsidian';
 import { CookView } from './cookView'
-import { CookLangSettings, CookSettingsTab } from './settings'
+import { CooklangSettings, CookSettingsTab } from './settings'
 
 // CodeMirror is loaded globally by Obsidian
 declare const CodeMirror: any;
 
 export default class CookPlugin extends Plugin {
 
-  settings: CookLangSettings;
+  settings: CooklangSettings;
 
   async onload() {
     super.onload();
-    this.settings = Object.assign(new CookLangSettings(), await this.loadData());
+    this.settings = Object.assign(new CooklangSettings(), await this.loadData());
 
     // register a custom icon
     this.addDocumentIcon("cook");
@@ -111,7 +111,7 @@ export default class CookPlugin extends Plugin {
   }
 
   // this function provides the icon for the document
-  // I added a modification of the CookLang icon with no colours or shadows
+  // I added a modification of the Cooklang icon with no colours or shadows
   addDocumentIcon = (extension: string) => {
     addIcon(`document-${extension}`, `
     <svg viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
