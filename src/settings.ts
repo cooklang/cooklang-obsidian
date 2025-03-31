@@ -16,6 +16,7 @@ export class CookLangSettings {
   showQuantitiesInline: boolean = false;
   timersTick: boolean = true;
   timersRing: boolean = true;
+  lineWrap: boolean = true;
 }
 
 export class CookSettingsTab extends PluginSettingTab {
@@ -88,7 +89,7 @@ export class CookSettingsTab extends PluginSettingTab {
           this.plugin.saveData(this.plugin.settings);
           this.plugin.reloadCookViews();
         }));
-    
+
     new Setting(containerEl)
       .setName('Show timers list')
       .setDesc('Show the list of timers at the top of the recipe')

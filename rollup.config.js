@@ -3,6 +3,7 @@ import {nodeResolve} from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
 import postcss from 'rollup-plugin-postcss';
 import url from '@rollup/plugin-url';
+import * as sass from 'sass';
 
 const isProd = (process.env.BUILD === 'production');
 const banner =
@@ -24,13 +25,23 @@ export default {
   },
   external: ['obsidian'],
   plugins: [
-    typescript(),
+    typescript({
+      tsconfig: './tsconfig.json',
+      noEmitOnError: true,
+    }),
     nodeResolve({browser: true}),
     commonjs(),
     postcss({
       extract: 'styles.css',
       modules: false,
-      use: ['sass'],
+      use: {
+        sass: {
+          implementation: sass,
+          sassOptions: {
+            outputStyle: 'compressed'
+          }
+        }
+      }
     }),
     url({ include: ['**/*.mp3'], limit: 100000 })
   ]

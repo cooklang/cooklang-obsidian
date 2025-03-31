@@ -9,6 +9,7 @@
     "noImplicitAny": true,
     "moduleResolution": "node",
     "importHelpers": true,
+    "outDir": "./build",
     "lib": [
       "dom",
       "es5",
@@ -18,5 +19,9 @@
   },
   "include": [
     "**/*.ts"
+  ],
+  "exclude": [
+    "src/lib/codemirror.js",
+    "src/mode/cook/cook.js"
   ]
 }
