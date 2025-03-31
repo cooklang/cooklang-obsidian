@@ -1,1 +1,1 @@
-module.exports = CodeMirror;
+// CodeMirror is loaded globally

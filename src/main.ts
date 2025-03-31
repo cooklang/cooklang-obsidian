@@ -1,9 +1,10 @@
 import './styles.scss'
 import { Plugin, WorkspaceLeaf, addIcon } from 'obsidian';
-import './lib/codemirror'
-import './mode/cook/cook'
 import { CookView } from './cookView'
 import { CookLangSettings, CookSettingsTab } from './settings'
+
+// CodeMirror is loaded globally by Obsidian
+declare const CodeMirror: any;
 
 export default class CookPlugin extends Plugin {
 
@@ -51,6 +52,7 @@ export default class CookPlugin extends Plugin {
       name: "Convert markdown file to `.cook`",
       checkCallback: (checking:boolean) => {
         const file = this.app.workspace.getActiveFile();
+        if (!file) return false;
         const isMd = file.extension === "md";
         if(checking) {
           return isMd;
@@ -58,7 +60,10 @@ export default class CookPlugin extends Plugin {
         else if(isMd) {
           // replace last instance of .md with .cook
           this.app.vault.rename(file,file.path.replace(/\.md$/, ".cook")).then(() => {
-            this.app.workspace.activeLeaf.openFile(file);
+            const leaf = this.app.workspace.activeLeaf;
+            if (leaf) {
+              leaf.openFile(file);
+            }
           });
         }
       }

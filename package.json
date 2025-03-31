@@ -3,6 +3,7 @@
   "version": "0.3.0",
   "description": "Edit and display cooklang recipes in Obsidian",
   "main": "main.js",
+  "type": "module",
   "scripts": {
     "instal-deps": "npm install",
     "dev": "rollup --config rollup.config.js -w",
@@ -12,21 +13,22 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "@rollup/plugin-commonjs": "^18.0.0",
-    "@rollup/plugin-node-resolve": "^11.2.1",
-    "@rollup/plugin-typescript": "^8.2.1",
-    "@rollup/plugin-url": "^6.1.0",
-    "@types/howler": "^2.2.4",
-    "@types/node": "^14.14.37",
+    "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-typescript": "^11.1.6",
+    "@rollup/plugin-url": "^8.0.1",
+    "@types/codemirror": "^5.60.15",
+    "@types/howler": "^2.2.12",
+    "@types/node": "^20.11.24",
     "cooklang": "^0.3.0",
-    "howler": "^2.2.3",
+    "howler": "^2.2.4",
     "obsidian": "^0.12.0",
-    "postcss": "^8.4.31",
+    "postcss": "^8.4.35",
     "postcss-scss": "^4.0.9",
-    "rollup": "^2.35.1",
+    "rollup": "^4.12.0",
     "rollup-plugin-postcss": "^4.0.2",
-    "sass": "^1.69.5",
-    "tslib": "^2.2.0",
-    "typescript": "^4.2.4"
+    "sass": "^1.71.1",
+    "tslib": "^2.6.2",
+    "typescript": "^5.3.3"
   }
 }

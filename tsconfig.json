@@ -9,6 +9,8 @@
     "noImplicitAny": true,
     "moduleResolution": "node",
     "importHelpers": true,
+    "isolatedModules": true,
+    "strictNullChecks": true,
     "outDir": "./build",
     "lib": [
       "dom",
@@ -21,6 +23,7 @@
     "**/*.ts"
   ],
   "exclude": [
+    "node_modules",
     "src/lib/codemirror.js",
     "src/mode/cook/cook.js"
   ]

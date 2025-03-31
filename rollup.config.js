@@ -23,14 +23,21 @@ export default {
     exports: 'default',
     banner
   },
-  external: ['obsidian'],
+  external: ['obsidian', 'codemirror'],
   plugins: [
     typescript({
       tsconfig: './tsconfig.json',
       noEmitOnError: true,
+      sourceMap: true,
+      inlineSources: !isProd
     }),
-    nodeResolve({browser: true}),
-    commonjs(),
+    nodeResolve({
+      browser: true,
+      preferBuiltins: false
+    }),
+    commonjs({
+      include: ['node_modules/**', 'src/mode/**']
+    }),
     postcss({
       extract: 'styles.css',
       modules: false,
@@ -43,6 +50,9 @@ export default {
         }
       }
     }),
-    url({ include: ['**/*.mp3'], limit: 100000 })
+    url({
+      include: ['**/*.mp3'],
+      limit: 100000
+    })
   ]
 };

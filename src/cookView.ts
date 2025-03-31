@@ -5,43 +5,49 @@ import { Howl } from 'howler';
 import alarmMp3 from './alarm.mp3'
 import timerMp3 from './timer.mp3'
 
+// CodeMirror is loaded globally
+declare const CodeMirror: any;
+
 // This is the custom view
 export class CookView extends TextFileView {
   settings: CookLangSettings;
   previewEl: HTMLElement;
   sourceEl: HTMLElement;
-  editor: CodeMirror.Editor;
+  editor: any; // Using any for CodeMirror.Editor since it's loaded globally
   recipe: Recipe;
   changeModeButton: HTMLElement;
   currentView: 'source' | 'preview';
-  alarmAudio:Howl
-  timerAudio:Howl
+  alarmAudio: Howl;
+  timerAudio: Howl;
+  data: string = '';
 
   constructor(leaf: WorkspaceLeaf, settings: CookLangSettings) {
     super(leaf);
     this.settings = settings;
 
-    this.alarmAudio = new Howl({ src: [alarmMp3], loop: false, preload: true });
-    this.timerAudio = new Howl({ src: [timerMp3], loop: true, preload: true });
-    if ((this.app.vault as any).getConfig('readableLineLength')) {
-      // Add Preview Mode Container
-      this.previewEl = this.contentEl.createDiv({ cls: 'cook-preview-view', attr: { 'style': 'display: none' } });
-      // Add Source Mode Container
-      this.sourceEl = this.contentEl.createDiv({ cls: 'cook-source-view', attr: { 'style': 'display: block' } });
-    }
-    else {
-      // Add Source Mode Container
-      this.previewEl = this.contentEl.createDiv({ cls: 'cook-preview-view-full', attr: { 'style': 'display: none' } });
-      // Add Source Mode Container
-      this.sourceEl = this.contentEl.createDiv({ cls: 'cook-source-view-full', attr: { 'style': 'display: block' } });
-    }
+    // Add Preview Container
+    this.previewEl = this.contentEl.createDiv({ cls: 'cook-preview-view' });
+
+    // Add Source Mode Container
+    this.sourceEl = this.contentEl.createDiv({ cls: 'cook-source-view-full', attr: { 'style': 'display: block' } });
+
     // Create CodeMirror Editor with specific config
     this.editor = CodeMirror.fromTextArea(this.sourceEl.createEl('textarea', { cls: 'cook-cm-editor' }), {
       lineNumbers: (this.app.vault as any).getConfig('showLineNumber'),
       lineWrapping: this.settings.lineWrap,
-      scrollbarStyle: null,
+      scrollbarStyle: 'native',
       keyMap: "default",
       theme: "obsidian"
+    });
+
+    // Initialize audio
+    this.alarmAudio = new Howl({
+      src: [alarmMp3],
+      volume: 0.5
+    });
+    this.timerAudio = new Howl({
+      src: [timerMp3],
+      volume: 0.5
     });
   }
 
@@ -143,7 +149,7 @@ export class CookView extends TextFileView {
     this.editor.setValue('');
     this.editor.clearHistory();
     this.recipe = new Recipe();
-    this.data = null;
+    this.data = '';
   }
 
   getDisplayText() {
@@ -197,7 +203,7 @@ export class CookView extends TextFileView {
           }
         }
       })
-      
+
       // if there is a main image, put it as a banner image at the top
       if (recipe.image) {
         const img = this.previewEl.createEl('img', { cls: 'main-image' });
@@ -213,17 +219,17 @@ export class CookView extends TextFileView {
       const ul = this.previewEl.createEl('ul', { cls: 'ingredients' });
       recipe.ingredients.forEach(ingredient => {
         const li = ul.createEl('li');
-        if (ingredient.amount !== null) {
-          li.createEl('span', { cls: 'amount', text: ingredient.amount});
+        if (ingredient.amount !== undefined && ingredient.amount !== null) {
+          li.createEl('span', { cls: 'amount', text: String(ingredient.amount) });
           li.appendText(' ');
         }
-        if (ingredient.units !== null) {
-          li.createEl('span', { cls: 'unit', text: ingredient.units});
+        if (ingredient.units !== undefined && ingredient.units !== null) {
+          li.createEl('span', { cls: 'unit', text: String(ingredient.units) });
           li.appendText(' ');
         }
-        
-        li.appendText(ingredient.name);
-      })
+
+        li.appendText(ingredient.name ?? '');
+      });
     }
 
     if(this.settings.showCookwareList) {
@@ -233,39 +239,36 @@ export class CookView extends TextFileView {
       // Add the Cookware list
       const ul = this.previewEl.createEl('ul', { cls: 'cookware' });
       recipe.cookware.forEach(item => {
-        ul.createEl('li', { text: item.name });
-      })
+        const li = ul.createEl('li');
+        const amount = (item as any).amount;
+        if (amount !== undefined && amount !== null) {
+          li.createEl('span', { cls: 'amount', text: String(amount) });
+          li.appendText(' ');
+        }
+
+        li.appendText(item.name ?? '');
+      });
     }
 
     if (this.settings.showTimersList) {
-      // Add the Cookware header
-      this.previewEl.createEl('h2', { cls: 'timers-header', text: 'Timers' });
+      // Add the Timer header
+      this.previewEl.createEl('h2', { cls: 'timer-header', text: 'Timers' });
 
-      // Add the Cookware list
-      const ul = this.previewEl.createEl('ul', { cls: 'timers' });
-      recipe.timers.forEach(item => {
-        const li = ul.createEl('li');
-        const a = li.createEl('a', { cls: 'timer', attr: { 'data-timer': item.seconds } })
-        if (item.name) {
-          a.createEl('span', { cls: 'timer-name', text: item.name })
-          a.appendText(' ');
+      // Add the Timer list
+      const timerUl = this.previewEl.createEl('ul', { cls: 'timers' });
+      recipe.timers.forEach(timer => {
+        const li = timerUl.createEl('li');
+        if (timer.amount !== undefined && timer.amount !== null) {
+          li.createEl('span', { cls: 'amount', text: String(timer.amount) });
+          li.appendText(' ');
         }
-        a.appendText('(')
-        if (item.amount !== null) {
-          a.createEl('span', { cls: 'amount', text: item.amount });
-          a.appendText(' ');
+        if (timer.units !== undefined && timer.units !== null) {
+          li.createEl('span', { cls: 'unit', text: String(timer.units) });
+          li.appendText(' ');
         }
-        if (item.units !== null) {
-          a.createEl('span', { cls: 'unit', text: item.units });
-        }
-        a.appendText(')')
 
-        a.addEventListener('click', (ev) => {
-          //@ts-ignore
-          const timerSeconds: number = parseFloat(a.dataset.timer)
-          this.makeTimer(a, timerSeconds, item.name);
-        })
-      })
+        li.appendText(timer.name ?? '');
+      });
     }
 
     if(this.settings.showTotalTime) {
@@ -277,144 +280,140 @@ export class CookView extends TextFileView {
       }
     }
 
-    // add the method header
+    // Add the Method header
     this.previewEl.createEl('h2', { cls: 'method-header', text: 'Method' });
 
-    // add the method list
-    const mol = this.previewEl.createEl('ol', { cls: 'method' });
-    recipe.steps.forEach(step => {
-      const mli = mol.createEl('li');
-      const mp = mli.createEl('p');
-      step.line.forEach(s => {
-        if (typeof s === "string") mp.append(s);
-        else if (s instanceof Ingredient) {
-          const ispan = mp.createSpan({ cls: 'ingredient' });
-          if (this.settings.showQuantitiesInline) {
-            if (s.amount) {
-              ispan.createSpan({ cls: 'amount', text: s.amount });
-              ispan.appendText(' ');
-            }
-            if (s.units) {
-              ispan.createSpan({ cls: 'unit', text: s.units });
-              ispan.appendText(' ');
-            }
-          }
-          ispan.appendText(s.name)
-        }
-        else if (s instanceof Cookware) {
-          mp.createSpan({ cls: 'cookware', text: s.name });
-        }
-        else if (s instanceof Timer) {
-          const containerSpan = mp.createSpan()
-          const tspan = containerSpan.createSpan({ cls: 'timer', attr: { 'data-timer': s.seconds } });
-          tspan.createSpan({ cls: 'time-amount', text: s.amount });
-          tspan.appendText(' ');
-          tspan.createSpan({ cls: 'time-unit', text: s.units });
+    // Add the Method list
+    const methodOl = this.previewEl.createEl('ol', { cls: 'method' });
+    recipe.steps.forEach((step, i) => {
+      const li = methodOl.createEl('li');
 
-          if (this.settings.showTimersInline) {
-            tspan.addEventListener('click', (ev) => {
-              //@ts-ignore
-              const timerSeconds: number = parseFloat(tspan.dataset.timer)
-              this.makeTimer(tspan, timerSeconds, s.name);
-            })
+      // Add step image if it exists
+      if (this.settings.showImages && step.image) {
+        const img = li.createEl('img', { cls: 'step-image' });
+        img.src = this.app.vault.getResourcePath(step.image);
+      }
+
+      // Add step text
+      const text = li.createEl('div', { cls: 'step-text' });
+      const stepText = (step as any).text || step.line || [];
+      stepText.forEach((part: any) => {
+        if (typeof part === 'string') {
+          text.appendText(part);
+        } else {
+          const span = text.createEl('span');
+          if (part.type === 'ingredient') {
+            span.addClass('ingredient');
+            span.appendText(part.name ?? '');
+            if (part.amount !== undefined && part.amount !== null) {
+              span.appendText(' (');
+              span.createEl('span', { cls: 'amount', text: String(part.amount) });
+              if (part.units !== undefined && part.units !== null) {
+                span.appendText(' ');
+                span.createEl('span', { cls: 'unit', text: String(part.units) });
+              }
+              span.appendText(')');
+            }
+          } else if (part.type === 'cookware') {
+            span.addClass('cookware');
+            span.appendText(part.name ?? '');
+            if (part.amount !== undefined && part.amount !== null) {
+              span.appendText(' (');
+              span.createEl('span', { cls: 'amount', text: String(part.amount) });
+              span.appendText(')');
+            }
+          } else if (part.type === 'timer') {
+            span.addClass('timer');
+            const button = span.createEl('button', { cls: 'timer-button' });
+            button.appendText('⏲');
+            if (part.amount !== undefined && part.amount !== null) {
+              button.appendText(' ');
+              button.createEl('span', { cls: 'amount', text: this.formatTime(part.amount) });
+            }
+            if (part.name) {
+              button.appendText(' ');
+              button.createEl('span', { cls: 'name', text: String(part.name) });
+            }
+            this.makeTimer(button, part.amount ?? 0, part.name ?? '');
           }
         }
       });
+    });
+  }
 
-      if (this.settings.showImages && step.image) {
-        const img = mli.createEl('img', { cls: 'method-image' });
-        img.src = this.app.vault.getResourcePath(step.image);
+  makeTimer(el: Element, seconds: number, name: string) {
+    let end: Date | null = null;
+    let interval: number | null = null;
+
+    const stop = () => {
+      if (interval !== null) {
+        window.clearInterval(interval);
+        interval = null;
+      }
+      if (el.parentElement) {
+        el.parentElement.removeClass('running');
+      }
+      this.timerAudio.stop();
+      end = null;
+    };
+
+    el.addEventListener('click', () => {
+      if (end === null) {
+        end = new Date(Date.now() + seconds * 1000);
+        if (el.parentElement) {
+          el.parentElement.addClass('running');
+        }
+        interval = window.setInterval(() => {
+          this.updateTimer(el, seconds, end!, stop, name);
+        }, 100);
+      } else {
+        stop();
       }
     });
   }
 
-  
+  updateTimer(el: Element, totalSeconds: number, end: Date, stop: Function, name: string) {
+    const now = new Date();
+    const remaining = Math.round((end.getTime() - now.getTime()) / 1000);
 
-  makeTimer(el: Element, seconds: number, name: string) {
-    if (el.nextElementSibling && el.nextElementSibling.hasClass('countdown')) {
-      // this timer already exists. Play/pause it?
-      (el.nextElementSibling.querySelector('button:first-child') as HTMLElement).click()
-      return;
-    }
-    const timerAudioId = this.settings.timersTick ? this.timerAudio?.play() : null;
-    const timerContainerEl = el.createSpan({cls:'countdown'})
-    if (el.nextSibling) el.parentElement.insertBefore(el.nextSibling, timerContainerEl)
-    else el.parentElement.appendChild(timerContainerEl)
-    const pauseEl = timerContainerEl.createEl('button', { text: 'pause', cls: 'pause-button' })
-    const stopEl = timerContainerEl.createEl('button', { text: 'stop', cls: 'stop-button' })
-    const timerEl = timerContainerEl.createSpan({ text: this.formatTimeForTimer(seconds), attr: { 'data-percent': 100 } });
-    let end = new Date(new Date().getTime() + (seconds * 1000))
-    let interval: NodeJS.Timeout
-    let stop: Function = () => {
-      if (this.settings.timersTick) this.timerAudio?.stop(timerAudioId);
-      clearInterval(interval)
-      timerContainerEl.remove()
-    }
-    interval = setInterval(this.updateTimer.bind(this), 500, timerEl, seconds, end, stop, name)
-
-    let paused = false;
-    let remaining:number = null;
-    pauseEl.addEventListener('click', (ev) => {
-      if (paused) {
-        end = new Date(new Date().getTime() + remaining)
-        this.updateTimer(timerEl, seconds, end, stop, name)
-        interval = setInterval(this.updateTimer.bind(this), 500, timerEl, seconds, end, stop, name)
-        if (this.settings.timersTick) this.timerAudio?.play(timerAudioId)
-        pauseEl.setText('pause')
-        pauseEl.className = 'pause-button'
-        paused = false
+    if (remaining <= 0) {
+      stop();
+      this.alarmAudio.play();
+      new Notification('Timer Complete', {
+        body: `${name || 'Timer'} for ${this.formatTimeForTimer(totalSeconds)} is done!`
+      });
+    } else {
+      const text = this.formatTimeForTimer(remaining);
+      const amountEl = el.querySelector('.amount');
+      if (amountEl) {
+        amountEl.textContent = text;
       }
-      else {
-        clearInterval(interval);
-        remaining = end.getTime() - new Date().getTime()
-        if (this.settings.timersTick) this.timerAudio?.pause(timerAudioId)
-        pauseEl.setText('resume')
-        pauseEl.className = 'resume-button'
-        paused = true;
-      }
-    })
-    stopEl.addEventListener('click', () => stop())
-  }
-
-  updateTimer(el: Element, totalSeconds:number, end: Date, stop: Function, name: string) {
-    const now = new Date()
-    const time = (end.getTime() - now.getTime()) / 1000
-    if (time <= 0) {
-      new Notice(name ? `${name} timer has finished!` : `Timer has finished!`);
-      if (this.settings.timersRing) this.alarmAudio?.play()
-      stop()
     }
-    el.setText(this.formatTimeForTimer(time))
-    el.setAttr('data-percent', Math.floor((time / totalSeconds) * 100))
   }
 
-  formatTime(time: number, showSeconds:boolean = false) {
-    let seconds = Math.floor(time % 60);
-    let minutes = Math.floor(time / 60);
-    let hours = Math.floor(minutes / 60);
-    minutes = minutes % 60;
+  formatTime(time: number, showSeconds: boolean = false): string {
+    const hours = Math.floor(time / 3600);
+    const minutes = Math.floor((time % 3600) / 60);
+    const seconds = time % 60;
 
-    let result = "";
-    if (hours > 0) result += hours + " hours ";
-    if (minutes > 0) result += minutes + " minutes ";
-    if (showSeconds && seconds > 0) result += seconds + " seconds ";
-    return result;
+    if (hours > 0) {
+      return `${hours}h ${minutes}m${showSeconds ? ` ${seconds}s` : ''}`;
+    } else if (minutes > 0) {
+      return `${minutes}m${showSeconds ? ` ${seconds}s` : ''}`;
+    } else {
+      return `${seconds}s`;
+    }
   }
 
-  formatTimeForTimer(time: number) {
-    let seconds = Math.floor(time % 60);
-    let minutes = Math.floor(time / 60);
-    let hours = Math.floor(minutes / 60);
-    minutes = minutes % 60;
+  formatTimeForTimer(time: number): string {
+    const hours = Math.floor(time / 3600);
+    const minutes = Math.floor((time % 3600) / 60);
+    const seconds = time % 60;
 
-    let result = "";
-    if (hours > 0) result += hours;
-    if (hours > 0 && minutes >= 0) result += ":";
-    if (hours > 0 && minutes >= 0 && minutes < 10) result += "0";
-    if (minutes > 0) result += minutes;
-    if (minutes > 0) result += ":";
-    if (minutes > 0 && seconds >= 0 && seconds < 10) result += "0";
-    if ( seconds >= 0) result += seconds;
-    return result;
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    } else {
+      return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    }
   }
 }

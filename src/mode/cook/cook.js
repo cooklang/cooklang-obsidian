@@ -39,7 +39,7 @@ CodeMirror.defineMode("cook", function() {
 
       var ch = stream.next();
 
-      
+
       if (sol && ch === ">") {
         if (stream.eat(">")) {
           state.position = "metadata-key"
@@ -66,7 +66,7 @@ CodeMirror.defineMode("cook", function() {
           return "ingredient";
         else if(stream.match(/^@(.+?\b)/))
           return "ingredient";
-        
+
         if(stream.match(/^#([^@#~]+?(?={))/))
           return "cookware";
         else if(stream.match(/^#(.+?\b)/))
