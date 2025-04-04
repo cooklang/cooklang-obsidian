@@ -4,16 +4,29 @@ import { CooklangSettings } from './settings';
 import { Howl } from 'howler';
 import alarmMp3 from './alarm.mp3'
 import timerMp3 from './timer.mp3'
+import { EditorView, keymap, highlightActiveLine, lineNumbers, ViewPlugin } from "@codemirror/view"
+import { EditorState, Extension } from "@codemirror/state"
+import { syntaxHighlighting, defaultHighlightStyle, HighlightStyle } from "@codemirror/language"
+import { oneDark } from "@codemirror/theme-one-dark"
+import { cooklang } from './mode/cook/cook'
+import { tags as t } from "@lezer/highlight"
 
-// CodeMirror is loaded globally
-declare const CodeMirror: any;
+// Define a light theme HighlightStyle for Cooklang
+const cooklangLightTheme = HighlightStyle.define([
+  { tag: t.variableName, color: "#0b76b8" },  // Ingredients (@flour)
+  { tag: t.keyword, color: "#33a058" },       // Cookware (#bowl)
+  { tag: t.number, color: "#d33682" },        // Timers (~)
+  { tag: t.comment, color: "#93a1a1" },       // Comments
+  { tag: t.meta, color: "#6c71c4" },          // Metadata and frontmatter
+  { tag: t.unit, color: "#cb4b16" }           // Units
+])
 
 // This is the custom view
 export class CookView extends TextFileView {
   settings: CooklangSettings;
   previewEl: HTMLElement;
   sourceEl: HTMLElement;
-  editor: any; // Using any for CodeMirror.Editor since it's loaded globally
+  editorView: EditorView;
   recipe: Recipe;
   changeModeButton: HTMLElement;
   currentView: 'source' | 'preview';
@@ -28,16 +41,71 @@ export class CookView extends TextFileView {
     // Add Preview Container
     this.previewEl = this.contentEl.createDiv({ cls: 'cook-preview-view' });
 
-    // Add Source Mode Container
-    this.sourceEl = this.contentEl.createDiv({ cls: 'cook-source-view-full', attr: { 'style': 'display: block' } });
+    // Add Source Mode Container with padding
+    this.sourceEl = this.contentEl.createDiv({
+      cls: 'cook-source-view-full',
+      attr: {
+        'style': 'display: block; padding: 0 20px;'
+      }
+    });
 
-    // Create CodeMirror Editor with specific config
-    this.editor = CodeMirror.fromTextArea(this.sourceEl.createEl('textarea', { cls: 'cook-cm-editor' }), {
-      lineNumbers: (this.app.vault as any).getConfig('showLineNumber'),
-      lineWrapping: this.settings.lineWrap,
-      scrollbarStyle: 'native',
-      keyMap: "default",
-      theme: "obsidian"
+    // Check if Obsidian is in dark mode
+    const isDarkMode = document.body.classList.contains('theme-dark');
+
+    // Create CodeMirror 6 Editor
+    const state = EditorState.create({
+      doc: '',
+      extensions: [
+        // Line numbers are disabled by default
+        // lineNumbers(),
+        highlightActiveLine(),
+        // Apply appropriate syntax highlighting based on theme
+        syntaxHighlighting(isDarkMode ? defaultHighlightStyle : cooklangLightTheme, { fallback: true }),
+        EditorView.contentAttributes.of({ contenteditable: "true" }),
+        EditorView.lineWrapping,
+        keymap.of([
+          // Add Enter key handling
+          { key: "Enter", run: (view) => {
+            const from = view.state.selection.main.from;
+            const to = view.state.selection.main.to;
+            const insert = "\n";
+
+            // Insert the newline
+            view.dispatch(view.state.update({
+              changes: { from, to, insert },
+              // Move cursor to the position after the newline
+              selection: { anchor: from + insert.length }
+            }));
+
+            return true;
+          }}
+        ]),
+        // Only apply oneDark theme if Obsidian is in dark mode
+        ...(isDarkMode ? [oneDark] : []),
+        cooklang,
+        ViewPlugin.define(() => ({
+          update: () => {
+            this.requestSave();
+            return null;
+          }
+        })),
+        // Add padding and max-width to the editor
+        EditorView.theme({
+          "&": {
+            padding: "0 20px",
+            maxWidth: "800px",
+            margin: "0 auto"
+          },
+          "&.cm-focused": {
+            outline: "none"
+          }
+        })
+      ],
+    });
+
+    this.editorView = new EditorView({
+      state,
+      parent: this.sourceEl
     });
 
     // Initialize audio
@@ -52,31 +120,92 @@ export class CookView extends TextFileView {
   }
 
   onload() {
-    // Save file on change
-    this.editor.on('change', () => {
-      this.requestSave();
+    // add the action to switch between source and preview mode
+    this.changeModeButton = this.addAction('lines-of-text', 'Preview (Ctrl+Click to open in new pane)', (evt) => this.switchMode(evt));
+
+    // Default to source mode
+    this.currentView = 'source';
+
+    // Listen for theme changes
+    this.registerEvent(
+      this.app.workspace.on('css-change', () => {
+        this.updateEditorTheme();
+      })
+    );
+  }
+
+  // Update editor theme based on Obsidian's current theme
+  updateEditorTheme() {
+    const isDarkMode = document.body.classList.contains('theme-dark');
+
+    // Get current state
+    const currentState = this.editorView.state;
+
+    // Create new state with or without oneDark theme
+    const newState = EditorState.create({
+      doc: currentState.doc,
+      extensions: [
+        // Line numbers are disabled by default
+        // lineNumbers(),
+        highlightActiveLine(),
+        // Apply appropriate syntax highlighting based on theme
+        syntaxHighlighting(isDarkMode ? defaultHighlightStyle : cooklangLightTheme, { fallback: true }),
+        EditorView.contentAttributes.of({ contenteditable: "true" }),
+        EditorView.lineWrapping,
+        keymap.of([
+          // Add Enter key handling
+          { key: "Enter", run: (view) => {
+            const from = view.state.selection.main.from;
+            const to = view.state.selection.main.to;
+            const insert = "\n";
+
+            // Insert the newline
+            view.dispatch(view.state.update({
+              changes: { from, to, insert },
+              // Move cursor to the position after the newline
+              selection: { anchor: from + insert.length }
+            }));
+
+            return true;
+          }}
+        ]),
+        // Only apply oneDark theme if Obsidian is in dark mode
+        ...(isDarkMode ? [oneDark] : []),
+        cooklang,
+        ViewPlugin.define(() => ({
+          update: () => {
+            this.requestSave();
+            return null;
+          }
+        })),
+        // Add padding and max-width to the editor
+        EditorView.theme({
+          "&": {
+            padding: "0 20px",
+            maxWidth: "800px",
+            margin: "0 auto"
+          },
+          "&.cm-focused": {
+            outline: "none"
+          }
+        })
+      ],
     });
 
-    // add the action to switch between source and preview mode
-    this.changeModeButton = this.addAction('lines-of-text', 'Preview (Ctrl+Click to open in new pane)', (evt) => this.switchMode(evt), 17);
-
-    // undocumented: Get the current default view mode to switch to
-    let defaultViewMode = (this.app.vault as any).getConfig('defaultViewMode');
-    this.setState({ ...this.getState(), mode: defaultViewMode }, {});
+    // Update the editor view with the new state
+    this.editorView.setState(newState);
   }
 
   getState(): any {
     return super.getState();
   }
 
-  setState(state: any, result: ViewStateResult): Promise<void>{
-    // console.log(state);
+  setState(state: any, result: ViewStateResult): Promise<void> {
     return super.setState(state, result).then(() => {
       if (state.mode) this.switchMode(state.mode);
     });
   }
 
-  // function to switch between source and preview mode
   switchMode(arg: 'source' | 'preview' | MouseEvent) {
     let mode = arg;
     // if force mode not provided, switch to opposite of current mode
@@ -93,7 +222,7 @@ export class CookView extends TextFileView {
         });
       }
       else {
-        this.setState({ ...this.getState(), mode: mode }, {});
+        this.setState({ ...this.getState(), mode: mode }, { history: true });
       }
     }
     else {
@@ -115,14 +244,14 @@ export class CookView extends TextFileView {
 
         this.previewEl.style.setProperty('display', 'none');
         this.sourceEl.style.setProperty('display', 'block');
-        this.editor.refresh();
+        this.editorView.requestMeasure();
       }
     }
   }
 
   // get the data for save
   getViewData() {
-    this.data = this.editor.getValue();
+    this.data = this.editorView.state.doc.toString();
     // may as well parse the recipe while we're here.
     this.recipe = new Recipe(this.data);
     return this.data;
@@ -133,11 +262,23 @@ export class CookView extends TextFileView {
     this.data = data;
 
     if (clear) {
-      this.editor.swapDoc(CodeMirror.Doc(data, "text/x-cook"))
-      this.editor.clearHistory();
+      this.editorView.dispatch({
+        changes: {
+          from: 0,
+          to: this.editorView.state.doc.length,
+          insert: data
+        }
+      });
+    } else {
+      this.editorView.dispatch({
+        changes: {
+          from: 0,
+          to: this.editorView.state.doc.length,
+          insert: data
+        }
+      });
     }
 
-    this.editor.setValue(data);
     this.recipe = new Recipe(data);
     // if we're in preview view, also render that
     if (this.currentView === 'preview') this.renderPreview(this.recipe);
@@ -146,9 +287,13 @@ export class CookView extends TextFileView {
   // clear the editor, etc
   clear() {
     this.previewEl.empty();
-    this.editor.setValue('');
-    this.editor.clearHistory();
-    this.recipe = new Recipe();
+    this.editorView.dispatch({
+      changes: {
+        from: 0,
+        to: this.editorView.state.doc.length,
+        insert: ''
+      }
+    });
     this.data = '';
   }
 
@@ -165,12 +310,11 @@ export class CookView extends TextFileView {
     return "cook";
   }
 
-  // when the view is resized, refresh CodeMirror (thanks Licat!)
+  // when the view is resized, refresh CodeMirror
   onResize() {
-    this.editor.refresh();
+    this.editorView.requestMeasure();
   }
 
-  // icon for the view
   getIcon() {
     return "document-cook";
   }
@@ -187,12 +331,12 @@ export class CookView extends TextFileView {
     if(this.settings.showImages) {
       // add any files following the cooklang conventions to the recipe object
       // https://org/docs/spec/#adding-pictures
-      const otherFiles: TFile[] = this.file.parent.children.filter(f => (f instanceof TFile) && (f.basename == this.file.basename || f.basename.startsWith(this.file.basename + '.')) && f.name != this.file.name) as TFile[];
+      const otherFiles: TFile[] = this.file?.parent?.children.filter(f => (f instanceof TFile) && (f.basename == this.file?.basename || f.basename.startsWith(this.file?.basename + '.')) && f.name != this.file?.name) as TFile[] || [];
       otherFiles.forEach(f => {
         // convention specifies JPEGs and PNGs. Added GIFs as well. Why not?
         if (f.extension == "jpg" || f.extension == "jpeg" || f.extension == "png" || f.extension == "gif") {
           // main recipe image
-          if (f.basename == this.file.basename) recipe.image = f;
+          if (f.basename == this.file?.basename) recipe.image = f;
           else {
             const split = f.basename.split('.');
             // individual step images

@@ -1,5 +1,5 @@
 import './styles.scss'
-import { Plugin, WorkspaceLeaf, addIcon } from 'obsidian';
+import { Plugin, WorkspaceLeaf, addIcon, TFile } from 'obsidian';
 import { CookView } from './cookView'
 import { CooklangSettings, CookSettingsTab } from './settings'
 
@@ -60,9 +60,11 @@ export default class CookPlugin extends Plugin {
         else if(isMd) {
           // replace last instance of .md with .cook
           this.app.vault.rename(file,file.path.replace(/\.md$/, ".cook")).then(() => {
-            const leaf = this.app.workspace.activeLeaf;
-            if (leaf) {
-              leaf.openFile(file);
+            // Get the renamed file
+            const renamedFile = this.app.vault.getAbstractFileByPath(file.path.replace(/\.md$/, ".cook"));
+            if (renamedFile && renamedFile instanceof TFile) {
+              // Open the file in the current leaf
+              this.app.workspace.getLeaf().openFile(renamedFile);
             }
           });
         }
@@ -71,20 +73,17 @@ export default class CookPlugin extends Plugin {
   }
 
   cookFileCreator = async () => {
-    let newFileFolderPath = null;
-    const newFileLocation = (this.app.vault as any).getConfig('newFileLocation');
-    if(!newFileLocation || newFileLocation === "root") {
-      newFileFolderPath = '/';
-    }
-    else if(newFileLocation === "current") {
-      newFileFolderPath = this.app.workspace.getActiveFile()?.parent?.path;
-    }
-    else{
-      newFileFolderPath = (this.app.vault as any).getConfig('newFileFolderPath');
+    // Default to root folder
+    let newFileFolderPath = '/';
+
+    // Try to get the current file's parent folder
+    const activeFile = this.app.workspace.getActiveFile();
+    if (activeFile && activeFile.parent) {
+      newFileFolderPath = activeFile.parent.path;
     }
 
-    if(!newFileFolderPath) newFileFolderPath = '/';
-    else if(!newFileFolderPath.endsWith('/')) newFileFolderPath += '/';
+    // Ensure path ends with a slash
+    if(!newFileFolderPath.endsWith('/')) newFileFolderPath += '/';
 
     const originalPath = newFileFolderPath;
     newFileFolderPath = newFileFolderPath + 'Untitled.cook';
@@ -111,7 +110,6 @@ export default class CookPlugin extends Plugin {
   }
 
   // this function provides the icon for the document
-  // I added a modification of the Cooklang icon with no colours or shadows
   addDocumentIcon = (extension: string) => {
     addIcon(`document-${extension}`, `
     <svg viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">

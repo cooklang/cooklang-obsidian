@@ -126,4 +126,27 @@
     }
   }
 
+  // CodeMirror 6 styles
+  .cm-editor {
+    height: 100%;
+    font-family: var(--font-monospace);
+  }
+
+  .cm-scroller {
+    overflow: auto;
+  }
+
+  .cm-content {
+    caret-color: var(--text-normal);
+    padding: 0;
+  }
+
+  .cm-gutters {
+    background-color: transparent;
+    border: none;
+  }
+
+  .cm-line {
+    padding: 0 4px;
+  }
 }
