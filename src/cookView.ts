@@ -1,4 +1,4 @@
-import { Cookware, Ingredient, Recipe, Timer } from 'cooklang'
+import { Cookware, Ingredient, Timer, Text, Recipe } from '@cooklang/cooklang-ts';
 import { TextFileView, setIcon, TFile, Keymap, WorkspaceLeaf, ViewStateResult, Notice } from 'obsidian'
 import { CooklangSettings } from './settings';
 import { Howl } from 'howler';
@@ -279,7 +279,7 @@ export class CookView extends TextFileView {
       });
     }
 
-    this.recipe = new Recipe(data);
+    this.recipe = new Recipe(this.data);
     // if we're in preview view, also render that
     if (this.currentView === 'preview') this.renderPreview(this.recipe);
   }
@@ -328,6 +328,7 @@ export class CookView extends TextFileView {
     // we can't render what we don't have...
     if (!recipe) return;
 
+    let recipeImage
     if(this.settings.showImages) {
       // add any files following the cooklang conventions to the recipe object
       // https://org/docs/spec/#adding-pictures
@@ -336,22 +337,14 @@ export class CookView extends TextFileView {
         // convention specifies JPEGs and PNGs. Added GIFs as well. Why not?
         if (f.extension == "jpg" || f.extension == "jpeg" || f.extension == "png" || f.extension == "gif") {
           // main recipe image
-          if (f.basename == this.file?.basename) recipe.image = f;
-          else {
-            const split = f.basename.split('.');
-            // individual step images
-            let s:number;
-            if (split.length == 2 && (s = parseInt(split[1])) >= 0 && s < recipe.steps.length) {
-              recipe.steps[s].image = f;
-            }
-          }
+          if (f.basename == this.file?.basename) recipeImage = f;
         }
       })
 
       // if there is a main image, put it as a banner image at the top
-      if (recipe.image) {
+      if (recipeImage) {
         const img = this.previewEl.createEl('img', { cls: 'main-image' });
-        img.src = this.app.vault.getResourcePath(recipe.image);
+        img.src = this.app.vault.getResourcePath(recipeImage);
       }
     }
 
@@ -363,8 +356,8 @@ export class CookView extends TextFileView {
       const ul = this.previewEl.createEl('ul', { cls: 'ingredients' });
       recipe.ingredients.forEach(ingredient => {
         const li = ul.createEl('li');
-        if (ingredient.amount !== undefined && ingredient.amount !== null) {
-          li.createEl('span', { cls: 'amount', text: String(ingredient.amount) });
+        if (ingredient.quantity !== undefined && ingredient.quantity !== null) {
+          li.createEl('span', { cls: 'amount', text: String(ingredient.quantity) });
           li.appendText(' ');
         }
         if (ingredient.units !== undefined && ingredient.units !== null) {
@@ -382,9 +375,9 @@ export class CookView extends TextFileView {
 
       // Add the Cookware list
       const ul = this.previewEl.createEl('ul', { cls: 'cookware' });
-      recipe.cookware.forEach(item => {
+      recipe.cookwares.forEach(item => {
         const li = ul.createEl('li');
-        const amount = (item as any).amount;
+        const amount = (item as any).quantity;
         if (amount !== undefined && amount !== null) {
           li.createEl('span', { cls: 'amount', text: String(amount) });
           li.appendText(' ');
@@ -394,16 +387,20 @@ export class CookView extends TextFileView {
       });
     }
 
+    let timers = recipe.steps
+      .reduce((acc, step) => [...acc, ...step], [])
+      .filter(step => step.type === 'timer')
     if (this.settings.showTimersList) {
       // Add the Timer header
       this.previewEl.createEl('h2', { cls: 'timer-header', text: 'Timers' });
 
       // Add the Timer list
       const timerUl = this.previewEl.createEl('ul', { cls: 'timers' });
-      recipe.timers.forEach(timer => {
+      timers
+      .forEach(timer => {
         const li = timerUl.createEl('li');
-        if (timer.amount !== undefined && timer.amount !== null) {
-          li.createEl('span', { cls: 'amount', text: String(timer.amount) });
+        if (timer.quantity !== undefined && timer.quantity !== null) {
+          li.createEl('span', { cls: 'amount', text: String(timer.quantity) });
           li.appendText(' ');
         }
         if (timer.units !== undefined && timer.units !== null) {
@@ -415,8 +412,33 @@ export class CookView extends TextFileView {
       });
     }
 
-    if(this.settings.showTotalTime) {
-      let time = recipe.calculateTotalTime();
+    function _timerToSecond(timer: Timer) {
+      let amount = Number(timer.quantity || 0)
+      let unit = timer.units || 'm'
+      let time = 0
+
+      if (amount > 0) {
+        if (unit.toLowerCase().startsWith('s')) {
+          time = amount
+        }
+        else if (unit.toLowerCase().startsWith('m')) {
+          time = amount * 60
+        }
+        else if (unit.toLowerCase().startsWith('h')) {
+          time = amount * 60 * 60
+        }
+      }
+      return time
+
+    }
+    function _getTotalTime(timers: Timer[]):number {
+      return this.timers.reduce((total: number, timer: Timer) => {
+        return total + _timerToSecond(timer)
+      }, 0)
+    }
+
+    if(this.settings.showTotalTime && false) {
+      let time = _getTotalTime(timers);
       if(time > 0) {
         // Add the Timers header
         this.previewEl.createEl('h2', { cls: 'time-header', text: 'Total Time' });
@@ -431,57 +453,56 @@ export class CookView extends TextFileView {
     const methodOl = this.previewEl.createEl('ol', { cls: 'method' });
     recipe.steps.forEach((step, i) => {
       const li = methodOl.createEl('li');
-
+/*
       // Add step image if it exists
       if (this.settings.showImages && step.image) {
         const img = li.createEl('img', { cls: 'step-image' });
         img.src = this.app.vault.getResourcePath(step.image);
       }
-
+*/
       // Add step text
       const text = li.createEl('div', { cls: 'step-text' });
-      const stepText = (step as any).text || step.line || [];
-      stepText.forEach((part: any) => {
-        if (typeof part === 'string') {
-          text.appendText(part);
+      step.forEach((part)=> {
+        if (part.type === 'text') {
+          text.appendText(part.value);
         } else {
           const span = text.createEl('span');
-          if (part instanceof Ingredient) {
+          if (part.type === 'ingredient') {
             span.addClass('ingredient');
             span.appendText(part.name ?? '');
-            if (part.amount !== undefined && part.amount !== null) {
+            if (part.quantity !== undefined && part.quantity !== null) {
               span.appendText(' (');
-              span.createEl('span', { cls: 'amount', text: String(part.amount) });
+              span.createEl('span', { cls: 'amount', text: String(part.quantity) });
               if (part.units !== undefined && part.units !== null) {
                 span.appendText(' ');
                 span.createEl('span', { cls: 'unit', text: String(part.units) });
               }
               span.appendText(')');
             }
-          } else if (part instanceof Cookware) {
+          } else if (part.type === 'cookware') {
             span.addClass('cookware');
             span.appendText(part.name ?? '');
-            if (part.amount !== undefined && part.amount !== null) {
+            if (part.quantity !== undefined && part.quantity !== null) {
               span.appendText(' (');
-              span.createEl('span', { cls: 'amount', text: String(part.amount) });
+              span.createEl('span', { cls: 'amount', text: String(part.quantity) });
               span.appendText(')');
             }
-          } else if (part instanceof Timer) {
+          } else if (part.type === 'timer') {
             span.addClass('timer');
             const button = span.createEl('button', { cls: 'timer-button' });
             button.appendText('⏲');
-            if (part.amount !== undefined && part.amount !== null) {
+            if (part.quantity !== undefined && part.quantity !== null) {
               button.appendText(' ');
-              button.createEl('span', { cls: 'amount', text: this.formatTime(part.amount) });
+              button.createEl('span', { cls: 'amount', text: this.formatTime(_timerToSecond(part)) });
             }
             if (part.name) {
               button.appendText(' ');
               button.createEl('span', { cls: 'name', text: String(part.name) });
             }
-            this.makeTimer(button, part.amount ?? 0, part.name ?? '');
+            this.makeTimer(button, Number(part.quantity) ?? 0, part.name ?? '');
           }
         }
-      });
+      })
     });
   }
 
