@@ -446,7 +446,7 @@ export class CookView extends TextFileView {
           text.appendText(part);
         } else {
           const span = text.createEl('span');
-          if (part.type === 'ingredient') {
+          if (part instanceof Ingredient) {
             span.addClass('ingredient');
             span.appendText(part.name ?? '');
             if (part.amount !== undefined && part.amount !== null) {
@@ -458,7 +458,7 @@ export class CookView extends TextFileView {
               }
               span.appendText(')');
             }
-          } else if (part.type === 'cookware') {
+          } else if (part instanceof Cookware) {
             span.addClass('cookware');
             span.appendText(part.name ?? '');
             if (part.amount !== undefined && part.amount !== null) {
@@ -466,7 +466,7 @@ export class CookView extends TextFileView {
               span.createEl('span', { cls: 'amount', text: String(part.amount) });
               span.appendText(')');
             }
-          } else if (part.type === 'timer') {
+          } else if (part instanceof Timer) {
             span.addClass('timer');
             const button = span.createEl('button', { cls: 'timer-button' });
             button.appendText('⏲');
