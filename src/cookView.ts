@@ -459,6 +459,7 @@ export class CookView extends TextFileView {
               span.appendText(')');
             }
           } else if (part instanceof Cookware) {
+            part = part as any
             span.addClass('cookware');
             span.appendText(part.name ?? '');
             if (part.amount !== undefined && part.amount !== null) {
@@ -472,13 +473,13 @@ export class CookView extends TextFileView {
             button.appendText('⏲');
             if (part.amount !== undefined && part.amount !== null) {
               button.appendText(' ');
-              button.createEl('span', { cls: 'amount', text: this.formatTime(part.amount) });
+              button.createEl('span', { cls: 'amount', text: this.formatTime(Number(part.amount)) });
             }
             if (part.name) {
               button.appendText(' ');
               button.createEl('span', { cls: 'name', text: String(part.name) });
             }
-            this.makeTimer(button, part.amount ?? 0, part.name ?? '');
+            this.makeTimer(button, Number(part.amount) ?? 0, part.name ?? '');
           }
         }
       });
