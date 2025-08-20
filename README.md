@@ -36,6 +36,9 @@ This is the stuff I would ideally like to include in this plugin that isn't avai
 
 # Version History
 
+## 0.5.0
+- Migrated to `cooklang-ts`
+
 ## 0.4.1
 - Fixed editor mode
 
