@@ -455,7 +455,7 @@ export class CookView extends TextFileView {
         const methodOl = this.previewEl.createEl('ol', {cls: 'method'});
 
         // unitMap to normalize different time units (min, hrs) into seconds
-        const unitMap = { m: 60, min: 60, minute: 60, minutes: 60, h: 3600, hr: 3600, hrs: 3600, hour: 3600, hours: 3600 ;
+        const unitMap = { m: 60, min: 60, minute: 60, minutes: 60, h: 3600, hr: 3600, hrs: 3600, hour: 3600, hours: 3600 };
         
         recipe.steps.forEach((step, i) => {
             const li = methodOl.createEl('li');
