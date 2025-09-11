@@ -453,6 +453,10 @@ export class CookView extends TextFileView {
 
         // Add the Method list
         const methodOl = this.previewEl.createEl('ol', {cls: 'method'});
+
+        // unitMap to normalize different time units (min, hrs) into seconds
+        const unitMap = { m: 60, min: 60, minute: 60, minutes: 60, h: 3600, hr: 3600, hrs: 3600, hour: 3600, hours: 3600 ;
+        
         recipe.steps.forEach((step, i) => {
             const li = methodOl.createEl('li');
             /*
@@ -495,6 +499,8 @@ export class CookView extends TextFileView {
                         button.appendText('⏲');
                         if (part.quantity !== undefined && part.quantity !== null && typeof part.quantity === "number") {
                             button.appendText(' ');
+                            const multiplier = unitMap[part.units.toLowerCase()] || 1;
+                            part.quantity = part.quantity * multiplier;
                             // TODO: part.quantity may be string with time description
                             button.createEl('span', {cls: 'amount', text: this.formatTime(part.quantity)});
                         }
