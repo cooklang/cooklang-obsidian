@@ -9,6 +9,15 @@
     margin-left: auto;
     margin-right: auto;
   }
+
+  .cook-preview-view h2 {
+    margin-top: 2rem;
+    margin-bottom: 0.7rem;
+    padding-bottom: 0.3rem;
+    border-bottom: 2px solid var(--text-faint);
+    color: var(--color-base-70);
+  }
+  
   .cook-preview-view-full,
   .cook-source-view-full {
     margin-left: auto;
@@ -29,33 +38,86 @@
   }
 
   ul.ingredients,
-  ul.cookware {
+  ul.cookware,
+  ul.timers {
     column-count: 2;
   }
 
-  ol.method {
-    margin-left: 0;
-    padding-right: 0;
-    list-style-type: none;
+  .cook-preview-view ul,
+  .cook-preview-view ol {
+    list-style: none;
     padding: 0;
+    margin: 0;
+  }
+
+  .cook-preview-view li {
+    background: var(--color-base-10);
+    border: 1px solid var(--color-base-35);
+    border-radius: 0.5rem;
+    padding: 0.6rem 0.8rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .cook-preview-view .ingredients li {
+    border-left: 4px solid var(--color-blue);
+  }
+
+  .cook-preview-view .cookware li {
+    border-left: 4px solid var(--color-green);
+  }
+
+  .cook-preview-view .timers li {
+    border-left: 4px solid var(--color-red);
+  }
+
+  .cook-preview-view .metadata li {
+    border-left: 4px solid var(--color-purple);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .cook-preview-view .metadata li .metadata-key {
+    font-weight: 600;
+    color: var(--color-purple);
+    text-transform: capitalize;
+    min-width: 4rem;
+    display: inline-block;
   }
 
   ol.method>li {
     counter-increment: step-counter;
   }
 
-  ol.method>li::before {
-    content: "Step " counter(step-counter);
-    font-weight: 600;
-    display: block;
-    font-size: 1.17em;
-    margin-block-start: 1em;
-    margin-block-end: 1em;
-    margin-inline-start: 0px;
-    margin-inline-end: 0px;
+  ol.method>li {
+    position: relative;
+    padding-left: 3rem;
+    background: var(--color-base-00);
+    border: 1px solid var(--text-faint);
+    border-radius: 0.6rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   }
 
-  span.time,
+  ol.method>li::before {
+    content: counter(step-counter);
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 2rem;
+    height: 100%;
+    background: var(--color-orange);
+    color: var(--color-base-00);
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-top-left-radius: 0.6rem;
+    border-bottom-left-radius: 0.6rem;
+    font-size: 0.9rem;
+  }
+
+  span.timer,
   span.ingredient,
   span.cookware {
     font-weight: 600;
@@ -74,7 +136,7 @@
   .cm-measurement,
   .cm-timer,
   .cm-unit {
-    color:var(--text-muted)
+    color:var(--text-muted);
   }
 
   .cm-metadata,

@@ -17,6 +17,13 @@ export class CooklangSettings {
   timersTick: boolean = true;
   timersRing: boolean = true;
   lineWrap: boolean = true;
+  metadataLabel: string = "";
+  ingredientLabel: string = "";
+  cookwareLabel: string = "";
+  timersLabel: string = "";
+  methodLabel: string = "";
+  minutesLabel: string = "";
+  hoursLabel: string = "";
 }
 
 export class CookSettingsTab extends PluginSettingTab {
@@ -144,5 +151,94 @@ export class CookSettingsTab extends PluginSettingTab {
           this.plugin.saveData(this.plugin.settings);
           this.plugin.reloadCookViews();
         }));
+
+    new Setting(containerEl)
+      .setName('Custom Labels')
+      .setHeading();
+
+    new Setting(containerEl)
+      .setName("Metadata Label")
+      .setDesc("Choose your label for the metadata")
+      .addText((text) => text
+      .setValue(this.plugin.settings.metadataLabel)
+      .setPlaceholder("Metadata")
+      .onChange(async (value) => {
+        this.plugin.settings.metadataLabel = value;
+        this.plugin.saveData(this.plugin.settings);
+        this.plugin.reloadCookViews();
+      }));
+        
+    new Setting(containerEl)
+      .setName("Ingredient Label")
+      .setDesc("Choose your label for the ingredients")
+      .addText((text) => text
+      .setValue(this.plugin.settings.ingredientLabel)
+      .setPlaceholder("Ingredients")
+      .onChange(async (value) => {
+        this.plugin.settings.ingredientLabel = value;
+        this.plugin.saveData(this.plugin.settings);
+        this.plugin.reloadCookViews();
+      }));
+
+    new Setting(containerEl)
+      .setName("Cookware Label")
+      .setDesc("Choose your label for cookware")
+      .addText((text) =>
+      text
+      .setValue(this.plugin.settings.cookwareLabel)
+      .setPlaceholder("Cookware")
+      .onChange(async (value) => {
+        this.plugin.settings.cookwareLabel = value;
+        this.plugin.saveData(this.plugin.settings);
+        this.plugin.reloadCookViews();
+      }));
+
+    new Setting(containerEl)
+      .setName("Timer Label")
+      .setDesc("Choose your label for timers")
+      .addText((text) => text
+      .setValue(this.plugin.settings.timersLabel)
+      .setPlaceholder("Timers")
+      .onChange(async (value) => {
+        this.plugin.settings.timersLabel = value;
+        this.plugin.saveData(this.plugin.settings);
+        this.plugin.reloadCookViews();
+      }));
+
+    new Setting(containerEl)
+      .setName("Method Label")
+      .setDesc("Choose your label for the cooking method")
+      .addText((text) => text
+      .setValue(this.plugin.settings.methodLabel)
+      .setPlaceholder("Method")
+      .onChange(async (value) => {
+        this.plugin.settings.methodLabel = value;
+        this.plugin.saveData(this.plugin.settings);
+        this.plugin.reloadCookViews();
+      }));
+
+    new Setting(containerEl)
+      .setName("Minutes Label")
+      .setDesc("Choose your label(s) for minutes (comma separated)")
+      .addText((text) => text
+      .setValue(this.plugin.settings.minutesLabel)
+      .setPlaceholder("m,min,minute,minutes")
+      .onChange(async (value) => {
+        this.plugin.settings.minutesLabel = value;
+        this.plugin.saveData(this.plugin.settings);
+        this.plugin.reloadCookViews();
+      }));
+
+    new Setting(containerEl)
+      .setName("Hours Label")
+      .setDesc("Choose your label(s) for hours (comma separated)")
+      .addText((text) => text
+      .setValue(this.plugin.settings.hoursLabel)
+      .setPlaceholder("h,hr,hrs,hour,hours")
+      .onChange(async (value) => {
+        this.plugin.settings.hoursLabel = value;
+        this.plugin.saveData(this.plugin.settings);
+        this.plugin.reloadCookViews();
+      }));
   }
 }
