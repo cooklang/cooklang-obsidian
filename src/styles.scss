@@ -10,14 +10,14 @@
     margin-right: auto;
   }
 
-  .cook-preview-view h2 {
+  .cook-preview-view.enhanced h2 {
     margin-top: 2rem;
     margin-bottom: 0.7rem;
     padding-bottom: 0.3rem;
     border-bottom: 2px solid var(--text-faint);
     color: var(--color-base-70);
   }
-  
+
   .cook-preview-view-full,
   .cook-source-view-full {
     margin-left: auto;
@@ -43,14 +43,14 @@
     column-count: 2;
   }
 
-  .cook-preview-view ul,
-  .cook-preview-view ol {
+  .cook-preview-view.enhanced ul,
+  .cook-preview-view.enhanced ol {
     list-style: none;
     padding: 0;
     margin: 0;
   }
 
-  .cook-preview-view li {
+  .cook-preview-view.enhanced li {
     background: var(--color-base-10);
     border: 1px solid var(--color-base-35);
     border-radius: 0.5rem;
@@ -58,38 +58,61 @@
     margin-bottom: 0.5rem;
   }
 
-  .cook-preview-view .ingredients li {
+  .cook-preview-view.enhanced .ingredients li {
     border-left: 4px solid var(--color-blue);
   }
 
-  .cook-preview-view .cookware li {
+  .cook-preview-view.enhanced .cookware li {
     border-left: 4px solid var(--color-green);
   }
 
-  .cook-preview-view .timers li {
+  .cook-preview-view.enhanced .timers li {
     border-left: 4px solid var(--color-red);
   }
 
   .cook-preview-view .metadata li {
-    border-left: 4px solid var(--color-purple);
     display: flex;
     align-items: center;
     gap: 0.4rem;
   }
 
+  .cook-preview-view.enhanced .metadata li {
+    border-left: 4px solid var(--color-purple);
+  }
+
   .cook-preview-view .metadata li .metadata-key {
     font-weight: 600;
-    color: var(--color-purple);
     text-transform: capitalize;
     min-width: 4rem;
     display: inline-block;
+  }
+  .cook-preview-view.enhanced .metadata li .metadata-key {
+    color: var(--color-purple);
+  }
+
+  ol.method {
+    margin-left: 0;
+    padding-right: 0;
+    list-style-type: none;
+    padding: 0;
   }
 
   ol.method>li {
     counter-increment: step-counter;
   }
 
-  ol.method>li {
+  ol.method>li::before {
+    content: "Step " counter(step-counter);
+    font-weight: 600;
+    display: block;
+    font-size: 1.17em;
+    margin-block-start: 1em;
+    margin-block-end: 1em;
+    margin-inline-start: 0px;
+    margin-inline-end: 0px;
+  }
+
+  .cook-preview-view.enhanced ol.method>li {
     position: relative;
     padding-left: 3rem;
     background: var(--color-base-00);
@@ -99,7 +122,7 @@
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   }
 
-  ol.method>li::before {
+  .cook-preview-view.enhanced ol.method>li::before {
     content: counter(step-counter);
     position: absolute;
     top: 0;
@@ -115,6 +138,8 @@
     border-top-left-radius: 0.6rem;
     border-bottom-left-radius: 0.6rem;
     font-size: 0.9rem;
+    margin-block-start: inherit;
+    margin-block-end: inherit;
   }
 
   span.timer,

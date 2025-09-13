@@ -17,6 +17,7 @@ export class CooklangSettings {
   timersTick: boolean = true;
   timersRing: boolean = true;
   lineWrap: boolean = true;
+  enhancedCss: boolean = true;
   metadataLabel: string = "";
   ingredientLabel: string = "";
   cookwareLabel: string = "";
@@ -148,6 +149,17 @@ export class CookSettingsTab extends PluginSettingTab {
         .setValue(this.plugin.settings.timersRing)
         .onChange((value: boolean) => {
           this.plugin.settings.timersRing = value;
+          this.plugin.saveData(this.plugin.settings);
+          this.plugin.reloadCookViews();
+        }));
+
+      new Setting(containerEl)
+      .setName('Enable Enhanced Styling')
+      .setDesc('Apply additional CSS rules to improve the overall design and readability (reopen the recipe to apply changes).')
+      .addToggle(toggle => toggle
+        .setValue(this.plugin.settings.enhancedCss)
+        .onChange((value: boolean) => {
+          this.plugin.settings.enhancedCss = value;
           this.plugin.saveData(this.plugin.settings);
           this.plugin.reloadCookViews();
         }));

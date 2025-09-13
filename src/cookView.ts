@@ -40,7 +40,8 @@ export class CookView extends TextFileView {
         this.settings = settings;
 
         // Add Preview Container
-        this.previewEl = this.contentEl.createDiv({cls: 'cook-preview-view'});
+        const extraClass = settings.enhancedCss ? "enhanced" : "";
+        this.previewEl = this.contentEl.createDiv({ cls: ["cook-preview-view", extraClass].filter(Boolean).join(" ") });
 
         // Add Source Mode Container with padding
         this.sourceEl = this.contentEl.createDiv({
