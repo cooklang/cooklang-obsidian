@@ -27,6 +27,7 @@ export default class CookPlugin extends Plugin {
     // - Create new recipe
     // - Create recipe in new pane
     // - Convert markdown file to `.cook`
+    // - Toggle preview recipe
 
     this.addCommand({
       id: "create-cook",
@@ -70,6 +71,19 @@ export default class CookPlugin extends Plugin {
         }
       }
     })
+
+    this.addCommand({
+      id: "toggle-preview-recipe",
+      name: "Toggle preview recipe",
+      callback: () => {
+        const { workspace } = this.app;
+
+        const activeLeaf = workspace.activeLeaf || workspace.getLeaf();
+        if (activeLeaf && activeLeaf.view instanceof CookView) {
+          activeLeaf.view.switchMode();
+        }
+      },
+    });
   }
 
   cookFileCreator = async () => {

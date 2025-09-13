@@ -211,7 +211,7 @@ export class CookView extends TextFileView {
         });
     }
 
-    switchMode(arg: 'source' | 'preview' | MouseEvent) {
+    switchMode(arg?: 'source' | 'preview' | MouseEvent) {
         let mode = arg;
         // if force mode not provided, switch to opposite of current mode
         if (!mode || mode instanceof MouseEvent) mode = this.currentView === 'source' ? 'preview' : 'source';
