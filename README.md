@@ -36,6 +36,9 @@ This is the stuff I would ideally like to include in this plugin that isn't avai
 
 # Version History
 
+## 0.5.1
+- Added: Settings for custom texts, Metadata, WebP https://github.com/cooklang/cooklang-obsidian/pull/54 by https://github.com/6c756b
+
 ## 0.5.0
 - Migrated to `cooklang-ts`
 
