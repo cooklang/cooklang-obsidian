@@ -338,7 +338,7 @@ export class CookView extends TextFileView {
             const otherFiles: TFile[] = this.file?.parent?.children.filter(f => (f instanceof TFile) && (f.basename == this.file?.basename || f.basename.startsWith(this.file?.basename + '.')) && f.name != this.file?.name) as TFile[] || [];
             otherFiles.forEach(f => {
                 // convention specifies JPEGs and PNGs. Added GIFs as well. Why not?
-                if (f.extension == "jpg" || f.extension == "jpeg" || f.extension == "png" || f.extension == "gif") {
+                if (f.extension == "jpg" || f.extension == "jpeg" || f.extension == "png" || f.extension == "gif" || f.extension == "webp") {
                     // main recipe image
                     if (f.basename == this.file?.basename) recipeImage = f;
                 }
@@ -351,9 +351,45 @@ export class CookView extends TextFileView {
             }
         }
 
-        if (this.settings.showIngredientList) {
+        function isValidUrl(str: string): boolean {
+            try {
+                new URL(str);
+                return true;
+            } catch {
+                return false;
+            }
+        }
+        
+        if (recipe.metadata && Object.keys(recipe.metadata).length > 0) {
+            // Add the metadata if exist
+            this.previewEl.createEl('h2', { cls: 'metadata-header', text: this.settings.metadataLabel || 'Metadata' });
+            const ul = this.previewEl.createEl('ul', { cls: 'metadata' });
+            Object.entries(recipe.metadata).forEach(([key, value]) => {
+                const li = ul.createEl('li');
+                li.createEl('span', { cls: 'metadata-key', text: key });
+                // Prefix tags with a hashtag
+                if (key == 'tags') {
+                    const tags = value
+                        .split(",")
+                        .map(s => `#${s.trim()}`)
+                        .join(", ");
+                    li.appendText(tags);
+                }
+                else if (isValidUrl(value)) {
+                    li.createEl('a', {
+                        text: value,
+                        attr: { href: value, target: '_blank', rel: 'noopener' }
+                    });
+                }
+                else {
+                    li.appendText(`${value}`);   
+                }
+            });   
+        }
+
+        if (this.settings.showIngredientList && recipe.ingredients?.length) {
             // Add the Ingredients header
-            this.previewEl.createEl('h2', {cls: 'ingredients-header', text: 'Ingredients'});
+            this.previewEl.createEl('h2', {cls: 'ingredients-header', text: this.settings.ingredientLabel || 'Ingredients'});
 
             // Add the ingredients list
             const ul = this.previewEl.createEl('ul', {cls: 'ingredients'});
@@ -372,9 +408,9 @@ export class CookView extends TextFileView {
             });
         }
 
-        if (this.settings.showCookwareList) {
+        if (this.settings.showCookwareList && recipe.cookwares?.length) {
             // Add the Cookware header
-            this.previewEl.createEl('h2', {cls: 'cookware-header', text: 'Cookware'});
+            this.previewEl.createEl('h2', {cls: 'cookware-header', text: this.settings.cookwareLabel || 'Cookware'});
 
             // Add the Cookware list
             const ul = this.previewEl.createEl('ul', {cls: 'cookware'});
@@ -393,9 +429,9 @@ export class CookView extends TextFileView {
         let timers = recipe.steps
             .reduce((acc, step) => [...acc, ...step], [])
             .filter(step => step.type === 'timer')
-        if (this.settings.showTimersList) {
+        if (this.settings.showTimersList && timers?.length) {
             // Add the Timer header
-            this.previewEl.createEl('h2', {cls: 'timer-header', text: 'Timers'});
+            this.previewEl.createEl('h2', {cls: 'timer-header', text: this.settings.timersLabel ||'Timers'});
 
             // Add the Timer list
             const timerUl = this.previewEl.createEl('ul', {cls: 'timers'});
@@ -449,10 +485,29 @@ export class CookView extends TextFileView {
         }
 
         // Add the Method header
-        this.previewEl.createEl('h2', {cls: 'method-header', text: 'Method'});
+        this.previewEl.createEl('h2', {cls: 'method-header', text: this.settings.methodLabel || 'Method'});
 
         // Add the Method list
         const methodOl = this.previewEl.createEl('ol', {cls: 'method'});
+
+        // unitMap to normalize different time units (min, hrs) into seconds
+        const unitMap: Record<string, number> = {};
+		(this.settings.minutesLabel || "m,min,minute,minutes")
+			.split(",")
+			.map(s => s.trim())
+			.filter(Boolean)
+			.forEach(label => {
+				unitMap[label] = 60;
+			});
+
+		(this.settings.hoursLabel || "h,hr,hrs,hour,hours")
+			.split(",")
+			.map(s => s.trim())
+			.filter(Boolean)
+			.forEach(label => {
+				unitMap[label] = 3600;
+			});
+        
         recipe.steps.forEach((step, i) => {
             const li = methodOl.createEl('li');
             /*
@@ -495,6 +550,8 @@ export class CookView extends TextFileView {
                         button.appendText('⏲');
                         if (part.quantity !== undefined && part.quantity !== null && typeof part.quantity === "number") {
                             button.appendText(' ');
+                            const multiplier = (unitMap as Record<string, number>)[part.units.toLowerCase()] ?? 1;
+                            part.quantity = part.quantity * multiplier;
                             // TODO: part.quantity may be string with time description
                             button.createEl('span', {cls: 'amount', text: this.formatTime(part.quantity)});
                         }

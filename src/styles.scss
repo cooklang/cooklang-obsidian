@@ -9,6 +9,7 @@
     margin-left: auto;
     margin-right: auto;
   }
+
   .cook-preview-view-full,
   .cook-source-view-full {
     margin-left: auto;
@@ -29,8 +30,26 @@
   }
 
   ul.ingredients,
-  ul.cookware {
+  ul.cookware,
+  ul.timers {
     column-count: 2;
+  }
+
+  .cook-preview-view ul.metadata {
+    padding-left: 0;
+  }
+
+  .cook-preview-view .metadata li {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .cook-preview-view .metadata li .metadata-key {
+    font-weight: 600;
+    text-transform: capitalize;
+    min-width: 5rem;
+    display: inline-block;
   }
 
   ol.method {
@@ -55,7 +74,7 @@
     margin-inline-end: 0px;
   }
 
-  span.time,
+  span.timer,
   span.ingredient,
   span.cookware {
     font-weight: 600;
@@ -74,7 +93,7 @@
   .cm-measurement,
   .cm-timer,
   .cm-unit {
-    color:var(--text-muted)
+    color:var(--text-muted);
   }
 
   .cm-metadata,
