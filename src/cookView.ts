@@ -550,7 +550,7 @@ export class CookView extends TextFileView {
                         button.appendText('⏲');
                         if (part.quantity !== undefined && part.quantity !== null && typeof part.quantity === "number") {
                             button.appendText(' ');
-                            const multiplier = unitMap[part.units.toLowerCase()] || 1;
+                            const multiplier = (unitMap as Record<string, number>)[part.units.toLowerCase()] ?? 1;
                             part.quantity = part.quantity * multiplier;
                             // TODO: part.quantity may be string with time description
                             button.createEl('span', {cls: 'amount', text: this.formatTime(part.quantity)});
