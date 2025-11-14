@@ -3,6 +3,7 @@ import {nodeResolve} from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
 import postcss from 'rollup-plugin-postcss';
 import url from '@rollup/plugin-url';
+import wasm from '@rollup/plugin-wasm';
 import * as sass from 'sass';
 
 const isProd = (process.env.BUILD === 'production');
@@ -25,6 +26,9 @@ export default {
   },
   external: ['obsidian', 'codemirror'],
   plugins: [
+    wasm({
+      targetEnv: 'auto-inline'
+    }),
     typescript({
       tsconfig: './tsconfig.json',
       noEmitOnError: true,

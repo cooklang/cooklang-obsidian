@@ -1,4 +1,4 @@
-import {Cookware, Ingredient, Timer, Text, Recipe} from '@cooklang/cooklang-ts';
+import {Cookware, Ingredient, Timer, Text, Recipe} from './parser-adapter';
 import {TextFileView, setIcon, TFile, Keymap, WorkspaceLeaf, ViewStateResult, Notice} from 'obsidian'
 import {CooklangSettings} from './settings';
 import {Howl} from 'howler';
@@ -550,7 +550,7 @@ export class CookView extends TextFileView {
                         button.appendText('⏲');
                         if (part.quantity !== undefined && part.quantity !== null && typeof part.quantity === "number") {
                             button.appendText(' ');
-                            const multiplier = (unitMap as Record<string, number>)[part.units.toLowerCase()] ?? 1;
+                            const multiplier = part.units ? (unitMap as Record<string, number>)[part.units.toLowerCase()] ?? 1 : 1;
                             part.quantity = part.quantity * multiplier;
                             // TODO: part.quantity may be string with time description
                             button.createEl('span', {cls: 'amount', text: this.formatTime(part.quantity)});

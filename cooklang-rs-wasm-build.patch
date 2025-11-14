@@ -1,0 +1,11 @@
+diff --git a/typescript/Cargo.toml b/typescript/Cargo.toml
+index 3387042..5be3322 100644
+--- a/typescript/Cargo.toml
++++ b/typescript/Cargo.toml
+@@ -20,3 +20,6 @@ serde_yaml = "0.9.34"
+ 
+ [build-dependencies]
+ git2 = { version = "0.20", default-features = false }
++
++[package.metadata.wasm-pack.profile.release]
++wasm-opt = false

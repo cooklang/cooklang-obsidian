@@ -1,0 +1,38 @@
+/* tslint:disable */
+/* eslint-disable */
+export const memory: WebAssembly.Memory;
+export const __wbg_fallibleresult_free: (a: number, b: number) => void;
+export const __wbg_get_fallibleresult_error: (a: number) => [number, number];
+export const __wbg_get_fallibleresult_value: (a: number) => [number, number];
+export const __wbg_parser_free: (a: number, b: number) => void;
+export const __wbg_set_fallibleresult_error: (a: number, b: number, c: number) => void;
+export const __wbg_set_fallibleresult_value: (a: number, b: number, c: number) => void;
+export const cookware_display_name: (a: any) => [number, number];
+export const cookware_should_be_listed: (a: any) => number;
+export const grouped_quantity_display: (a: any) => [number, number];
+export const grouped_quantity_is_empty: (a: any) => number;
+export const ingredient_display_name: (a: any) => [number, number];
+export const ingredient_should_be_listed: (a: any) => number;
+export const parser_extensions: (a: number) => number;
+export const parser_group_cookware: (a: number, b: any) => [number, number];
+export const parser_group_ingredients: (a: number, b: any) => [number, number];
+export const parser_load_units: (a: number) => number;
+export const parser_new: () => number;
+export const parser_parse: (a: number, b: number, c: number, d: number, e: number) => any;
+export const parser_parse_ast: (a: number, b: number, c: number, d: number) => number;
+export const parser_parse_events: (a: number, b: number, c: number) => [number, number];
+export const parser_parse_full: (a: number, b: number, c: number, d: number) => number;
+export const parser_parse_render: (a: number, b: number, c: number, d: number, e: number) => number;
+export const parser_set_extensions: (a: number, b: number) => void;
+export const parser_set_load_units: (a: number, b: number) => void;
+export const parser_std_metadata: (a: number, b: number, c: number) => number;
+export const quantity_display: (a: any) => [number, number];
+export const version: () => [number, number];
+export const __wbindgen_exn_store: (a: number) => void;
+export const __externref_table_alloc: () => number;
+export const __wbindgen_export_2: WebAssembly.Table;
+export const __wbindgen_malloc: (a: number, b: number) => number;
+export const __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
+export const __wbindgen_free: (a: number, b: number, c: number) => void;
+export const __externref_drop_slice: (a: number, b: number) => void;
+export const __wbindgen_start: () => void;
