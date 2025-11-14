@@ -1,4 +1,5 @@
-import {Cookware, Ingredient, Timer, Text, Recipe} from './parser-adapter';
+import { CooklangParser, CooklangRecipe } from '@cooklang/cooklang-ts';
+import { getMetadata, getIngredients, getCookware, getTimers, getSteps } from './recipeHelpers';
 import {TextFileView, setIcon, TFile, Keymap, WorkspaceLeaf, ViewStateResult, Notice} from 'obsidian'
 import {CooklangSettings} from './settings';
 import {Howl} from 'howler';
@@ -28,7 +29,8 @@ export class CookView extends TextFileView {
     previewEl: HTMLElement;
     sourceEl: HTMLElement;
     editorView: EditorView;
-    recipe: Recipe;
+    rawRecipe: CooklangRecipe | null = null;
+    parser: CooklangParser;
     changeModeButton: HTMLElement;
     currentView: 'source' | 'preview';
     alarmAudio: Howl;
@@ -38,6 +40,7 @@ export class CookView extends TextFileView {
     constructor(leaf: WorkspaceLeaf, settings: CooklangSettings) {
         super(leaf);
         this.settings = settings;
+        this.parser = new CooklangParser();
 
         // Add Preview Container
         this.previewEl = this.contentEl.createDiv({cls: 'cook-preview-view'});
@@ -50,213 +53,196 @@ export class CookView extends TextFileView {
             }
         });
 
-        // Check if Obsidian is in dark mode
-        const isDarkMode = document.body.classList.contains('theme-dark');
+        // Initialize Editor with proper theme based on Obsidian theme
+        this.initializeEditor();
 
-        // Create CodeMirror 6 Editor
-        const state = EditorState.create({
-            doc: '',
-            extensions: [
-                // Line numbers are disabled by default
-                // lineNumbers(),
-                highlightActiveLine(),
-                // Apply appropriate syntax highlighting based on theme
-                syntaxHighlighting(isDarkMode ? defaultHighlightStyle : cooklangLightTheme, {fallback: true}),
-                EditorView.contentAttributes.of({contenteditable: "true"}),
-                EditorView.lineWrapping,
-                keymap.of([
-                    // Add Enter key handling
-                    {
-                        key: "Enter", run: (view) => {
-                            const from = view.state.selection.main.from;
-                            const to = view.state.selection.main.to;
-                            const insert = "\n";
-
-                            // Insert the newline
-                            view.dispatch(view.state.update({
-                                changes: {from, to, insert},
-                                // Move cursor to the position after the newline
-                                selection: {anchor: from + insert.length}
-                            }));
-
-                            return true;
-                        }
-                    }
-                ]),
-                // Only apply oneDark theme if Obsidian is in dark mode
-                ...(isDarkMode ? [oneDark] : []),
-                cooklang,
-                ViewPlugin.define(() => ({
-                    update: () => {
-                        this.requestSave();
-                        return null;
-                    }
-                })),
-                // Add padding and max-width to the editor
-                EditorView.theme({
-                    "&": {
-                        padding: "0 20px",
-                        maxWidth: "800px",
-                        margin: "0 auto"
-                    },
-                    "&.cm-focused": {
-                        outline: "none"
-                    }
-                })
-            ],
-        });
-
-        this.editorView = new EditorView({
-            state,
-            parent: this.sourceEl
-        });
-
-        // Initialize audio
         this.alarmAudio = new Howl({
             src: [alarmMp3],
-            volume: 0.5
+            volume: 0.3
         });
+
         this.timerAudio = new Howl({
             src: [timerMp3],
-            volume: 0.5
+            volume: 0.3
         });
+
+        // Set default view
+        this.setViewMode('source'); // Start in source mode by default
     }
 
     onload() {
-        // add the action to switch between source and preview mode
-        this.changeModeButton = this.addAction('lines-of-text', 'Preview (Ctrl+Click to open in new pane)', (evt) => this.switchMode(evt));
+        super.onload();
+        // Add mode toggle button to the action buttons in top right
+        this.addAction('book-open', 'Toggle Preview', () => {
+            if (this.currentView === 'source') {
+                this.setViewMode('preview');
+            } else {
+                this.setViewMode('source');
+            }
+        });
+    }
 
-        // Default to source mode
-        this.currentView = 'source';
+    // Initialize CodeMirror editor
+    initializeEditor() {
+        // Determine theme based on Obsidian theme
+        const isDark = document.body.classList.contains('theme-dark');
 
+        const extensions: Extension[] = [
+            lineNumbers(),
+            highlightActiveLine(),
+            cooklang, // Our custom Cooklang language support
+            EditorView.lineWrapping,
+            // Add theme-aware syntax highlighting
+            isDark ?
+                syntaxHighlighting(defaultHighlightStyle) :
+                syntaxHighlighting(cooklangLightTheme),
+            keymap.of([
+                {
+                    key: 'Mod-e',
+                    run: () => {
+                        this.setViewMode(this.currentView === 'source' ? 'preview' : 'source');
+                        return true;
+                    }
+                }
+            ])
+        ];
+
+        // Add oneDark theme only in dark mode
+        if (isDark) {
+            extensions.push(oneDark);
+        }
+
+        this.editorView = new EditorView({
+            state: EditorState.create({
+                doc: this.data,
+                extensions
+            }),
+            parent: this.sourceEl
+        });
+    }
+
+    setViewMode(mode: 'source' | 'preview') {
+        this.currentView = mode;
+
+        if (mode === 'source') {
+            this.previewEl.style.display = 'none';
+            this.sourceEl.style.display = 'block';
+        } else {
+            this.sourceEl.style.display = 'none';
+            this.previewEl.style.display = 'block';
+            // Parse and render the preview
+            const [rawRecipe, report] = this.parser.parse(this.data);
+            this.rawRecipe = rawRecipe;
+            this.renderPreview();
+        }
+    }
+
+    switchMode() {
+        this.setViewMode(this.currentView === 'source' ? 'preview' : 'source');
+    }
+
+    onunload() {
+        if (this.editorView) {
+            this.editorView.destroy();
+        }
+    }
+
+    makeTimer(button: HTMLElement, seconds: number, name: string) {
+        button.onclick = () => {
+            let time = seconds;
+
+            const span = button.querySelector('.amount');
+            if (!span) return;
+
+            const interval = setInterval(() => {
+                time--;
+                span.textContent = this.formatTime(time);
+
+                if (time <= 0) {
+                    clearInterval(interval);
+                    this.alarmAudio.play();
+                    new Notice(`Timer "${name}" has finished!`, 5000);
+                }
+            }, 1000);
+
+            this.timerAudio.play();
+        };
+    }
+
+    formatTime(seconds: number): string {
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        const secs = seconds % 60;
+
+        if (hours > 0) {
+            return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        } else if (minutes > 0) {
+            return `${minutes}:${secs.toString().padStart(2, '0')}`;
+        } else {
+            return `${secs}s`;
+        }
+    }
+
+    onPaneMenu(menu: any, source: string) {
+        super.onPaneMenu(menu, source);
+
+        menu.addItem((item: any) => {
+            item
+                .setTitle(this.currentView === 'source' ? 'Show Preview' : 'Show Source')
+                .setIcon(this.currentView === 'source' ? 'book-open' : 'edit')
+                .onClick(() => {
+                    this.setViewMode(this.currentView === 'source' ? 'preview' : 'source');
+                });
+        });
+    }
+
+    onMoreOptionsMenu(menu: any) {
+        menu.addItem((item: any) => {
+            item
+                .setTitle('Toggle Source/Preview')
+                .setIcon('book-open')
+                .onClick(() => {
+                    this.setViewMode(this.currentView === 'source' ? 'preview' : 'source');
+                });
+        });
+    }
+
+    // When Obsidian's theme changes, update the editor theme
+    onThemeChange() {
+        // Recreate the editor with the appropriate theme
+        const currentDoc = this.editorView.state.doc.toString();
+        this.editorView.destroy();
+        this.initializeEditor();
+        this.editorView.dispatch({
+            changes: {
+                from: 0,
+                to: 0,
+                insert: currentDoc
+            }
+        });
+    }
+
+    async onOpen() {
         // Listen for theme changes
         this.registerEvent(
             this.app.workspace.on('css-change', () => {
-                this.updateEditorTheme();
+                // Check if the theme actually changed
+                const wasDark = this.editorView.state.facet(EditorView.darkTheme);
+                const isDark = document.body.classList.contains('theme-dark');
+
+                if (wasDark !== isDark) {
+                    this.onThemeChange();
+                }
             })
         );
-    }
-
-    // Update editor theme based on Obsidian's current theme
-    updateEditorTheme() {
-        const isDarkMode = document.body.classList.contains('theme-dark');
-
-        // Get current state
-        const currentState = this.editorView.state;
-
-        // Create new state with or without oneDark theme
-        const newState = EditorState.create({
-            doc: currentState.doc,
-            extensions: [
-                // Line numbers are disabled by default
-                // lineNumbers(),
-                highlightActiveLine(),
-                // Apply appropriate syntax highlighting based on theme
-                syntaxHighlighting(isDarkMode ? defaultHighlightStyle : cooklangLightTheme, {fallback: true}),
-                EditorView.contentAttributes.of({contenteditable: "true"}),
-                EditorView.lineWrapping,
-                keymap.of([
-                    // Add Enter key handling
-                    {
-                        key: "Enter", run: (view) => {
-                            const from = view.state.selection.main.from;
-                            const to = view.state.selection.main.to;
-                            const insert = "\n";
-
-                            // Insert the newline
-                            view.dispatch(view.state.update({
-                                changes: {from, to, insert},
-                                // Move cursor to the position after the newline
-                                selection: {anchor: from + insert.length}
-                            }));
-
-                            return true;
-                        }
-                    }
-                ]),
-                // Only apply oneDark theme if Obsidian is in dark mode
-                ...(isDarkMode ? [oneDark] : []),
-                cooklang,
-                ViewPlugin.define(() => ({
-                    update: () => {
-                        this.requestSave();
-                        return null;
-                    }
-                })),
-                // Add padding and max-width to the editor
-                EditorView.theme({
-                    "&": {
-                        padding: "0 20px",
-                        maxWidth: "800px",
-                        margin: "0 auto"
-                    },
-                    "&.cm-focused": {
-                        outline: "none"
-                    }
-                })
-            ],
-        });
-
-        // Update the editor view with the new state
-        this.editorView.setState(newState);
-    }
-
-    getState(): any {
-        return super.getState();
-    }
-
-    setState(state: any, result: ViewStateResult): Promise<void> {
-        return super.setState(state, result).then(() => {
-            if (state.mode) this.switchMode(state.mode);
-        });
-    }
-
-    switchMode(arg?: 'source' | 'preview' | MouseEvent) {
-        let mode = arg;
-        // if force mode not provided, switch to opposite of current mode
-        if (!mode || mode instanceof MouseEvent) mode = this.currentView === 'source' ? 'preview' : 'source';
-
-        if (arg instanceof MouseEvent) {
-            if (Keymap.isModEvent(arg)) {
-                this.app.workspace.duplicateLeaf(this.leaf).then(() => {
-                    const viewState = this.app.workspace.activeLeaf?.getViewState();
-                    if (viewState) {
-                        viewState.state = {...viewState.state, mode: mode};
-                        this.app.workspace.activeLeaf?.setViewState(viewState);
-                    }
-                });
-            } else {
-                this.setState({...this.getState(), mode: mode}, {history: true});
-            }
-        } else {
-            // switch to preview mode
-            if (mode === 'preview') {
-                this.currentView = 'preview';
-                setIcon(this.changeModeButton, 'pencil');
-                this.changeModeButton.setAttribute('aria-label', 'Edit (Ctrl+Click to edit in new pane)');
-
-                this.renderPreview(this.recipe);
-                this.previewEl.style.setProperty('display', 'block');
-                this.sourceEl.style.setProperty('display', 'none');
-            }
-            // switch to source mode
-            else {
-                this.currentView = 'source';
-                setIcon(this.changeModeButton, 'lines-of-text');
-                this.changeModeButton.setAttribute('aria-label', 'Preview (Ctrl+Click to open in new pane)');
-
-                this.previewEl.style.setProperty('display', 'none');
-                this.sourceEl.style.setProperty('display', 'block');
-                this.editorView.requestMeasure();
-            }
-        }
     }
 
     // get the data for save
     getViewData() {
         this.data = this.editorView.state.doc.toString();
-        // may as well parse the recipe while we're here.
-        this.recipe = new Recipe(this.data);
+        // Parse the recipe
+        const [rawRecipe, report] = this.parser.parse(this.data);
+        this.rawRecipe = rawRecipe;
         return this.data;
     }
 
@@ -282,9 +268,10 @@ export class CookView extends TextFileView {
             });
         }
 
-        this.recipe = new Recipe(this.data);
+        const [rawRecipe, report] = this.parser.parse(this.data);
+        this.rawRecipe = rawRecipe;
         // if we're in preview view, also render that
-        if (this.currentView === 'preview') this.renderPreview(this.recipe);
+        if (this.currentView === 'preview') this.renderPreview();
     }
 
     // clear the editor, etc
@@ -323,18 +310,24 @@ export class CookView extends TextFileView {
     }
 
     // render the preview view
-    renderPreview(recipe: Recipe) {
+    renderPreview() {
 
         // clear the preview before adding the rest
         this.previewEl.empty();
 
         // we can't render what we don't have...
-        if (!recipe) return;
+        if (!this.rawRecipe) return;
+
+        const metadata = getMetadata(this.rawRecipe);
+        const ingredients = getIngredients(this.rawRecipe);
+        const cookwares = getCookware(this.rawRecipe);
+        const steps = getSteps(this.rawRecipe);
+        const timers = getTimers(this.rawRecipe);
 
         let recipeImage
         if (this.settings.showImages) {
             // add any files following the cooklang conventions to the recipe object
-            // https://org/docs/spec/#adding-pictures
+            // https://cooklang.org/docs/spec/#adding-pictures
             const otherFiles: TFile[] = this.file?.parent?.children.filter(f => (f instanceof TFile) && (f.basename == this.file?.basename || f.basename.startsWith(this.file?.basename + '.')) && f.name != this.file?.name) as TFile[] || [];
             otherFiles.forEach(f => {
                 // convention specifies JPEGs and PNGs. Added GIFs as well. Why not?
@@ -359,12 +352,12 @@ export class CookView extends TextFileView {
                 return false;
             }
         }
-        
-        if (recipe.metadata && Object.keys(recipe.metadata).length > 0) {
+
+        if (metadata && Object.keys(metadata).length > 0) {
             // Add the metadata if exist
             this.previewEl.createEl('h2', { cls: 'metadata-header', text: this.settings.metadataLabel || 'Metadata' });
             const ul = this.previewEl.createEl('ul', { cls: 'metadata' });
-            Object.entries(recipe.metadata).forEach(([key, value]) => {
+            Object.entries(metadata).forEach(([key, value]) => {
                 const li = ul.createEl('li');
                 li.createEl('span', { cls: 'metadata-key', text: key });
                 // Prefix tags with a hashtag
@@ -382,18 +375,18 @@ export class CookView extends TextFileView {
                     });
                 }
                 else {
-                    li.appendText(`${value}`);   
+                    li.appendText(`${value}`);
                 }
-            });   
+            });
         }
 
-        if (this.settings.showIngredientList && recipe.ingredients?.length) {
+        if (this.settings.showIngredientList && ingredients?.length) {
             // Add the Ingredients header
             this.previewEl.createEl('h2', {cls: 'ingredients-header', text: this.settings.ingredientLabel || 'Ingredients'});
 
             // Add the ingredients list
             const ul = this.previewEl.createEl('ul', {cls: 'ingredients'});
-            recipe.ingredients.forEach(ingredient => {
+            ingredients.forEach(ingredient => {
                 const li = ul.createEl('li');
                 if (ingredient.quantity !== undefined && ingredient.quantity !== null) {
                     li.createEl('span', {cls: 'amount', text: String(ingredient.quantity)});
@@ -408,15 +401,15 @@ export class CookView extends TextFileView {
             });
         }
 
-        if (this.settings.showCookwareList && recipe.cookwares?.length) {
+        if (this.settings.showCookwareList && cookwares?.length) {
             // Add the Cookware header
             this.previewEl.createEl('h2', {cls: 'cookware-header', text: this.settings.cookwareLabel || 'Cookware'});
 
             // Add the Cookware list
             const ul = this.previewEl.createEl('ul', {cls: 'cookware'});
-            recipe.cookwares.forEach(item => {
+            cookwares.forEach(item => {
                 const li = ul.createEl('li');
-                const amount = (item as any).quantity;
+                const amount = item.quantity;
                 if (amount !== undefined && amount !== null) {
                     li.createEl('span', {cls: 'amount', text: String(amount)});
                     li.appendText(' ');
@@ -426,9 +419,6 @@ export class CookView extends TextFileView {
             });
         }
 
-        let timers = recipe.steps
-            .reduce((acc, step) => [...acc, ...step], [])
-            .filter(step => step.type === 'timer')
         if (this.settings.showTimersList && timers?.length) {
             // Add the Timer header
             this.previewEl.createEl('h2', {cls: 'timer-header', text: this.settings.timersLabel ||'Timers'});
@@ -449,39 +439,6 @@ export class CookView extends TextFileView {
 
                     li.appendText(timer.name ?? '');
                 });
-        }
-
-        function _timerToSecond(timer: Timer) {
-            let amount = Number(timer.quantity || 0)
-            let unit = timer.units || 'm'
-            let time = 0
-
-            if (amount > 0) {
-                if (unit.toLowerCase().startsWith('s')) {
-                    time = amount
-                } else if (unit.toLowerCase().startsWith('m')) {
-                    time = amount * 60
-                } else if (unit.toLowerCase().startsWith('h')) {
-                    time = amount * 60 * 60
-                }
-            }
-            return time
-
-        }
-
-        function _getTotalTime(timers: Timer[]): number {
-            return this.timers.reduce((total: number, timer: Timer) => {
-                return total + _timerToSecond(timer)
-            }, 0)
-        }
-
-        if (this.settings.showTotalTime && false) {
-            let time = _getTotalTime(timers);
-            if (time > 0) {
-                // Add the Timers header
-                this.previewEl.createEl('h2', {cls: 'time-header', text: 'Total Time'});
-                this.previewEl.createEl('p', {cls: 'time', text: this.formatTime(time)});
-            }
         }
 
         // Add the Method header
@@ -507,8 +464,8 @@ export class CookView extends TextFileView {
 			.forEach(label => {
 				unitMap[label] = 3600;
 			});
-        
-        recipe.steps.forEach((step, i) => {
+
+        steps.forEach((step, i) => {
             const li = methodOl.createEl('li');
             /*
                   // Add step image if it exists
@@ -566,81 +523,5 @@ export class CookView extends TextFileView {
                 }
             })
         });
-    }
-
-    makeTimer(el: Element, seconds: number, name: string) {
-        let end: Date | null = null;
-        let interval: number | null = null;
-
-        const stop = () => {
-            if (interval !== null) {
-                window.clearInterval(interval);
-                interval = null;
-            }
-            if (el.parentElement) {
-                el.parentElement.removeClass('running');
-            }
-            this.timerAudio.stop();
-            end = null;
-        };
-
-        el.addEventListener('click', () => {
-            if (end === null) {
-                end = new Date(Date.now() + seconds * 1000);
-                if (el.parentElement) {
-                    el.parentElement.addClass('running');
-                }
-                interval = window.setInterval(() => {
-                    this.updateTimer(el, seconds, end!, stop, name);
-                }, 100);
-            } else {
-                stop();
-            }
-        });
-    }
-
-    updateTimer(el: Element, totalSeconds: number, end: Date, stop: Function, name: string) {
-        const now = new Date();
-        const remaining = Math.round((end.getTime() - now.getTime()) / 1000);
-
-        if (remaining <= 0) {
-            stop();
-            this.alarmAudio.play();
-            new Notification('Timer Complete', {
-                body: `${name || 'Timer'} for ${this.formatTimeForTimer(totalSeconds)} is done!`
-            });
-        } else {
-            const text = this.formatTimeForTimer(remaining);
-            const amountEl = el.querySelector('.amount');
-            if (amountEl) {
-                amountEl.textContent = text;
-            }
-        }
-    }
-
-    formatTime(time: number, showSeconds: boolean = false): string {
-        const hours = Math.floor(time / 3600);
-        const minutes = Math.floor((time % 3600) / 60);
-        const seconds = time % 60;
-
-        if (hours > 0) {
-            return `${hours}h ${minutes}m${showSeconds ? ` ${seconds}s` : ''}`;
-        } else if (minutes > 0) {
-            return `${minutes}m${showSeconds ? ` ${seconds}s` : ''}`;
-        } else {
-            return `${seconds}s`;
-        }
-    }
-
-    formatTimeForTimer(time: number): string {
-        const hours = Math.floor(time / 3600);
-        const minutes = Math.floor((time % 3600) / 60);
-        const seconds = time % 60;
-
-        if (hours > 0) {
-            return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-        } else {
-            return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-        }
     }
 }

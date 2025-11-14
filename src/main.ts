@@ -118,7 +118,7 @@ export default class CookPlugin extends Plugin {
     this.app.workspace.getLeavesOfType('cook').forEach(leaf => {
       if(leaf.view instanceof CookView) {
         leaf.view.settings = this.settings;
-        if(leaf.view.recipe) leaf.view.renderPreview(leaf.view.recipe);
+        if(leaf.view.rawRecipe) leaf.view.renderPreview();
       }
     });
   }
