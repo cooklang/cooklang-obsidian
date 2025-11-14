@@ -26,9 +26,6 @@ export default {
   },
   external: ['obsidian', 'codemirror'],
   plugins: [
-    wasm({
-      targetEnv: 'auto-inline'
-    }),
     typescript({
       tsconfig: './tsconfig.json',
       noEmitOnError: true,
@@ -37,7 +34,11 @@ export default {
     }),
     nodeResolve({
       browser: true,
-      preferBuiltins: false
+      preferBuiltins: false,
+      extensions: ['.js', '.ts']
+    }),
+    wasm({
+      targetEnv: 'auto-inline'
     }),
     commonjs({
       include: ['node_modules/**', 'src/mode/**']
