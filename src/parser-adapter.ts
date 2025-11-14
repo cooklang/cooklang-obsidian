@@ -3,8 +3,8 @@
  * This allows us to use the new parser without rewriting all the existing code
  */
 
-import { CooklangParser, CooklangRecipe } from './parser/index';
-import type { Content, Item, Quantity as WasmQuantity, Value } from './parser/cooklang_wasm';
+import { CooklangParser, CooklangRecipe } from '@cooklang/cooklang-ts';
+import type { Content, Item, Quantity as WasmQuantity, Value } from '@cooklang/cooklang-ts/pkg/cooklang_wasm';
 
 // Old API types that the rest of the code expects
 export interface Text {
