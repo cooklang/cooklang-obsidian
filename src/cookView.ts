@@ -41,19 +41,24 @@ export class CookView extends TextFileView {
     sourceEl: HTMLElement;
     editorView: EditorView;
     rawRecipe: CooklangRecipe | null = null;
-    parser: CooklangParser;
+    _parser: CooklangParser | null = null;
     changeModeButton: HTMLElement;
     currentView: 'source' | 'preview';
     alarmAudio: Howl;
     timerAudio: Howl;
     data: string = '';
 
+    // Lazy getter for parser - creates it on first access
+    get parser(): CooklangParser {
+        if (!this._parser) {
+            this._parser = new CooklangParser();
+        }
+        return this._parser;
+    }
+
     constructor(leaf: WorkspaceLeaf, settings: CooklangSettings) {
         super(leaf);
         this.settings = settings;
-
-        // Initialize parser
-        this.parser = new CooklangParser();
 
         // Add Preview Container
         this.previewEl = this.contentEl.createDiv({cls: 'cook-preview-view'});
@@ -85,6 +90,17 @@ export class CookView extends TextFileView {
 
     onload() {
         super.onload();
+
+        // Ensure parser is initialized (triggers lazy initialization)
+        // This gives WASM time to load before we try to use it
+        setTimeout(() => {
+            try {
+                // Access parser to trigger lazy initialization
+                const _ = this.parser;
+            } catch (error) {
+                console.error('Failed to initialize parser:', error);
+            }
+        }, 0);
 
         // Add mode toggle button to the action buttons in top right
         this.addAction('book-open', 'Toggle Preview', () => {
