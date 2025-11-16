@@ -24,8 +24,8 @@ import {tags as t} from "@lezer/highlight"
 import {string} from "postcss-selector-parser";
 
 // Import WASM manually for proper initialization with Rollup
-import { Parser } from '@cooklang/cooklang-ts/pkg/cooklang_wasm.js';
-import { __wbg_set_wasm } from '@cooklang/cooklang-ts/pkg/cooklang_wasm_bg.js';
+// We import from _bg.js to bypass auto-initialization that doesn't work with Rollup
+import { Parser, __wbg_set_wasm, __wbindgen_init_externref_table } from '@cooklang/cooklang-ts/pkg/cooklang_wasm_bg.js';
 import { default as wasmbin } from '@cooklang/cooklang-ts/pkg/cooklang_wasm_bg.wasm';
 import { CooklangRecipe as CooklangRecipeClass } from '@cooklang/cooklang-ts';
 
@@ -101,8 +101,9 @@ export class CookView extends TextFileView {
                 wasmModule = wasmbin;
             }
 
-            // Manually set the WASM instance (replaces auto-initialization)
+            // Manually initialize WASM (replaces auto-initialization that doesn't work with Rollup)
             __wbg_set_wasm(wasmModule);
+            __wbindgen_init_externref_table();
 
             // Create the parser instance
             const rawParser = new Parser();
