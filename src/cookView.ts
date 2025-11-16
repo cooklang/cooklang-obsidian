@@ -1,5 +1,15 @@
 import type { CooklangRecipe } from '@cooklang/cooklang-ts';
-import { getMetadata, getIngredients, getCookware, getTimers, getSteps } from './recipeHelpers';
+import {
+    getMetadata,
+    getFlatIngredients,
+    getFlatCookware,
+    getFlatTimers,
+    getSteps,
+    quantity_display,
+    ingredient_display_name,
+    cookware_display_name,
+    getQuantityValue
+} from './recipeHelpers';
 import {TextFileView, setIcon, TFile, Keymap, WorkspaceLeaf, ViewStateResult, Notice} from 'obsidian'
 import {CooklangSettings} from './settings';
 import {Howl} from 'howler';
@@ -12,11 +22,7 @@ import {oneDark} from "@codemirror/theme-one-dark"
 import {cooklang} from './mode/cook/cook'
 import {tags as t} from "@lezer/highlight"
 import {string} from "postcss-selector-parser";
-
-// Import WASM using the --target web pattern (like Templater)
-import { initSync, Parser } from '@cooklang/cooklang-ts/pkg/cooklang_wasm.js';
-import { default as wasmbin } from '@cooklang/cooklang-ts/pkg/cooklang_wasm_bg.wasm';
-import { CooklangRecipe as CooklangRecipeClass } from '@cooklang/cooklang-ts';
+import { CooklangParser } from '@cooklang/cooklang-ts';
 
 // Define a light theme HighlightStyle for Cooklang
 const cooklangLightTheme = HighlightStyle.define([
@@ -35,8 +41,7 @@ export class CookView extends TextFileView {
     sourceEl: HTMLElement;
     editorView: EditorView;
     rawRecipe: CooklangRecipe | null = null;
-    parser: any = null;
-    parserReady: Promise<void>;
+    parser: CooklangParser;
     changeModeButton: HTMLElement;
     currentView: 'source' | 'preview';
     alarmAudio: Howl;
@@ -47,8 +52,8 @@ export class CookView extends TextFileView {
         super(leaf);
         this.settings = settings;
 
-        // Initialize parser asynchronously
-        this.parserReady = this.initializeParser();
+        // Initialize parser
+        this.parser = new CooklangParser();
 
         // Add Preview Container
         this.previewEl = this.contentEl.createDiv({cls: 'cook-preview-view'});
@@ -78,54 +83,8 @@ export class CookView extends TextFileView {
         this.setViewMode('source'); // Start in source mode by default
     }
 
-    async initializeParser(): Promise<void> {
-        try {
-            // Initialize WASM using the --target web pattern with initSync
-            // Rollup's WASM plugin wraps the binary in a loader function
-            let wasmModule;
-            if (typeof wasmbin === 'function') {
-                // Rollup wrapped it in a loader function - call it to get the Module
-                wasmModule = await wasmbin();
-            } else {
-                wasmModule = wasmbin;
-            }
-
-            // Use initSync which accepts a pre-compiled WebAssembly.Module
-            initSync({ module: wasmModule });
-
-            // Create the parser instance
-            const rawParser = new Parser();
-
-            // Create a wrapper that matches the CooklangParser API
-            this.parser = {
-                parse: (input: string, scale?: number | null) => {
-                    const raw = rawParser.parse(input, scale);
-                    return [new CooklangRecipeClass(raw, rawParser.group_ingredients(raw), rawParser.group_cookware(raw)), raw.report];
-                },
-                set units(value: boolean) {
-                    rawParser.load_units = value;
-                },
-                get units(): boolean {
-                    return rawParser.load_units;
-                },
-                set extensions(value: number) {
-                    rawParser.extensions = value;
-                },
-                get extensions(): number {
-                    return rawParser.extensions;
-                }
-            };
-        } catch (error) {
-            console.error('Failed to initialize Cooklang parser:', error);
-            throw error;
-        }
-    }
-
-    async onload() {
+    onload() {
         super.onload();
-
-        // Wait for parser to initialize before allowing interactions
-        await this.parserReady;
 
         // Add mode toggle button to the action buttons in top right
         this.addAction('book-open', 'Toggle Preview', () => {
@@ -327,15 +286,11 @@ export class CookView extends TextFileView {
             });
         }
 
-        // Wait for parser to be ready
-        await this.parserReady;
-
-        if (this.parser) {
-            const [rawRecipe, report] = this.parser.parse(this.data);
-            this.rawRecipe = rawRecipe;
-            // if we're in preview view, also render that
-            if (this.currentView === 'preview') this.renderPreview();
-        }
+        // Parse the recipe
+        const [rawRecipe, report] = this.parser.parse(this.data);
+        this.rawRecipe = rawRecipe;
+        // if we're in preview view, also render that
+        if (this.currentView === 'preview') this.renderPreview();
     }
 
     // clear the editor, etc
@@ -383,10 +338,10 @@ export class CookView extends TextFileView {
         if (!this.rawRecipe) return;
 
         const metadata = getMetadata(this.rawRecipe);
-        const ingredients = getIngredients(this.rawRecipe);
-        const cookwares = getCookware(this.rawRecipe);
+        const ingredients = getFlatIngredients(this.rawRecipe);
+        const cookwares = getFlatCookware(this.rawRecipe);
         const steps = getSteps(this.rawRecipe);
-        const timers = getTimers(this.rawRecipe);
+        const timers = getFlatTimers(this.rawRecipe);
 
         let recipeImage
         if (this.settings.showImages) {
@@ -452,16 +407,11 @@ export class CookView extends TextFileView {
             const ul = this.previewEl.createEl('ul', {cls: 'ingredients'});
             ingredients.forEach(ingredient => {
                 const li = ul.createEl('li');
-                if (ingredient.quantity !== undefined && ingredient.quantity !== null) {
-                    li.createEl('span', {cls: 'amount', text: String(ingredient.quantity)});
+                if (ingredient.displayText) {
+                    li.createEl('span', {cls: 'amount', text: ingredient.displayText});
                     li.appendText(' ');
                 }
-                if (ingredient.units !== undefined && ingredient.units !== null) {
-                    li.createEl('span', {cls: 'unit', text: String(ingredient.units)});
-                    li.appendText(' ');
-                }
-
-                li.appendText(ingredient.name ?? '');
+                li.appendText(ingredient.name);
             });
         }
 
@@ -473,13 +423,11 @@ export class CookView extends TextFileView {
             const ul = this.previewEl.createEl('ul', {cls: 'cookware'});
             cookwares.forEach(item => {
                 const li = ul.createEl('li');
-                const amount = item.quantity;
-                if (amount !== undefined && amount !== null) {
-                    li.createEl('span', {cls: 'amount', text: String(amount)});
+                if (item.displayText) {
+                    li.createEl('span', {cls: 'amount', text: item.displayText});
                     li.appendText(' ');
                 }
-
-                li.appendText(item.name ?? '');
+                li.appendText(item.name);
             });
         }
 
@@ -489,20 +437,14 @@ export class CookView extends TextFileView {
 
             // Add the Timer list
             const timerUl = this.previewEl.createEl('ul', {cls: 'timers'});
-            timers
-                .forEach(timer => {
-                    const li = timerUl.createEl('li');
-                    if (timer.quantity !== undefined && timer.quantity !== null) {
-                        li.createEl('span', {cls: 'amount', text: String(timer.quantity)});
-                        li.appendText(' ');
-                    }
-                    if (timer.units !== undefined && timer.units !== null) {
-                        li.createEl('span', {cls: 'unit', text: String(timer.units)});
-                        li.appendText(' ');
-                    }
-
-                    li.appendText(timer.name ?? '');
-                });
+            timers.forEach(timer => {
+                const li = timerUl.createEl('li');
+                if (timer.displayText) {
+                    li.createEl('span', {cls: 'amount', text: timer.displayText});
+                    li.appendText(' ');
+                }
+                li.appendText(timer.name ?? '');
+            });
         }
 
         // Add the Method header
@@ -547,42 +489,41 @@ export class CookView extends TextFileView {
                     const span = text.createEl('span');
                     if (part.type === "ingredient") {
                         span.addClass('ingredient');
-                        span.appendText(part.name ?? '');
-                        if (part.quantity !== undefined && part.quantity !== null) {
+                        const ing = part.ingredient;
+                        span.appendText(ingredient_display_name(ing));
+                        if (ing.quantity) {
                             span.appendText(' (');
-                            span.createEl('span', {cls: 'amount', text: String(part.quantity)});
-                            if (part.units !== undefined && part.units !== null) {
-                                span.appendText(' ');
-                                span.createEl('span', {cls: 'unit', text: String(part.units)});
-                            }
+                            span.createEl('span', {cls: 'amount', text: quantity_display(ing.quantity)});
                             span.appendText(')');
                         }
                     } else if (part.type === "cookware") {
                         span.addClass('cookware');
-                        span.appendText(part.name ?? '');
-                        if (part.quantity !== undefined && part.quantity !== null) {
+                        const cw = part.cookware;
+                        span.appendText(cookware_display_name(cw));
+                        if (cw.quantity) {
                             span.appendText(' (');
-                            span.createEl('span', {cls: 'amount', text: String(part.quantity)});
+                            span.createEl('span', {cls: 'amount', text: quantity_display(cw.quantity)});
                             span.appendText(')');
                         }
                     } else if (part.type === "timer") {
                         span.addClass('timer');
+                        const tm = part.timer;
                         const button = span.createEl('button', {cls: 'timer-button'});
                         button.appendText('⏲');
-                        if (part.quantity !== undefined && part.quantity !== null && typeof part.quantity === "number") {
+
+                        const numericQty = getQuantityValue(tm.quantity);
+                        if (numericQty !== null) {
                             button.appendText(' ');
-                            const multiplier = part.units ? (unitMap as Record<string, number>)[part.units.toLowerCase()] ?? 1 : 1;
-                            part.quantity = part.quantity * multiplier;
-                            // TODO: part.quantity may be string with time description
-                            button.createEl('span', {cls: 'amount', text: this.formatTime(part.quantity)});
+                            const unit = tm.quantity?.unit;
+                            const multiplier = unit ? (unitMap as Record<string, number>)[unit.toLowerCase()] ?? 1 : 1;
+                            const seconds = numericQty * multiplier;
+                            button.createEl('span', {cls: 'amount', text: this.formatTime(seconds)});
+                            this.makeTimer(button, seconds, tm.name ?? '');
                         }
-                        if (part.name) {
+                        if (tm.name) {
                             button.appendText(' ');
-                            button.createEl('span', {cls: 'name', text: String(part.name)});
+                            button.createEl('span', {cls: 'name', text: tm.name});
                         }
-                        // TODO: part.quantity may be string with time description
-                        if (typeof part.quantity === "number")
-                            this.makeTimer(button, part.quantity ?? 0, part.name ?? '');
                     }
                 }
             })
