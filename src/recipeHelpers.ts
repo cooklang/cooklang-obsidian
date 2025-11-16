@@ -9,9 +9,14 @@ export function extractNumericValue(value: Value): number | null {
     }
 
     if (value.type === 'number') {
-        return Number(value.value);
+        // WASM returns nested structure: { type: "number", value: { type: "regular", value: 3 } }
+        // The type definitions are incorrect, so we need to cast
+        const numValue = value.value as any;
+        return Number(numValue.value);
     } else if (value.type === 'range') {
-        return Number(value.value.start);
+        // Range structure: { type: "range", value: { start: { type: "regular", value: X }, end: { ... } } }
+        const rangeValue = value.value as any;
+        return Number(rangeValue.start.value);
     }
     return null;
 }
