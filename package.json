@@ -43,6 +43,6 @@
     "typescript": "^5.3.3"
   },
   "dependencies": {
-    "@cooklang/cooklang-ts": "https://pkg.pr.new/cooklang/cooklang-rs/@cooklang/cooklang-ts@27f4b0b"
+    "@cooklang/cooklang-ts": "https://pkg.pr.new/cooklang/cooklang-rs/@cooklang/cooklang-ts@de669dd"
   }
 }
