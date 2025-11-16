@@ -25,7 +25,7 @@ import {string} from "postcss-selector-parser";
 
 // Import WASM manually for proper initialization with Rollup
 // We import from _bg.js to bypass auto-initialization that doesn't work with Rollup
-import { Parser, __wbg_set_wasm, __wbindgen_init_externref_table } from '@cooklang/cooklang-ts/pkg/cooklang_wasm_bg.js';
+import * as wasmBindings from '@cooklang/cooklang-ts/pkg/cooklang_wasm_bg.js';
 import { default as wasmbin } from '@cooklang/cooklang-ts/pkg/cooklang_wasm_bg.wasm';
 import { CooklangRecipe as CooklangRecipeClass } from '@cooklang/cooklang-ts';
 
@@ -92,22 +92,35 @@ export class CookView extends TextFileView {
     async initializeParser(): Promise<void> {
         try {
             // Manually initialize WASM
-            // Rollup's WASM plugin wraps the binary in a loader function
-            let wasmInstance;
+            // Rollup's WASM plugin wraps the binary in a loader function that returns a WebAssembly.Module
+            let wasmModule;
             if (typeof wasmbin === 'function') {
-                // Rollup wrapped it in a loader function - call it to get the WebAssembly.Instance
-                wasmInstance = await wasmbin();
+                wasmModule = await wasmbin();
             } else {
-                wasmInstance = wasmbin;
+                wasmModule = wasmbin;
             }
 
-            // Manually initialize WASM (replaces auto-initialization that doesn't work with Rollup)
-            // Rollup returns a WebAssembly.Instance, we need to pass its exports
-            __wbg_set_wasm(wasmInstance.exports || wasmInstance);
-            __wbindgen_init_externref_table();
+            // The Module needs to be instantiated to get the exports
+            // Collect all the wasm-bindgen glue functions from the bindings module
+            const imports = {
+                './cooklang_wasm_bg.js': {
+                    __wbindgen_is_undefined: wasmBindings.__wbindgen_is_undefined,
+                    __wbindgen_string_get: wasmBindings.__wbindgen_string_get,
+                    __wbg_parse_def2e24ef1252aff: wasmBindings.__wbg_parse_def2e24ef1252aff,
+                    __wbg_stringify_f7ed6987935b4a24: wasmBindings.__wbg_stringify_f7ed6987935b4a24,
+                    __wbindgen_throw: wasmBindings.__wbindgen_throw,
+                    __wbindgen_init_externref_table: wasmBindings.__wbindgen_init_externref_table
+                }
+            };
+
+            const { instance } = await WebAssembly.instantiate(wasmModule, imports);
+
+            // Now we have the instance with exports - set it for the bindings to use
+            wasmBindings.__wbg_set_wasm(instance.exports);
+            wasmBindings.__wbindgen_init_externref_table();
 
             // Create the parser instance
-            const rawParser = new Parser();
+            const rawParser = new wasmBindings.Parser();
 
             // Create a wrapper that uses the library's CooklangRecipe wrapper
             this.parser = {
