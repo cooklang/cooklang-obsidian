@@ -113,10 +113,13 @@ export class CookView extends TextFileView {
                 }
             };
 
-            const { instance } = await WebAssembly.instantiate(wasmModule, imports);
+            // Instantiate the WASM module
+            // Note: When passed a Module, WebAssembly.instantiate returns an Instance directly (not WebAssemblyInstantiatedSource)
+            // TypeScript types are incorrect for this overload, so we cast through any
+            const wasmInstance = await WebAssembly.instantiate(wasmModule, imports) as any as WebAssembly.Instance;
 
-            // Now we have the instance with exports - set it for the bindings to use
-            wasmBindings.__wbg_set_wasm(instance.exports);
+            // Set the WASM exports for the bindings to use
+            wasmBindings.__wbg_set_wasm(wasmInstance.exports);
             wasmBindings.__wbindgen_init_externref_table();
 
             // Create the parser instance
