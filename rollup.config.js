@@ -17,15 +17,23 @@ if you want to view the source visit the plugin's github repository
 export default {
   input: 'src/main.ts',
   output: {
-    dir: '.',
+    file: 'main.js',
     sourcemap: 'inline',
     sourcemapExcludeSources: isProd,
     format: 'cjs',
     exports: 'default',
-    banner
+    banner,
+    inlineDynamicImports: true
   },
   external: ['obsidian', 'codemirror'],
   plugins: [
+    // WASM plugin must come first to properly handle wasm imports
+    wasm({
+      sync: [
+        '**/cooklang_wasm_bg.wasm'
+      ],
+      maxFileSize: 10000000 // 10MB limit for WASM files
+    }),
     typescript({
       tsconfig: './tsconfig.json',
       noEmitOnError: true,
@@ -36,9 +44,6 @@ export default {
       browser: true,
       preferBuiltins: false,
       extensions: ['.js', '.ts']
-    }),
-    wasm({
-      targetEnv: 'auto-inline'
     }),
     commonjs({
       include: ['node_modules/**', 'src/mode/**']

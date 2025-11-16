@@ -4,6 +4,10 @@ import type { Content, Step, Item, Quantity, Value } from '@cooklang/cooklang-ts
 
 /** Extract numeric value from WASM Value type */
 export function extractNumericValue(value: Value): number | null {
+    if (!value) {
+        return null;
+    }
+
     if (value.type === 'number') {
         return Number(value.value);
     } else if (value.type === 'range') {

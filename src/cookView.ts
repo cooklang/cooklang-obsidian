@@ -1,4 +1,4 @@
-import { CooklangParser, CooklangRecipe } from '@cooklang/cooklang-ts';
+import type { CooklangRecipe } from '@cooklang/cooklang-ts';
 import { getMetadata, getIngredients, getCookware, getTimers, getSteps } from './recipeHelpers';
 import {TextFileView, setIcon, TFile, Keymap, WorkspaceLeaf, ViewStateResult, Notice} from 'obsidian'
 import {CooklangSettings} from './settings';
@@ -12,6 +12,11 @@ import {oneDark} from "@codemirror/theme-one-dark"
 import {cooklang} from './mode/cook/cook'
 import {tags as t} from "@lezer/highlight"
 import {string} from "postcss-selector-parser";
+
+// Import WASM using the --target web pattern (like Templater)
+import { initSync, Parser } from '@cooklang/cooklang-ts/pkg/cooklang_wasm.js';
+import { default as wasmbin } from '@cooklang/cooklang-ts/pkg/cooklang_wasm_bg.wasm';
+import { CooklangRecipe as CooklangRecipeClass } from '@cooklang/cooklang-ts';
 
 // Define a light theme HighlightStyle for Cooklang
 const cooklangLightTheme = HighlightStyle.define([
@@ -30,7 +35,8 @@ export class CookView extends TextFileView {
     sourceEl: HTMLElement;
     editorView: EditorView;
     rawRecipe: CooklangRecipe | null = null;
-    parser: CooklangParser;
+    parser: any = null;
+    parserReady: Promise<void>;
     changeModeButton: HTMLElement;
     currentView: 'source' | 'preview';
     alarmAudio: Howl;
@@ -40,7 +46,9 @@ export class CookView extends TextFileView {
     constructor(leaf: WorkspaceLeaf, settings: CooklangSettings) {
         super(leaf);
         this.settings = settings;
-        this.parser = new CooklangParser();
+
+        // Initialize parser asynchronously
+        this.parserReady = this.initializeParser();
 
         // Add Preview Container
         this.previewEl = this.contentEl.createDiv({cls: 'cook-preview-view'});
@@ -70,8 +78,55 @@ export class CookView extends TextFileView {
         this.setViewMode('source'); // Start in source mode by default
     }
 
-    onload() {
+    async initializeParser(): Promise<void> {
+        try {
+            // Initialize WASM using the --target web pattern with initSync
+            // Rollup's WASM plugin wraps the binary in a loader function
+            let wasmModule;
+            if (typeof wasmbin === 'function') {
+                // Rollup wrapped it in a loader function - call it to get the Module
+                wasmModule = await wasmbin();
+            } else {
+                wasmModule = wasmbin;
+            }
+
+            // Use initSync which accepts a pre-compiled WebAssembly.Module
+            initSync({ module: wasmModule });
+
+            // Create the parser instance
+            const rawParser = new Parser();
+
+            // Create a wrapper that matches the CooklangParser API
+            this.parser = {
+                parse: (input: string, scale?: number | null) => {
+                    const raw = rawParser.parse(input, scale);
+                    return [new CooklangRecipeClass(raw, rawParser.group_ingredients(raw), rawParser.group_cookware(raw)), raw.report];
+                },
+                set units(value: boolean) {
+                    rawParser.load_units = value;
+                },
+                get units(): boolean {
+                    return rawParser.load_units;
+                },
+                set extensions(value: number) {
+                    rawParser.extensions = value;
+                },
+                get extensions(): number {
+                    return rawParser.extensions;
+                }
+            };
+        } catch (error) {
+            console.error('Failed to initialize Cooklang parser:', error);
+            throw error;
+        }
+    }
+
+    async onload() {
         super.onload();
+
+        // Wait for parser to initialize before allowing interactions
+        await this.parserReady;
+
         // Add mode toggle button to the action buttons in top right
         this.addAction('book-open', 'Toggle Preview', () => {
             if (this.currentView === 'source') {
@@ -131,9 +186,11 @@ export class CookView extends TextFileView {
             this.sourceEl.style.display = 'none';
             this.previewEl.style.display = 'block';
             // Parse and render the preview
-            const [rawRecipe, report] = this.parser.parse(this.data);
-            this.rawRecipe = rawRecipe;
-            this.renderPreview();
+            if (this.parser) {
+                const [rawRecipe, report] = this.parser.parse(this.data);
+                this.rawRecipe = rawRecipe;
+                this.renderPreview();
+            }
         }
     }
 
@@ -240,9 +297,11 @@ export class CookView extends TextFileView {
     // get the data for save
     getViewData() {
         this.data = this.editorView.state.doc.toString();
-        // Parse the recipe
-        const [rawRecipe, report] = this.parser.parse(this.data);
-        this.rawRecipe = rawRecipe;
+        // Parse the recipe if parser is ready
+        if (this.parser) {
+            const [rawRecipe, report] = this.parser.parse(this.data);
+            this.rawRecipe = rawRecipe;
+        }
         return this.data;
     }
 
@@ -268,10 +327,15 @@ export class CookView extends TextFileView {
             });
         }
 
-        const [rawRecipe, report] = this.parser.parse(this.data);
-        this.rawRecipe = rawRecipe;
-        // if we're in preview view, also render that
-        if (this.currentView === 'preview') this.renderPreview();
+        // Wait for parser to be ready
+        await this.parserReady;
+
+        if (this.parser) {
+            const [rawRecipe, report] = this.parser.parse(this.data);
+            this.rawRecipe = rawRecipe;
+            // if we're in preview view, also render that
+            if (this.currentView === 'preview') this.renderPreview();
+        }
     }
 
     // clear the editor, etc
