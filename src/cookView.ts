@@ -93,16 +93,17 @@ export class CookView extends TextFileView {
         try {
             // Manually initialize WASM
             // Rollup's WASM plugin wraps the binary in a loader function
-            let wasmModule;
+            let wasmInstance;
             if (typeof wasmbin === 'function') {
-                // Rollup wrapped it in a loader function - call it to get the Module
-                wasmModule = await wasmbin();
+                // Rollup wrapped it in a loader function - call it to get the WebAssembly.Instance
+                wasmInstance = await wasmbin();
             } else {
-                wasmModule = wasmbin;
+                wasmInstance = wasmbin;
             }
 
             // Manually initialize WASM (replaces auto-initialization that doesn't work with Rollup)
-            __wbg_set_wasm(wasmModule);
+            // Rollup returns a WebAssembly.Instance, we need to pass its exports
+            __wbg_set_wasm(wasmInstance.exports || wasmInstance);
             __wbindgen_init_externref_table();
 
             // Create the parser instance
