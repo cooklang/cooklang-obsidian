@@ -22,7 +22,7 @@ import {oneDark} from "@codemirror/theme-one-dark"
 import {cooklang} from './mode/cook/cook'
 import {tags as t} from "@lezer/highlight"
 import {string} from "postcss-selector-parser";
-import { CooklangParser } from '@cooklang/cooklang-ts';
+import { CooklangRecipe as CooklangRecipeClass, Parser } from '@cooklang/cooklang-ts';
 
 // Define a light theme HighlightStyle for Cooklang
 const cooklangLightTheme = HighlightStyle.define([
@@ -41,24 +41,20 @@ export class CookView extends TextFileView {
     sourceEl: HTMLElement;
     editorView: EditorView;
     rawRecipe: CooklangRecipe | null = null;
-    _parser: CooklangParser | null = null;
+    parser: any = null;
+    parserReady: Promise<void>;
     changeModeButton: HTMLElement;
     currentView: 'source' | 'preview';
     alarmAudio: Howl;
     timerAudio: Howl;
     data: string = '';
 
-    // Lazy getter for parser - creates it on first access
-    get parser(): CooklangParser {
-        if (!this._parser) {
-            this._parser = new CooklangParser();
-        }
-        return this._parser;
-    }
-
     constructor(leaf: WorkspaceLeaf, settings: CooklangSettings) {
         super(leaf);
         this.settings = settings;
+
+        // Initialize parser asynchronously
+        this.parserReady = this.initializeParser();
 
         // Add Preview Container
         this.previewEl = this.contentEl.createDiv({cls: 'cook-preview-view'});
@@ -88,19 +84,51 @@ export class CookView extends TextFileView {
         this.setViewMode('source'); // Start in source mode by default
     }
 
-    onload() {
+    async initializeParser(): Promise<void> {
+        // Give WASM module time to initialize (it happens automatically on import)
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        try {
+            // Create the parser instance
+            const rawParser = new Parser();
+
+            // Create a wrapper that uses the library's CooklangRecipe wrapper
+            this.parser = {
+                parse: (input: string, scale?: number | null) => {
+                    const raw = rawParser.parse(input, scale);
+                    return [
+                        new CooklangRecipeClass(
+                            raw,
+                            rawParser.group_ingredients(raw),
+                            rawParser.group_cookware(raw)
+                        ),
+                        raw.report
+                    ];
+                },
+                set units(value: boolean) {
+                    rawParser.load_units = value;
+                },
+                get units(): boolean {
+                    return rawParser.load_units;
+                },
+                set extensions(value: number) {
+                    rawParser.extensions = value;
+                },
+                get extensions(): number {
+                    return rawParser.extensions;
+                }
+            };
+        } catch (error) {
+            console.error('Failed to initialize Cooklang parser:', error);
+            throw error;
+        }
+    }
+
+    async onload() {
         super.onload();
 
-        // Ensure parser is initialized (triggers lazy initialization)
-        // This gives WASM time to load before we try to use it
-        setTimeout(() => {
-            try {
-                // Access parser to trigger lazy initialization
-                const _ = this.parser;
-            } catch (error) {
-                console.error('Failed to initialize parser:', error);
-            }
-        }, 0);
+        // Wait for parser to be ready
+        await this.parserReady;
 
         // Add mode toggle button to the action buttons in top right
         this.addAction('book-open', 'Toggle Preview', () => {
