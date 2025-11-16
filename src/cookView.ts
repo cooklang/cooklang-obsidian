@@ -39,6 +39,49 @@ const cooklangLightTheme = HighlightStyle.define([
     {tag: t.unit, color: "#cb4b16"}           // Units
 ])
 
+// Global WASM initialization - shared across all CookView instances
+// This prevents memory corruption when opening multiple recipe views
+let wasmInitPromise: Promise<void> | null = null;
+
+async function initializeWASM(): Promise<void> {
+    if (wasmInitPromise) {
+        return wasmInitPromise;
+    }
+
+    wasmInitPromise = (async () => {
+        // Get the WASM Module from Rollup
+        let wasmModule;
+        if (typeof wasmbin === 'function') {
+            wasmModule = await wasmbin();
+        } else {
+            wasmModule = wasmbin;
+        }
+
+        // Provide wasm-bindgen glue functions as imports
+        const imports = {
+            './cooklang_wasm_bg.js': {
+                __wbindgen_is_undefined: wasmBindings.__wbindgen_is_undefined,
+                __wbindgen_string_get: wasmBindings.__wbindgen_string_get,
+                __wbg_parse_def2e24ef1252aff: wasmBindings.__wbg_parse_def2e24ef1252aff,
+                __wbg_stringify_f7ed6987935b4a24: wasmBindings.__wbg_stringify_f7ed6987935b4a24,
+                __wbindgen_throw: wasmBindings.__wbindgen_throw,
+                __wbindgen_init_externref_table: wasmBindings.__wbindgen_init_externref_table
+            }
+        };
+
+        // Instantiate the WASM module
+        // Note: When passed a Module, WebAssembly.instantiate returns an Instance directly
+        // TypeScript types are incorrect for this overload, so we cast through any
+        const wasmInstance = await WebAssembly.instantiate(wasmModule, imports) as any as WebAssembly.Instance;
+
+        // Set the WASM exports for the bindings to use (this is global state)
+        wasmBindings.__wbg_set_wasm(wasmInstance.exports);
+        wasmBindings.__wbindgen_init_externref_table();
+    })();
+
+    return wasmInitPromise;
+}
+
 // This is the custom view
 export class CookView extends TextFileView {
     settings: CooklangSettings;
@@ -91,38 +134,10 @@ export class CookView extends TextFileView {
 
     async initializeParser(): Promise<void> {
         try {
-            // Manually initialize WASM
-            // Rollup's WASM plugin wraps the binary in a loader function that returns a WebAssembly.Module
-            let wasmModule;
-            if (typeof wasmbin === 'function') {
-                wasmModule = await wasmbin();
-            } else {
-                wasmModule = wasmbin;
-            }
+            // Initialize WASM globally (shared across all views)
+            await initializeWASM();
 
-            // The Module needs to be instantiated to get the exports
-            // Collect all the wasm-bindgen glue functions from the bindings module
-            const imports = {
-                './cooklang_wasm_bg.js': {
-                    __wbindgen_is_undefined: wasmBindings.__wbindgen_is_undefined,
-                    __wbindgen_string_get: wasmBindings.__wbindgen_string_get,
-                    __wbg_parse_def2e24ef1252aff: wasmBindings.__wbg_parse_def2e24ef1252aff,
-                    __wbg_stringify_f7ed6987935b4a24: wasmBindings.__wbg_stringify_f7ed6987935b4a24,
-                    __wbindgen_throw: wasmBindings.__wbindgen_throw,
-                    __wbindgen_init_externref_table: wasmBindings.__wbindgen_init_externref_table
-                }
-            };
-
-            // Instantiate the WASM module
-            // Note: When passed a Module, WebAssembly.instantiate returns an Instance directly (not WebAssemblyInstantiatedSource)
-            // TypeScript types are incorrect for this overload, so we cast through any
-            const wasmInstance = await WebAssembly.instantiate(wasmModule, imports) as any as WebAssembly.Instance;
-
-            // Set the WASM exports for the bindings to use
-            wasmBindings.__wbg_set_wasm(wasmInstance.exports);
-            wasmBindings.__wbindgen_init_externref_table();
-
-            // Create the parser instance
+            // Create the parser instance (using the shared WASM instance)
             const rawParser = new wasmBindings.Parser();
 
             // Create a wrapper that uses the library's CooklangRecipe wrapper
