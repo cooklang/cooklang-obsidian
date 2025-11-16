@@ -22,7 +22,12 @@ import {oneDark} from "@codemirror/theme-one-dark"
 import {cooklang} from './mode/cook/cook'
 import {tags as t} from "@lezer/highlight"
 import {string} from "postcss-selector-parser";
-import { CooklangRecipe as CooklangRecipeClass, Parser } from '@cooklang/cooklang-ts';
+
+// Import WASM manually for proper initialization with Rollup
+import { Parser } from '@cooklang/cooklang-ts/pkg/cooklang_wasm.js';
+import { __wbg_set_wasm } from '@cooklang/cooklang-ts/pkg/cooklang_wasm_bg.js';
+import { default as wasmbin } from '@cooklang/cooklang-ts/pkg/cooklang_wasm_bg.wasm';
+import { CooklangRecipe as CooklangRecipeClass } from '@cooklang/cooklang-ts';
 
 // Define a light theme HighlightStyle for Cooklang
 const cooklangLightTheme = HighlightStyle.define([
@@ -85,10 +90,20 @@ export class CookView extends TextFileView {
     }
 
     async initializeParser(): Promise<void> {
-        // Give WASM module time to initialize (it happens automatically on import)
-        await new Promise(resolve => setTimeout(resolve, 100));
-
         try {
+            // Manually initialize WASM
+            // Rollup's WASM plugin wraps the binary in a loader function
+            let wasmModule;
+            if (typeof wasmbin === 'function') {
+                // Rollup wrapped it in a loader function - call it to get the Module
+                wasmModule = await wasmbin();
+            } else {
+                wasmModule = wasmbin;
+            }
+
+            // Manually set the WASM instance (replaces auto-initialization)
+            __wbg_set_wasm(wasmModule);
+
             // Create the parser instance
             const rawParser = new Parser();
 
