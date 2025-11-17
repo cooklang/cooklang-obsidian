@@ -10,5 +10,6 @@ main.js
 styles.css
 *.js.map
 data.json
+*.wasm
 
 .DS_Store

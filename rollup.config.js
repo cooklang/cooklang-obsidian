@@ -3,6 +3,7 @@ import {nodeResolve} from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
 import postcss from 'rollup-plugin-postcss';
 import url from '@rollup/plugin-url';
+import wasm from '@rollup/plugin-wasm';
 import * as sass from 'sass';
 
 const isProd = (process.env.BUILD === 'production');
@@ -16,15 +17,23 @@ if you want to view the source visit the plugin's github repository
 export default {
   input: 'src/main.ts',
   output: {
-    dir: '.',
+    file: 'main.js',
     sourcemap: 'inline',
     sourcemapExcludeSources: isProd,
     format: 'cjs',
     exports: 'default',
-    banner
+    banner,
+    inlineDynamicImports: true
   },
   external: ['obsidian', 'codemirror'],
   plugins: [
+    // WASM plugin must come first to properly handle wasm imports
+    wasm({
+      sync: [
+        '**/cooklang_wasm_bg.wasm'
+      ],
+      maxFileSize: 10000000 // 10MB limit for WASM files
+    }),
     typescript({
       tsconfig: './tsconfig.json',
       noEmitOnError: true,
@@ -33,7 +42,8 @@ export default {
     }),
     nodeResolve({
       browser: true,
-      preferBuiltins: false
+      preferBuiltins: false,
+      extensions: ['.js', '.ts']
     }),
     commonjs({
       include: ['node_modules/**', 'src/mode/**']
