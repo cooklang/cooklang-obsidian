@@ -22,6 +22,9 @@ import {oneDark} from "@codemirror/theme-one-dark"
 import {cooklang} from './mode/cook/cook'
 import {tags as t} from "@lezer/highlight"
 import {string} from "postcss-selector-parser";
+import { formatTime, createUnitMap } from './utils/timeFormatters';
+import { findRecipeImages } from './utils/imageHelpers';
+import { isValidUrl } from './utils/urlValidators';
 
 // Import WASM manually for proper initialization with Rollup
 // We import from _bg.js to bypass auto-initialization that doesn't work with Rollup
@@ -264,7 +267,7 @@ export class CookView extends TextFileView {
 
             const interval = setInterval(() => {
                 time--;
-                span.textContent = this.formatTime(time);
+                span.textContent = formatTime(time);
 
                 if (time <= 0) {
                     clearInterval(interval);
@@ -275,20 +278,6 @@ export class CookView extends TextFileView {
 
             this.timerAudio.play();
         };
-    }
-
-    formatTime(seconds: number): string {
-        const hours = Math.floor(seconds / 3600);
-        const minutes = Math.floor((seconds % 3600) / 60);
-        const secs = seconds % 60;
-
-        if (hours > 0) {
-            return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-        } else if (minutes > 0) {
-            return `${minutes}:${secs.toString().padStart(2, '0')}`;
-        } else {
-            return `${secs}s`;
-        }
     }
 
     onPaneMenu(menu: any, source: string) {
@@ -439,28 +428,13 @@ export class CookView extends TextFileView {
         if (this.settings.showImages) {
             // add any files following the cooklang conventions to the recipe object
             // https://cooklang.org/docs/spec/#adding-pictures
-            const otherFiles: TFile[] = this.file?.parent?.children.filter(f => (f instanceof TFile) && (f.basename == this.file?.basename || f.basename.startsWith(this.file?.basename + '.')) && f.name != this.file?.name) as TFile[] || [];
-            otherFiles.forEach(f => {
-                // convention specifies JPEGs and PNGs. Added GIFs as well. Why not?
-                if (f.extension == "jpg" || f.extension == "jpeg" || f.extension == "png" || f.extension == "gif" || f.extension == "webp") {
-                    // main recipe image
-                    if (f.basename == this.file?.basename) recipeImage = f;
-                }
-            })
+            const { mainImage } = findRecipeImages(this.file);
+            recipeImage = mainImage;
 
             // if there is a main image, put it as a banner image at the top
             if (recipeImage) {
                 const img = this.previewEl.createEl('img', {cls: 'main-image'});
                 img.src = this.app.vault.getResourcePath(recipeImage);
-            }
-        }
-
-        function isValidUrl(str: string): boolean {
-            try {
-                new URL(str);
-                return true;
-            } catch {
-                return false;
             }
         }
 
@@ -546,22 +520,10 @@ export class CookView extends TextFileView {
         const methodOl = this.previewEl.createEl('ol', {cls: 'method'});
 
         // unitMap to normalize different time units (min, hrs) into seconds
-        const unitMap: Record<string, number> = {};
-		(this.settings.minutesLabel || "m,min,minute,minutes")
-			.split(",")
-			.map(s => s.trim())
-			.filter(Boolean)
-			.forEach(label => {
-				unitMap[label] = 60;
-			});
-
-		(this.settings.hoursLabel || "h,hr,hrs,hour,hours")
-			.split(",")
-			.map(s => s.trim())
-			.filter(Boolean)
-			.forEach(label => {
-				unitMap[label] = 3600;
-			});
+        const unitMap = createUnitMap(
+            this.settings.minutesLabel || "m,min,minute,minutes",
+            this.settings.hoursLabel || "h,hr,hrs,hour,hours"
+        );
 
         steps.forEach((step, i) => {
             const li = methodOl.createEl('li');
@@ -609,7 +571,7 @@ export class CookView extends TextFileView {
                             const unit = tm.quantity?.unit;
                             const multiplier = unit ? (unitMap as Record<string, number>)[unit.toLowerCase()] ?? 1 : 1;
                             const seconds = numericQty * multiplier;
-                            button.createEl('span', {cls: 'amount', text: this.formatTime(seconds)});
+                            button.createEl('span', {cls: 'amount', text: formatTime(seconds)});
                             this.makeTimer(button, seconds, tm.name ?? '');
                         }
                         if (tm.name) {
