@@ -12,9 +12,6 @@ import {
 } from './recipeHelpers';
 import {TextFileView, setIcon, TFile, Keymap, WorkspaceLeaf, ViewStateResult, Notice} from 'obsidian'
 import {CooklangSettings} from './settings';
-import {Howl} from 'howler';
-import alarmMp3 from './alarm.mp3'
-import timerMp3 from './timer.mp3'
 import {EditorView, keymap, highlightActiveLine, lineNumbers, ViewPlugin} from "@codemirror/view"
 import {EditorState, Extension} from "@codemirror/state"
 import {syntaxHighlighting, defaultHighlightStyle, HighlightStyle} from "@codemirror/language"
@@ -25,12 +22,10 @@ import {string} from "postcss-selector-parser";
 import { formatTime, createUnitMap } from './utils/timeFormatters';
 import { findRecipeImages } from './utils/imageHelpers';
 import { isValidUrl } from './utils/urlValidators';
-
-// Import WASM manually for proper initialization with Rollup
-// We import from _bg.js to bypass auto-initialization that doesn't work with Rollup
-import * as wasmBindings from '@cooklang/cooklang-ts/pkg/cooklang_wasm_bg.js';
-import { default as wasmbin } from '@cooklang/cooklang-ts/pkg/cooklang_wasm_bg.wasm';
-import { CooklangRecipe as CooklangRecipeClass } from '@cooklang/cooklang-ts';
+import { parserService } from './services/ParserService';
+import { TimerService } from './services/TimerService';
+import alarmMp3 from './alarm.mp3';
+import timerMp3 from './timer.mp3';
 
 // Define a light theme HighlightStyle for Cooklang
 const cooklangLightTheme = HighlightStyle.define([
@@ -42,49 +37,6 @@ const cooklangLightTheme = HighlightStyle.define([
     {tag: t.unit, color: "#cb4b16"}           // Units
 ])
 
-// Global WASM initialization - shared across all CookView instances
-// This prevents memory corruption when opening multiple recipe views
-let wasmInitPromise: Promise<void> | null = null;
-
-async function initializeWASM(): Promise<void> {
-    if (wasmInitPromise) {
-        return wasmInitPromise;
-    }
-
-    wasmInitPromise = (async () => {
-        // Get the WASM Module from Rollup
-        let wasmModule;
-        if (typeof wasmbin === 'function') {
-            wasmModule = await wasmbin();
-        } else {
-            wasmModule = wasmbin;
-        }
-
-        // Provide wasm-bindgen glue functions as imports
-        const imports = {
-            './cooklang_wasm_bg.js': {
-                __wbindgen_is_undefined: wasmBindings.__wbindgen_is_undefined,
-                __wbindgen_string_get: wasmBindings.__wbindgen_string_get,
-                __wbg_parse_def2e24ef1252aff: wasmBindings.__wbg_parse_def2e24ef1252aff,
-                __wbg_stringify_f7ed6987935b4a24: wasmBindings.__wbg_stringify_f7ed6987935b4a24,
-                __wbindgen_throw: wasmBindings.__wbindgen_throw,
-                __wbindgen_init_externref_table: wasmBindings.__wbindgen_init_externref_table
-            }
-        };
-
-        // Instantiate the WASM module
-        // Note: When passed a Module, WebAssembly.instantiate returns an Instance directly
-        // TypeScript types are incorrect for this overload, so we cast through any
-        const wasmInstance = await WebAssembly.instantiate(wasmModule, imports) as any as WebAssembly.Instance;
-
-        // Set the WASM exports for the bindings to use (this is global state)
-        wasmBindings.__wbg_set_wasm(wasmInstance.exports);
-        wasmBindings.__wbindgen_init_externref_table();
-    })();
-
-    return wasmInitPromise;
-}
-
 // This is the custom view
 export class CookView extends TextFileView {
     settings: CooklangSettings;
@@ -92,12 +44,10 @@ export class CookView extends TextFileView {
     sourceEl: HTMLElement;
     editorView: EditorView;
     rawRecipe: CooklangRecipe | null = null;
-    parser: any = null;
     parserReady: Promise<void>;
     changeModeButton: HTMLElement;
     currentView: 'source' | 'preview';
-    alarmAudio: Howl;
-    timerAudio: Howl;
+    timerService: TimerService;
     data: string = '';
 
     constructor(leaf: WorkspaceLeaf, settings: CooklangSettings) {
@@ -105,7 +55,15 @@ export class CookView extends TextFileView {
         this.settings = settings;
 
         // Initialize parser asynchronously
-        this.parserReady = this.initializeParser();
+        this.parserReady = parserService.initialize();
+
+        // Initialize timer service
+        this.timerService = new TimerService({
+            tickSoundUrl: timerMp3,
+            alarmSoundUrl: alarmMp3,
+            tickVolume: 0.3,
+            alarmVolume: 0.3
+        });
 
         // Add Preview Container
         this.previewEl = this.contentEl.createDiv({cls: 'cook-preview-view'});
@@ -121,58 +79,8 @@ export class CookView extends TextFileView {
         // Initialize Editor with proper theme based on Obsidian theme
         this.initializeEditor();
 
-        this.alarmAudio = new Howl({
-            src: [alarmMp3],
-            volume: 0.3
-        });
-
-        this.timerAudio = new Howl({
-            src: [timerMp3],
-            volume: 0.3
-        });
-
         // Set default view
         this.setViewMode('source'); // Start in source mode by default
-    }
-
-    async initializeParser(): Promise<void> {
-        try {
-            // Initialize WASM globally (shared across all views)
-            await initializeWASM();
-
-            // Create the parser instance (using the shared WASM instance)
-            const rawParser = new wasmBindings.Parser();
-
-            // Create a wrapper that uses the library's CooklangRecipe wrapper
-            this.parser = {
-                parse: (input: string, scale?: number | null) => {
-                    const raw = rawParser.parse(input, scale);
-                    return [
-                        new CooklangRecipeClass(
-                            raw,
-                            rawParser.group_ingredients(raw),
-                            rawParser.group_cookware(raw)
-                        ),
-                        raw.report
-                    ];
-                },
-                set units(value: boolean) {
-                    rawParser.load_units = value;
-                },
-                get units(): boolean {
-                    return rawParser.load_units;
-                },
-                set extensions(value: number) {
-                    rawParser.extensions = value;
-                },
-                get extensions(): number {
-                    return rawParser.extensions;
-                }
-            };
-        } catch (error) {
-            console.error('Failed to initialize Cooklang parser:', error);
-            throw error;
-        }
     }
 
     async onload() {
@@ -240,8 +148,8 @@ export class CookView extends TextFileView {
             this.sourceEl.style.display = 'none';
             this.previewEl.style.display = 'block';
             // Parse and render the preview
-            if (this.parser) {
-                const [rawRecipe, report] = this.parser.parse(this.data);
+            if (parserService.isReady()) {
+                const [rawRecipe, report] = parserService.parse(this.data);
                 this.rawRecipe = rawRecipe;
                 this.renderPreview();
             }
@@ -256,28 +164,14 @@ export class CookView extends TextFileView {
         if (this.editorView) {
             this.editorView.destroy();
         }
+        // Clean up timer service
+        if (this.timerService) {
+            this.timerService.dispose();
+        }
     }
 
     makeTimer(button: HTMLElement, seconds: number, name: string) {
-        button.onclick = () => {
-            let time = seconds;
-
-            const span = button.querySelector('.amount');
-            if (!span) return;
-
-            const interval = setInterval(() => {
-                time--;
-                span.textContent = formatTime(time);
-
-                if (time <= 0) {
-                    clearInterval(interval);
-                    this.alarmAudio.play();
-                    new Notice(`Timer "${name}" has finished!`, 5000);
-                }
-            }, 1000);
-
-            this.timerAudio.play();
-        };
+        this.timerService.attachTimerToButton(button, seconds, name);
     }
 
     onPaneMenu(menu: any, source: string) {
@@ -338,8 +232,8 @@ export class CookView extends TextFileView {
     getViewData() {
         this.data = this.editorView.state.doc.toString();
         // Parse the recipe if parser is ready
-        if (this.parser) {
-            const [rawRecipe, report] = this.parser.parse(this.data);
+        if (parserService.isReady()) {
+            const [rawRecipe, report] = parserService.parse(this.data);
             this.rawRecipe = rawRecipe;
         }
         return this.data;
@@ -368,8 +262,10 @@ export class CookView extends TextFileView {
         }
 
         // Parse the recipe
-        const [rawRecipe, report] = this.parser.parse(this.data);
-        this.rawRecipe = rawRecipe;
+        if (parserService.isReady()) {
+            const [rawRecipe, report] = parserService.parse(this.data);
+            this.rawRecipe = rawRecipe;
+        }
         // if we're in preview view, also render that
         if (this.currentView === 'preview') this.renderPreview();
     }
