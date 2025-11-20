@@ -1,5 +1,5 @@
 import './styles.scss'
-import { Plugin, WorkspaceLeaf, addIcon, TFile } from 'obsidian';
+import { Plugin, WorkspaceLeaf, addIcon, TFile, TFolder, Menu } from 'obsidian';
 import { CookView } from './cookView'
 import { CooklangSettings, CookSettingsTab } from './settings'
 
@@ -22,6 +22,22 @@ export default class CookPlugin extends Plugin {
     this.registerExtensions(["cook"], "cook");
 
     this.addSettingTab(new CookSettingsTab(this.app, this));
+
+    // Register file explorer context menu
+    this.registerEvent(
+      this.app.workspace.on('file-menu', (menu: Menu, file: TFile | TFolder) => {
+        menu.addItem((item) => {
+          item
+            .setTitle('Create Recipe')
+            .setIcon('document-cook')
+            .onClick(async () => {
+              const folderPath = file instanceof TFolder ? file.path : file.parent?.path || '/';
+              const newFile = await this.cookFileCreator(folderPath);
+              this.app.workspace.getLeaf().openFile(newFile);
+            });
+        });
+      })
+    );
 
     // commands:
     // - Create new recipe
@@ -86,14 +102,18 @@ export default class CookPlugin extends Plugin {
     });
   }
 
-  cookFileCreator = async () => {
+  cookFileCreator = async (folderPath?: string) => {
     // Default to root folder
     let newFileFolderPath = '/';
 
-    // Try to get the current file's parent folder
-    const activeFile = this.app.workspace.getActiveFile();
-    if (activeFile && activeFile.parent) {
-      newFileFolderPath = activeFile.parent.path;
+    // Use provided folder path, or try to get the current file's parent folder
+    if (folderPath) {
+      newFileFolderPath = folderPath;
+    } else {
+      const activeFile = this.app.workspace.getActiveFile();
+      if (activeFile && activeFile.parent) {
+        newFileFolderPath = activeFile.parent.path;
+      }
     }
 
     // Ensure path ends with a slash
