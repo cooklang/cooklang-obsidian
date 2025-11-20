@@ -1,20 +1,6 @@
 import type { CooklangRecipe } from '@cooklang/cooklang-ts';
-import {
-    getMetadata,
-    getFlatIngredients,
-    getFlatCookware,
-    getFlatTimers,
-    getSteps,
-    quantity_display,
-    ingredient_display_name,
-    cookware_display_name,
-    getQuantityValue
-} from './recipeHelpers';
 import {TextFileView, setIcon, TFile, Keymap, WorkspaceLeaf, ViewStateResult, Notice} from 'obsidian'
 import {CooklangSettings} from './settings';
-import {Howl} from 'howler';
-import alarmMp3 from './alarm.mp3'
-import timerMp3 from './timer.mp3'
 import {EditorView, keymap, highlightActiveLine, lineNumbers, ViewPlugin} from "@codemirror/view"
 import {EditorState, Extension} from "@codemirror/state"
 import {syntaxHighlighting, defaultHighlightStyle, HighlightStyle} from "@codemirror/language"
@@ -22,12 +8,11 @@ import {oneDark} from "@codemirror/theme-one-dark"
 import {cooklang} from './mode/cook/cook'
 import {tags as t} from "@lezer/highlight"
 import {string} from "postcss-selector-parser";
-
-// Import WASM manually for proper initialization with Rollup
-// We import from _bg.js to bypass auto-initialization that doesn't work with Rollup
-import * as wasmBindings from '@cooklang/cooklang-ts/pkg/cooklang_wasm_bg.js';
-import { default as wasmbin } from '@cooklang/cooklang-ts/pkg/cooklang_wasm_bg.wasm';
-import { CooklangRecipe as CooklangRecipeClass } from '@cooklang/cooklang-ts';
+import { parserService } from './services/ParserService';
+import { TimerService } from './services/TimerService';
+import { PreviewRenderer } from './renderers/PreviewRenderer';
+import alarmMp3 from './alarm.mp3';
+import timerMp3 from './timer.mp3';
 
 // Define a light theme HighlightStyle for Cooklang
 const cooklangLightTheme = HighlightStyle.define([
@@ -39,49 +24,6 @@ const cooklangLightTheme = HighlightStyle.define([
     {tag: t.unit, color: "#cb4b16"}           // Units
 ])
 
-// Global WASM initialization - shared across all CookView instances
-// This prevents memory corruption when opening multiple recipe views
-let wasmInitPromise: Promise<void> | null = null;
-
-async function initializeWASM(): Promise<void> {
-    if (wasmInitPromise) {
-        return wasmInitPromise;
-    }
-
-    wasmInitPromise = (async () => {
-        // Get the WASM Module from Rollup
-        let wasmModule;
-        if (typeof wasmbin === 'function') {
-            wasmModule = await wasmbin();
-        } else {
-            wasmModule = wasmbin;
-        }
-
-        // Provide wasm-bindgen glue functions as imports
-        const imports = {
-            './cooklang_wasm_bg.js': {
-                __wbindgen_is_undefined: wasmBindings.__wbindgen_is_undefined,
-                __wbindgen_string_get: wasmBindings.__wbindgen_string_get,
-                __wbg_parse_def2e24ef1252aff: wasmBindings.__wbg_parse_def2e24ef1252aff,
-                __wbg_stringify_f7ed6987935b4a24: wasmBindings.__wbg_stringify_f7ed6987935b4a24,
-                __wbindgen_throw: wasmBindings.__wbindgen_throw,
-                __wbindgen_init_externref_table: wasmBindings.__wbindgen_init_externref_table
-            }
-        };
-
-        // Instantiate the WASM module
-        // Note: When passed a Module, WebAssembly.instantiate returns an Instance directly
-        // TypeScript types are incorrect for this overload, so we cast through any
-        const wasmInstance = await WebAssembly.instantiate(wasmModule, imports) as any as WebAssembly.Instance;
-
-        // Set the WASM exports for the bindings to use (this is global state)
-        wasmBindings.__wbg_set_wasm(wasmInstance.exports);
-        wasmBindings.__wbindgen_init_externref_table();
-    })();
-
-    return wasmInitPromise;
-}
-
 // This is the custom view
 export class CookView extends TextFileView {
     settings: CooklangSettings;
@@ -89,12 +31,11 @@ export class CookView extends TextFileView {
     sourceEl: HTMLElement;
     editorView: EditorView;
     rawRecipe: CooklangRecipe | null = null;
-    parser: any = null;
     parserReady: Promise<void>;
     changeModeButton: HTMLElement;
     currentView: 'source' | 'preview';
-    alarmAudio: Howl;
-    timerAudio: Howl;
+    timerService: TimerService;
+    previewRenderer: PreviewRenderer;
     data: string = '';
 
     constructor(leaf: WorkspaceLeaf, settings: CooklangSettings) {
@@ -102,7 +43,22 @@ export class CookView extends TextFileView {
         this.settings = settings;
 
         // Initialize parser asynchronously
-        this.parserReady = this.initializeParser();
+        this.parserReady = parserService.initialize();
+
+        // Initialize timer service
+        this.timerService = new TimerService({
+            tickSoundUrl: timerMp3,
+            alarmSoundUrl: alarmMp3,
+            tickVolume: 0.3,
+            alarmVolume: 0.3
+        });
+
+        // Initialize preview renderer
+        this.previewRenderer = new PreviewRenderer(
+            this.app,
+            this.settings,
+            this.timerService
+        );
 
         // Add Preview Container
         this.previewEl = this.contentEl.createDiv({cls: 'cook-preview-view'});
@@ -118,58 +74,8 @@ export class CookView extends TextFileView {
         // Initialize Editor with proper theme based on Obsidian theme
         this.initializeEditor();
 
-        this.alarmAudio = new Howl({
-            src: [alarmMp3],
-            volume: 0.3
-        });
-
-        this.timerAudio = new Howl({
-            src: [timerMp3],
-            volume: 0.3
-        });
-
         // Set default view
         this.setViewMode('source'); // Start in source mode by default
-    }
-
-    async initializeParser(): Promise<void> {
-        try {
-            // Initialize WASM globally (shared across all views)
-            await initializeWASM();
-
-            // Create the parser instance (using the shared WASM instance)
-            const rawParser = new wasmBindings.Parser();
-
-            // Create a wrapper that uses the library's CooklangRecipe wrapper
-            this.parser = {
-                parse: (input: string, scale?: number | null) => {
-                    const raw = rawParser.parse(input, scale);
-                    return [
-                        new CooklangRecipeClass(
-                            raw,
-                            rawParser.group_ingredients(raw),
-                            rawParser.group_cookware(raw)
-                        ),
-                        raw.report
-                    ];
-                },
-                set units(value: boolean) {
-                    rawParser.load_units = value;
-                },
-                get units(): boolean {
-                    return rawParser.load_units;
-                },
-                set extensions(value: number) {
-                    rawParser.extensions = value;
-                },
-                get extensions(): number {
-                    return rawParser.extensions;
-                }
-            };
-        } catch (error) {
-            console.error('Failed to initialize Cooklang parser:', error);
-            throw error;
-        }
     }
 
     async onload() {
@@ -237,8 +143,8 @@ export class CookView extends TextFileView {
             this.sourceEl.style.display = 'none';
             this.previewEl.style.display = 'block';
             // Parse and render the preview
-            if (this.parser) {
-                const [rawRecipe, report] = this.parser.parse(this.data);
+            if (parserService.isReady()) {
+                const [rawRecipe, report] = parserService.parse(this.data);
                 this.rawRecipe = rawRecipe;
                 this.renderPreview();
             }
@@ -253,42 +159,14 @@ export class CookView extends TextFileView {
         if (this.editorView) {
             this.editorView.destroy();
         }
+        // Clean up timer service
+        if (this.timerService) {
+            this.timerService.dispose();
+        }
     }
 
     makeTimer(button: HTMLElement, seconds: number, name: string) {
-        button.onclick = () => {
-            let time = seconds;
-
-            const span = button.querySelector('.amount');
-            if (!span) return;
-
-            const interval = setInterval(() => {
-                time--;
-                span.textContent = this.formatTime(time);
-
-                if (time <= 0) {
-                    clearInterval(interval);
-                    this.alarmAudio.play();
-                    new Notice(`Timer "${name}" has finished!`, 5000);
-                }
-            }, 1000);
-
-            this.timerAudio.play();
-        };
-    }
-
-    formatTime(seconds: number): string {
-        const hours = Math.floor(seconds / 3600);
-        const minutes = Math.floor((seconds % 3600) / 60);
-        const secs = seconds % 60;
-
-        if (hours > 0) {
-            return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-        } else if (minutes > 0) {
-            return `${minutes}:${secs.toString().padStart(2, '0')}`;
-        } else {
-            return `${secs}s`;
-        }
+        this.timerService.attachTimerToButton(button, seconds, name);
     }
 
     onPaneMenu(menu: any, source: string) {
@@ -349,8 +227,8 @@ export class CookView extends TextFileView {
     getViewData() {
         this.data = this.editorView.state.doc.toString();
         // Parse the recipe if parser is ready
-        if (this.parser) {
-            const [rawRecipe, report] = this.parser.parse(this.data);
+        if (parserService.isReady()) {
+            const [rawRecipe, report] = parserService.parse(this.data);
             this.rawRecipe = rawRecipe;
         }
         return this.data;
@@ -379,8 +257,10 @@ export class CookView extends TextFileView {
         }
 
         // Parse the recipe
-        const [rawRecipe, report] = this.parser.parse(this.data);
-        this.rawRecipe = rawRecipe;
+        if (parserService.isReady()) {
+            const [rawRecipe, report] = parserService.parse(this.data);
+            this.rawRecipe = rawRecipe;
+        }
         // if we're in preview view, also render that
         if (this.currentView === 'preview') this.renderPreview();
     }
@@ -422,203 +302,10 @@ export class CookView extends TextFileView {
 
     // render the preview view
     renderPreview() {
-
-        // clear the preview before adding the rest
-        this.previewEl.empty();
-
         // we can't render what we don't have...
         if (!this.rawRecipe) return;
 
-        const metadata = getMetadata(this.rawRecipe);
-        const ingredients = getFlatIngredients(this.rawRecipe);
-        const cookwares = getFlatCookware(this.rawRecipe);
-        const steps = getSteps(this.rawRecipe);
-        const timers = getFlatTimers(this.rawRecipe);
-
-        let recipeImage
-        if (this.settings.showImages) {
-            // add any files following the cooklang conventions to the recipe object
-            // https://cooklang.org/docs/spec/#adding-pictures
-            const otherFiles: TFile[] = this.file?.parent?.children.filter(f => (f instanceof TFile) && (f.basename == this.file?.basename || f.basename.startsWith(this.file?.basename + '.')) && f.name != this.file?.name) as TFile[] || [];
-            otherFiles.forEach(f => {
-                // convention specifies JPEGs and PNGs. Added GIFs as well. Why not?
-                if (f.extension == "jpg" || f.extension == "jpeg" || f.extension == "png" || f.extension == "gif" || f.extension == "webp") {
-                    // main recipe image
-                    if (f.basename == this.file?.basename) recipeImage = f;
-                }
-            })
-
-            // if there is a main image, put it as a banner image at the top
-            if (recipeImage) {
-                const img = this.previewEl.createEl('img', {cls: 'main-image'});
-                img.src = this.app.vault.getResourcePath(recipeImage);
-            }
-        }
-
-        function isValidUrl(str: string): boolean {
-            try {
-                new URL(str);
-                return true;
-            } catch {
-                return false;
-            }
-        }
-
-        if (metadata && Object.keys(metadata).length > 0) {
-            // Add the metadata if exist
-            this.previewEl.createEl('h2', { cls: 'metadata-header', text: this.settings.metadataLabel || 'Metadata' });
-            const ul = this.previewEl.createEl('ul', { cls: 'metadata' });
-            Object.entries(metadata).forEach(([key, value]) => {
-                const li = ul.createEl('li');
-                li.createEl('span', { cls: 'metadata-key', text: key });
-                // Prefix tags with a hashtag
-                if (key == 'tags') {
-                    const tags = value
-                        .split(",")
-                        .map(s => `#${s.trim()}`)
-                        .join(", ");
-                    li.appendText(tags);
-                }
-                else if (isValidUrl(value)) {
-                    li.createEl('a', {
-                        text: value,
-                        attr: { href: value, target: '_blank', rel: 'noopener' }
-                    });
-                }
-                else {
-                    li.appendText(`${value}`);
-                }
-            });
-        }
-
-        if (this.settings.showIngredientList && ingredients?.length) {
-            // Add the Ingredients header
-            this.previewEl.createEl('h2', {cls: 'ingredients-header', text: this.settings.ingredientLabel || 'Ingredients'});
-
-            // Add the ingredients list
-            const ul = this.previewEl.createEl('ul', {cls: 'ingredients'});
-            ingredients.forEach(ingredient => {
-                const li = ul.createEl('li');
-                if (ingredient.displayText) {
-                    li.createEl('span', {cls: 'amount', text: ingredient.displayText});
-                    li.appendText(' ');
-                }
-                li.appendText(ingredient.name);
-            });
-        }
-
-        if (this.settings.showCookwareList && cookwares?.length) {
-            // Add the Cookware header
-            this.previewEl.createEl('h2', {cls: 'cookware-header', text: this.settings.cookwareLabel || 'Cookware'});
-
-            // Add the Cookware list
-            const ul = this.previewEl.createEl('ul', {cls: 'cookware'});
-            cookwares.forEach(item => {
-                const li = ul.createEl('li');
-                if (item.displayText) {
-                    li.createEl('span', {cls: 'amount', text: item.displayText});
-                    li.appendText(' ');
-                }
-                li.appendText(item.name);
-            });
-        }
-
-        if (this.settings.showTimersList && timers?.length) {
-            // Add the Timer header
-            this.previewEl.createEl('h2', {cls: 'timer-header', text: this.settings.timersLabel ||'Timers'});
-
-            // Add the Timer list
-            const timerUl = this.previewEl.createEl('ul', {cls: 'timers'});
-            timers.forEach(timer => {
-                const li = timerUl.createEl('li');
-                if (timer.displayText) {
-                    li.createEl('span', {cls: 'amount', text: timer.displayText});
-                    li.appendText(' ');
-                }
-                li.appendText(timer.name ?? '');
-            });
-        }
-
-        // Add the Method header
-        this.previewEl.createEl('h2', {cls: 'method-header', text: this.settings.methodLabel || 'Method'});
-
-        // Add the Method list
-        const methodOl = this.previewEl.createEl('ol', {cls: 'method'});
-
-        // unitMap to normalize different time units (min, hrs) into seconds
-        const unitMap: Record<string, number> = {};
-		(this.settings.minutesLabel || "m,min,minute,minutes")
-			.split(",")
-			.map(s => s.trim())
-			.filter(Boolean)
-			.forEach(label => {
-				unitMap[label] = 60;
-			});
-
-		(this.settings.hoursLabel || "h,hr,hrs,hour,hours")
-			.split(",")
-			.map(s => s.trim())
-			.filter(Boolean)
-			.forEach(label => {
-				unitMap[label] = 3600;
-			});
-
-        steps.forEach((step, i) => {
-            const li = methodOl.createEl('li');
-            /*
-                  // Add step image if it exists
-                  if (this.settings.showImages && step.image) {
-                    const img = li.createEl('img', { cls: 'step-image' });
-                    img.src = this.app.vault.getResourcePath(step.image);
-                  }
-            */
-            // Add step text
-            const text = li.createEl('div', {cls: 'step-text'});
-            step.forEach((part) => {
-                if (part.type === 'text') {
-                    text.appendText(part.value);
-                } else {
-                    const span = text.createEl('span');
-                    if (part.type === "ingredient") {
-                        span.addClass('ingredient');
-                        const ing = part.ingredient;
-                        span.appendText(ingredient_display_name(ing));
-                        if (ing.quantity) {
-                            span.appendText(' (');
-                            span.createEl('span', {cls: 'amount', text: quantity_display(ing.quantity)});
-                            span.appendText(')');
-                        }
-                    } else if (part.type === "cookware") {
-                        span.addClass('cookware');
-                        const cw = part.cookware;
-                        span.appendText(cookware_display_name(cw));
-                        if (cw.quantity) {
-                            span.appendText(' (');
-                            span.createEl('span', {cls: 'amount', text: quantity_display(cw.quantity)});
-                            span.appendText(')');
-                        }
-                    } else if (part.type === "timer") {
-                        span.addClass('timer');
-                        const tm = part.timer;
-                        const button = span.createEl('button', {cls: 'timer-button'});
-                        button.appendText('⏲');
-
-                        const numericQty = getQuantityValue(tm.quantity);
-                        if (numericQty !== null) {
-                            button.appendText(' ');
-                            const unit = tm.quantity?.unit;
-                            const multiplier = unit ? (unitMap as Record<string, number>)[unit.toLowerCase()] ?? 1 : 1;
-                            const seconds = numericQty * multiplier;
-                            button.createEl('span', {cls: 'amount', text: this.formatTime(seconds)});
-                            this.makeTimer(button, seconds, tm.name ?? '');
-                        }
-                        if (tm.name) {
-                            button.appendText(' ');
-                            button.createEl('span', {cls: 'name', text: tm.name});
-                        }
-                    }
-                }
-            })
-        });
+        // Delegate to preview renderer
+        this.previewRenderer.render(this.rawRecipe, this.previewEl, this.file);
     }
 }
