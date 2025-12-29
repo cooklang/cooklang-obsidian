@@ -18,8 +18,15 @@ export class IngredientListRenderer {
      * Render ingredients list section if enabled and ingredients exist
      * @param recipe - Parsed recipe object
      * @param container - Container element to render into
+     * @param checkedIngredients - Set of checked ingredient IDs
+     * @param onToggle - Callback when ingredient is toggled
      */
-    public render(recipe: CooklangRecipe, container: HTMLElement): void {
+    public render(
+        recipe: CooklangRecipe, 
+        container: HTMLElement,
+        checkedIngredients?: Set<string>,
+        onToggle?: () => void
+    ): void {
         if (!this.settings.showIngredientList) {
             return; // Feature disabled
         }
@@ -40,7 +47,37 @@ export class IngredientListRenderer {
         const ul = container.createEl('ul', { cls: 'ingredients' });
 
         ingredients.forEach(ingredient => {
-            const li = ul.createEl('li');
+            // Create unique ID for this ingredient
+            const ingredientId = `${ingredient.name}-${ingredient.displayText || 'none'}`;
+            const isChecked = checkedIngredients?.has(ingredientId) || false;
+
+            console.log('Rendering ingredient:', ingredientId, 'isChecked:', isChecked);
+
+            const li = ul.createEl('li', { 
+                cls: `cook-ingredient ${isChecked ? 'ingredient-checked' : ''}`
+            });
+
+            // Apply inline styles for checked state
+            if (isChecked) {
+                li.style.textDecoration = 'line-through';
+                li.style.opacity = '0.5';
+            }
+
+            // Add click handler if checkedIngredients is provided
+            if (checkedIngredients && onToggle) {
+                li.style.cursor = 'pointer';
+                li.onclick = () => {
+                    if (isChecked) {
+                        checkedIngredients.delete(ingredientId);
+                        console.log('Unchecked:', ingredientId, 'Set now has:', checkedIngredients.size);
+                    } else {
+                        checkedIngredients.add(ingredientId);
+                        console.log('Checked:', ingredientId, 'Set now has:', checkedIngredients.size);
+                    }
+                    console.log('Current checked ingredients:', Array.from(checkedIngredients));
+                    onToggle();
+                };
+            }
 
             // Add quantity if present
             if (ingredient.displayText) {

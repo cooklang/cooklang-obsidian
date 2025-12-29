@@ -38,6 +38,7 @@ export class CookView extends TextFileView {
     timerService: TimerService;
     previewRenderer: PreviewRenderer;
     data: string = '';
+    checkedIngredients: Set<string> = new Set();
 
     constructor(leaf: WorkspaceLeaf, settings: CooklangSettings) {
         super(leaf);
@@ -165,6 +166,8 @@ export class CookView extends TextFileView {
         if (this.timerService) {
             this.timerService.dispose();
         }
+        // Clear checked ingredients state
+        this.checkedIngredients.clear();
     }
 
     makeTimer(button: HTMLElement, seconds: number, name: string) {
@@ -332,7 +335,13 @@ export class CookView extends TextFileView {
         // we can't render what we don't have...
         if (!this.rawRecipe) return;
 
-        // Delegate to preview renderer
-        this.previewRenderer.render(this.rawRecipe, this.previewEl, this.file);
+        // Delegate to preview renderer with checked ingredients state
+        this.previewRenderer.render(
+            this.rawRecipe, 
+            this.previewEl, 
+            this.file,
+            this.checkedIngredients,
+            () => this.renderPreview() // Re-render on toggle
+        );
     }
 }

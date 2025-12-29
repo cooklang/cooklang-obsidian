@@ -35,6 +35,21 @@
     column-count: 2;
   }
 
+  // Ingredient checklist styles
+  ul.ingredients li.cook-ingredient {
+    user-select: none;
+    transition: opacity 0.2s ease;
+
+    &:hover {
+      opacity: 0.7;
+    }
+
+    &.ingredient-checked {
+      text-decoration: line-through !important;
+      opacity: 0.5 !important;
+    }
+  }
+
   .cook-preview-view ul.metadata {
     padding-left: 0;
   }
