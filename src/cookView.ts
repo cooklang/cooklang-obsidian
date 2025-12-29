@@ -5,6 +5,7 @@ import {EditorView, keymap, highlightActiveLine, lineNumbers, ViewPlugin} from "
 import {EditorState, Extension} from "@codemirror/state"
 import {syntaxHighlighting, defaultHighlightStyle, HighlightStyle} from "@codemirror/language"
 import {oneDark} from "@codemirror/theme-one-dark"
+import {defaultKeymap} from "@codemirror/commands"
 import {cooklang} from './mode/cook/cook'
 import {tags as t} from "@lezer/highlight"
 import {string} from "postcss-selector-parser";
@@ -109,6 +110,7 @@ export class CookView extends TextFileView {
                 syntaxHighlighting(defaultHighlightStyle) :
                 syntaxHighlighting(cooklangLightTheme),
             keymap.of([
+                ...defaultKeymap,  // Include all default editing commands (Enter, Backspace, etc.)
                 {
                     key: 'Mod-e',
                     run: () => {
@@ -284,11 +286,36 @@ export class CookView extends TextFileView {
     }
 
     canAcceptExtension(extension: string) {
-        return extension == 'cook';
+        // Accept both .cook and .md files
+        return extension === 'cook' || extension === 'md';
     }
 
     getViewType() {
         return "cook";
+    }
+
+    // Override to save the current mode in view state
+    getState() {
+        const state = super.getState();
+        return {
+            ...state,
+            mode: this.currentView
+        };
+    }
+
+    // Override to restore the mode from view state
+    async setState(state: any, result: ViewStateResult) {
+        await super.setState(state, result);
+        
+        // If a mode was specified in the state, switch to that mode
+        if (state.mode && (state.mode === 'source' || state.mode === 'preview')) {
+            // Use setTimeout to ensure the view is fully loaded first
+            setTimeout(() => {
+                this.setViewMode(state.mode);
+            }, 10);
+        }
+        
+        return;
     }
 
     // when the view is resized, refresh CodeMirror

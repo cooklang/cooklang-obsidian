@@ -21,11 +21,47 @@ export default class CookPlugin extends Plugin {
     this.registerView("cook", this.cookViewCreator);
     this.registerExtensions(["cook"], "cook");
 
+    // Auto-detect recipe files by frontmatter (recipe: true)
+    this.registerEvent(
+      this.app.workspace.on('active-leaf-change', (leaf) => {
+        if (!leaf) return;
+        
+        const state = leaf.getViewState();
+        
+        // Only process markdown views
+        if (state.type === 'markdown' && state.state?.file && typeof state.state.file === 'string') {
+          const file = this.app.vault.getAbstractFileByPath(state.state.file);
+          
+          if (file instanceof TFile && file.extension === 'md') {
+            // Check frontmatter for recipe: true
+            const metadata = this.app.metadataCache.getFileCache(file);
+            const isRecipe = metadata?.frontmatter?.recipe === true;
+            
+            if (isRecipe) {
+              // Switch to cook view in preview mode
+              setTimeout(() => {
+                if (leaf.view.getViewType() === 'markdown') {
+                  leaf.setViewState({
+                    type: 'cook',
+                    state: { 
+                      file: file.path,
+                      mode: 'preview'
+                    }
+                  });
+                }
+              }, 50);
+            }
+          }
+        }
+      })
+    );
+
     this.addSettingTab(new CookSettingsTab(this.app, this));
 
     // Register file explorer context menu
     this.registerEvent(
       this.app.workspace.on('file-menu', (menu: Menu, file: TFile | TFolder) => {
+        // Add "Create Recipe" option for folders and files
         menu.addItem((item) => {
           item
             .setTitle('Create Recipe')
@@ -36,6 +72,53 @@ export default class CookPlugin extends Plugin {
               this.app.workspace.getLeaf().openFile(newFile);
             });
         });
+
+        // Add "Open as Recipe" option for .md files
+        if (file instanceof TFile && file.extension === 'md') {
+          menu.addItem((item) => {
+            item
+              .setTitle('Open as Recipe')
+              .setIcon('document-cook')
+              .onClick(() => {
+                const leaf = this.app.workspace.getLeaf();
+                leaf.openFile(file).then(() => {
+                  leaf.setViewState({
+                    type: 'cook',
+                    state: { 
+                      file: file.path,
+                      mode: 'preview'
+                    }
+                  });
+                });
+              });
+          });
+        }
+      })
+    );
+
+    // Register editor context menu (right-click inside open file)
+    this.registerEvent(
+      this.app.workspace.on('editor-menu', (menu, editor, view) => {
+        const file = view.file;
+        if (file && file.extension === 'md') {
+          menu.addItem((item) => {
+            item
+              .setTitle('Open as Recipe')
+              .setIcon('document-cook')
+              .onClick(() => {
+                const leaf = this.app.workspace.activeLeaf;
+                if (leaf) {
+                  leaf.setViewState({
+                    type: 'cook',
+                    state: { 
+                      file: file.path,
+                      mode: 'preview'
+                    }
+                  });
+                }
+              });
+          });
+        }
       })
     );
 
@@ -63,24 +146,34 @@ export default class CookPlugin extends Plugin {
       }
     })
 
-    // register the convert to cook command
+    // register the convert command (bidirectional: .md <-> .cook)
     this.addCommand({
-      id: "convert-to-cook",
-      name: "Convert markdown file to `.cook`",
+      id: "convert-recipe-extension",
+      name: "Convert recipe file extension (.md ↔ .cook)",
       checkCallback: (checking:boolean) => {
         const file = this.app.workspace.getActiveFile();
         if (!file) return false;
         const isMd = file.extension === "md";
+        const isCook = file.extension === "cook";
+        
         if(checking) {
-          return isMd;
+          // Show command for both .md and .cook files
+          return isCook || isMd;
         }
         else if(isMd) {
-          // replace last instance of .md with .cook
-          this.app.vault.rename(file,file.path.replace(/\.md$/, ".cook")).then(() => {
-            // Get the renamed file
+          // Convert .md to .cook
+          this.app.vault.rename(file, file.path.replace(/\.md$/, ".cook")).then(() => {
             const renamedFile = this.app.vault.getAbstractFileByPath(file.path.replace(/\.md$/, ".cook"));
             if (renamedFile && renamedFile instanceof TFile) {
-              // Open the file in the current leaf
+              this.app.workspace.getLeaf().openFile(renamedFile);
+            }
+          });
+        }
+        else if(isCook) {
+          // Convert .cook to .md
+          this.app.vault.rename(file, file.path.replace(/\.cook$/, ".md")).then(() => {
+            const renamedFile = this.app.vault.getAbstractFileByPath(file.path.replace(/\.cook$/, ".md"));
+            if (renamedFile && renamedFile instanceof TFile) {
               this.app.workspace.getLeaf().openFile(renamedFile);
             }
           });
@@ -99,6 +192,29 @@ export default class CookPlugin extends Plugin {
           activeLeaf.view.switchMode();
         }
       },
+    });
+
+    this.addCommand({
+      id: "open-as-recipe",
+      name: "Open current file as recipe",
+      checkCallback: (checking: boolean) => {
+        const file = this.app.workspace.getActiveFile();
+        const leaf = this.app.workspace.activeLeaf;
+        
+        if (!file || !leaf || file.extension !== 'md') return false;
+        
+        // Only show if currently in markdown view
+        if (checking) return leaf.view.getViewType() === 'markdown';
+        
+        // Switch to cook view in preview mode
+        leaf.setViewState({
+          type: 'cook',
+          state: { 
+            file: file.path,
+            mode: 'preview'
+          }
+        });
+      }
     });
   }
 
