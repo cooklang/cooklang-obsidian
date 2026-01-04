@@ -1,8 +1,8 @@
 {
   "id": "cooklang-obsidian",
   "name": "Cooklang Editor",
-  "author": "nelly2k",
-  "authorUrl": "https://github.com/nelly2k",
+  "author": "death_au",
+  "authorUrl": "https://github.com/deathau",
   "description": "Edit and display Cooklang recipes in Obsidian (fork of deathau's plugin)",
   "isDesktopOnly": false,
   "version": "0.6.1",
