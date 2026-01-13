@@ -51,8 +51,6 @@ export class IngredientListRenderer {
             const ingredientId = `${ingredient.name}-${ingredient.displayText || 'none'}`;
             const isChecked = checkedIngredients?.has(ingredientId) || false;
 
-            console.log('Rendering ingredient:', ingredientId, 'isChecked:', isChecked);
-
             const li = ul.createEl('li', { 
                 cls: `cook-ingredient ${isChecked ? 'ingredient-checked' : ''}`
             });
@@ -69,12 +67,9 @@ export class IngredientListRenderer {
                 li.onclick = () => {
                     if (isChecked) {
                         checkedIngredients.delete(ingredientId);
-                        console.log('Unchecked:', ingredientId, 'Set now has:', checkedIngredients.size);
                     } else {
                         checkedIngredients.add(ingredientId);
-                        console.log('Checked:', ingredientId, 'Set now has:', checkedIngredients.size);
                     }
-                    console.log('Current checked ingredients:', Array.from(checkedIngredients));
                     onToggle();
                 };
             }
