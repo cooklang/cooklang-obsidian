@@ -3,8 +3,8 @@
   "name": "Cooklang Editor",
   "author": "death_au",
   "authorUrl": "https://github.com/deathau",
-  "description": "Edit and display Cooklang recipes in Obsidian",
+  "description": "Edit and display Cooklang recipes in Obsidian (fork of deathau's plugin)",
   "isDesktopOnly": false,
-  "version": "0.6.0",
+  "version": "0.6.1",
   "minAppVersion": "1.8.0"
 }

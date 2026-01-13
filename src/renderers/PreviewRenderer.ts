@@ -44,11 +44,15 @@ export class PreviewRenderer {
      * @param recipe - Parsed recipe object
      * @param container - Container element to render into
      * @param file - Recipe file (for finding images)
+     * @param checkedIngredients - Set of checked ingredient IDs
+     * @param onIngredientToggle - Callback when ingredient is toggled
      */
     public render(
         recipe: CooklangRecipe,
         container: HTMLElement,
-        file: TFile | null
+        file: TFile | null,
+        checkedIngredients?: Set<string>,
+        onIngredientToggle?: () => void
     ): void {
         // Clear container
         container.empty();
@@ -60,7 +64,7 @@ export class PreviewRenderer {
 
         // Render all sections in order
         this.metadataRenderer.render(recipe, container);
-        this.ingredientRenderer.render(recipe, container);
+        this.ingredientRenderer.render(recipe, container, checkedIngredients, onIngredientToggle);
         this.cookwareRenderer.render(recipe, container);
         this.timerListRenderer.render(recipe, container);
         this.methodStepsRenderer.render(recipe, container);
