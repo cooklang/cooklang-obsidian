@@ -289,8 +289,7 @@ export class CookView extends TextFileView {
     }
 
     canAcceptExtension(extension: string) {
-        // Accept both .cook and .md files
-        return extension === 'cook' || extension === 'md';
+        return extension === 'cook';
     }
 
     getViewType() {
