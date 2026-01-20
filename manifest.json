@@ -5,6 +5,6 @@
   "authorUrl": "https://github.com/deathau",
   "description": "Edit and display Cooklang recipes in Obsidian (fork of deathau's plugin)",
   "isDesktopOnly": false,
-  "version": "0.6.1",
+  "version": "0.6.3",
   "minAppVersion": "1.8.0"
 }
