@@ -17,6 +17,7 @@ export class CooklangSettings {
   timersTick: boolean = true;
   timersRing: boolean = true;
   lineWrap: boolean = true;
+  highlightIngredientCookware: boolean = false;
   metadataLabel: string = "";
   ingredientLabel: string = "";
   cookwareLabel: string = "";
@@ -71,6 +72,17 @@ export class CookSettingsTab extends PluginSettingTab {
         .setValue(this.plugin.settings.showIngredientList)
         .onChange((value: boolean) => {
           this.plugin.settings.showIngredientList = value;
+          this.plugin.saveData(this.plugin.settings);
+          this.plugin.reloadCookViews();
+        }));
+
+    new Setting(containerEl)
+      .setName('Highlight Ingredients & Cookware')
+      .setDesc('Highlight ingredients and cookware in different colors in the method steps')
+      .addToggle(toggle => toggle
+        .setValue(this.plugin.settings.highlightIngredientCookware)
+        .onChange((value: boolean) => {
+          this.plugin.settings.highlightIngredientCookware = value;
           this.plugin.saveData(this.plugin.settings);
           this.plugin.reloadCookViews();
         }));

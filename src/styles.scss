@@ -89,6 +89,16 @@
     margin-inline-end: 0px;
   }
 
+  span.cookware-highlight{
+    color: var(--text-error);
+    background-color: hsl(from var(--text-error) h s calc(l + 20) / .2);
+  }
+
+  span.ingredient-highlight{
+    color: var(--text-warning);
+    background-color: hsl(from var(--text-warning) h s calc(l + 20) / .2);
+  }
+
   span.timer,
   span.ingredient,
   span.cookware {
