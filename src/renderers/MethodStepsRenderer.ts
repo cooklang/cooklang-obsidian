@@ -80,6 +80,11 @@ export class MethodStepsRenderer {
         span.addClass('ingredient');
         span.appendText(ingredient_display_name(ingredient));
 
+        // Highlight color if enabled
+        if (this.settings.highlightIngredientCookware) {
+            span.addClass('ingredient-highlight')
+        }
+
         if (ingredient.quantity) {
             span.appendText(' (');
             span.createEl('span', {
@@ -96,6 +101,11 @@ export class MethodStepsRenderer {
     private renderInlineCookware(span: HTMLSpanElement, cookware: any): void {
         span.addClass('cookware');
         span.appendText(cookware_display_name(cookware));
+
+        // Highlight color if enabled
+        if (this.settings.highlightIngredientCookware) {
+            span.addClass('cookware-highlight')
+        }
 
         if (cookware.quantity) {
             span.appendText(' (');
