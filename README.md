@@ -6,6 +6,8 @@ A plugin for [Obsidian](https://obsidian.md) adding support for [Cooklang](https
 
 ![Screenshot](https://github.com/cooklang/cooklang-obsidian/raw/main/screenshot.png)
 
+> Looking for maintainers, reach out dubadub on Discor server.
+
 ## Installation
 - This plugin has been submitted community plugins repo. You can install it from Communinty Plugins within Obsidian.
 - You can build and install the plugin manually by checking out the files to `<your vault>/.obsidian/plugins/cooklang-obsidian` and running `npm install` and then `npm run build`.
