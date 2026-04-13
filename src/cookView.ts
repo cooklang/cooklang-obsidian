@@ -105,7 +105,6 @@ export class CookView extends TextFileView {
             lineNumbers(),
             highlightActiveLine(),
             cooklang, // Our custom Cooklang language support
-            EditorView.lineWrapping,
             // Add theme-aware syntax highlighting
             isDark ?
                 syntaxHighlighting(defaultHighlightStyle) :
@@ -121,6 +120,11 @@ export class CookView extends TextFileView {
                 }
             ])
         ];
+
+        // Add `EditorView.lineWrapping` if the `lineWrap` setting is enabled.
+        if (this.settings.lineWrap) {
+            extensions.push(EditorView.lineWrapping);
+        }
 
         // Add oneDark theme only in dark mode
         if (isDark) {
