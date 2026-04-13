@@ -126,25 +126,31 @@ export class MethodStepsRenderer {
         unitMap: Record<string, number>
     ): void {
         span.addClass('timer');
-        const button = span.createEl('button', { cls: 'timer-button' });
-        button.appendText('⏲');
+
+        // If `showTimersInline` is true nest everything in a button element.
+        if (this.settings.showTimersInline) {
+            span = span.createEl('button', { cls: 'timer-button' });
+        }
+        span.appendText('⏲');
 
         const numericQty = getQuantityValue(timer.quantity);
         if (numericQty !== null) {
-            button.appendText(' ');
+            span.appendText(' ');
             const unit = timer.quantity?.unit;
             const multiplier = unit ? unitMap[unit.toLowerCase()] ?? 1 : 1;
             const seconds = numericQty * multiplier;
 
-            button.createEl('span', { cls: 'amount', text: formatTime(seconds) });
+            span.createEl('span', { cls: 'amount', text: formatTime(seconds) });
 
-            // Attach timer functionality to button
-            this.timerService.attachTimerToButton(button, seconds, timer.name ?? '');
+            // Attach timer functionality if the element is a button.
+            if (span instanceof HTMLButtonElement) {
+                this.timerService.attachTimerToButton(span, seconds, timer.name ?? '');
+            }
         }
 
         if (timer.name) {
-            button.appendText(' ');
-            button.createEl('span', { cls: 'name', text: timer.name });
+            span.appendText(' ');
+            span.createEl('span', { cls: 'name', text: timer.name });
         }
     }
 }
