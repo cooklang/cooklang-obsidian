@@ -85,7 +85,7 @@ export class MethodStepsRenderer {
             span.addClass('ingredient-highlight')
         }
 
-        if (ingredient.quantity) {
+        if (this.settings.showQuantitiesInline && ingredient.quantity) {
             span.appendText(' (');
             span.createEl('span', {
                 cls: 'amount',
