@@ -9,6 +9,7 @@
 import { Howl } from 'howler';
 import { Notice } from 'obsidian';
 import { formatTime } from '../utils/timeFormatters';
+import { CooklangSettings } from 'src/settings';
 
 /**
  * Timer state data
@@ -42,9 +43,10 @@ export class TimerService {
 
     /**
      * Create a new TimerService
+     * @param settings - Plugin settings
      * @param config - Configuration with sound URLs and volumes
      */
-    constructor(config: TimerServiceConfig) {
+    constructor(private settings: CooklangSettings, config: TimerServiceConfig) {
         this.tickSound = new Howl({
             src: [config.tickSoundUrl],
             volume: config.tickVolume ?? 0.3
@@ -200,14 +202,14 @@ export class TimerService {
      * Play tick sound
      */
     public playTick(): void {
-        this.tickSound.play();
+        if (this.settings.timersTick) this.tickSound.play();
     }
 
     /**
      * Play alarm sound
      */
     public playAlarm(): void {
-        this.alarmSound.play();
+        if (this.settings.timersRing) this.alarmSound.play();
     }
 
     /**

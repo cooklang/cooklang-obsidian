@@ -48,12 +48,15 @@ export class CookView extends TextFileView {
         this.parserReady = parserService.initialize();
 
         // Initialize timer service
-        this.timerService = new TimerService({
-            tickSoundUrl: timerMp3,
-            alarmSoundUrl: alarmMp3,
-            tickVolume: 0.3,
-            alarmVolume: 0.3
-        });
+        this.timerService = new TimerService(
+            this.settings,
+            {
+                tickSoundUrl: timerMp3,
+                alarmSoundUrl: alarmMp3,
+                tickVolume: 0.3,
+                alarmVolume: 0.3
+            },
+        );
 
         // Initialize preview renderer
         this.previewRenderer = new PreviewRenderer(
