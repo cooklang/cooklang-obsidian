@@ -61,17 +61,20 @@ export default class CookPlugin extends Plugin {
     // Register file explorer context menu
     this.registerEvent(
       this.app.workspace.on('file-menu', (menu: Menu, file: TFile | TFolder) => {
-        // Add "Create Recipe" option for folders and files
-        menu.addItem((item) => {
-          item
-            .setTitle('Create Recipe')
-            .setIcon('document-cook')
-            .onClick(async () => {
-              const folderPath = file instanceof TFolder ? file.path : file.parent?.path || '/';
-              const newFile = await this.cookFileCreator(folderPath);
-              this.app.workspace.getLeaf().openFile(newFile);
-            });
-        });
+        if (file instanceof TFolder) {
+          // Add "New recipe" option for folders
+          menu.addItem((item) => {
+            item
+              .setTitle('New recipe')
+              .setIcon('document-cook')
+              .setSection('action-primary')
+              .onClick(async () => {
+                const folderPath = file.path;
+                const newFile = await this.cookFileCreator(folderPath);
+                this.app.workspace.getLeaf().openFile(newFile);
+              });
+          });
+        }
 
         // Add "Open as Recipe" option for .md files
         if (file instanceof TFile && file.extension === 'md') {
