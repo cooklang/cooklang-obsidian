@@ -6,7 +6,7 @@
 
 import type { CooklangRecipe } from '@cooklang/cooklang-ts';
 import { CooklangSettings } from '../settings';
-import { getFlatIngredients } from '../recipeHelpers';
+import { consolidateIngredients } from '../recipeHelpers';
 
 /**
  * Renders recipe ingredients list section
@@ -22,7 +22,7 @@ export class IngredientListRenderer {
      * @param onToggle - Callback when ingredient is toggled
      */
     public render(
-        recipe: CooklangRecipe, 
+        recipe: CooklangRecipe,
         container: HTMLElement,
         checkedIngredients?: Set<string>,
         onToggle?: () => void
@@ -31,7 +31,7 @@ export class IngredientListRenderer {
             return; // Feature disabled
         }
 
-        const ingredients = getFlatIngredients(recipe);
+        const ingredients = consolidateIngredients(recipe.ingredients);
 
         if (!ingredients || ingredients.length === 0) {
             return; // No ingredients to render
@@ -48,12 +48,10 @@ export class IngredientListRenderer {
 
         ingredients.forEach(ingredient => {
             // Create unique ID for this ingredient
-            const ingredientId = `${ingredient.name}-${ingredient.displayText || 'none'}`;
+            const ingredientId = ingredient.name;
             const isChecked = checkedIngredients?.has(ingredientId) || false;
 
-            console.log('Rendering ingredient:', ingredientId, 'isChecked:', isChecked);
-
-            const li = ul.createEl('li', { 
+            const li = ul.createEl('li', {
                 cls: `cook-ingredient ${isChecked ? 'ingredient-checked' : ''}`
             });
 
@@ -69,12 +67,9 @@ export class IngredientListRenderer {
                 li.onclick = () => {
                     if (isChecked) {
                         checkedIngredients.delete(ingredientId);
-                        console.log('Unchecked:', ingredientId, 'Set now has:', checkedIngredients.size);
                     } else {
                         checkedIngredients.add(ingredientId);
-                        console.log('Checked:', ingredientId, 'Set now has:', checkedIngredients.size);
                     }
-                    console.log('Current checked ingredients:', Array.from(checkedIngredients));
                     onToggle();
                 };
             }
@@ -87,6 +82,11 @@ export class IngredientListRenderer {
 
             // Add ingredient name
             li.appendText(ingredient.name);
+
+            // Add divided label if ingredient is used in multiple steps
+            if (ingredient.isDivided) {
+                li.appendText(', divided');
+            }
         });
     }
 }

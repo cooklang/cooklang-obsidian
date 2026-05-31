@@ -16,7 +16,9 @@ export {
     cookware_display_name
 } from '@cooklang/cooklang-ts';
 
-import type { CooklangRecipe } from '@cooklang/cooklang-ts';
+import type { CooklangRecipe, Ingredient } from '@cooklang/cooklang-ts';
+import { getQuantityValue, getQuantityUnit, quantity_display } from '@cooklang/cooklang-ts';
+import { formatNumber } from './utils/numberFormatters';
 
 /** Convert raw metadata Map to plain object */
 export function getMetadata(recipe: CooklangRecipe): Record<string, string> {
@@ -25,6 +27,74 @@ export function getMetadata(recipe: CooklangRecipe): Record<string, string> {
         metadata[String(key)] = String(value);
     });
     return metadata;
+}
+
+/** Ingredient with consolidated quantity across all uses in the recipe */
+export interface ConsolidatedIngredient {
+    name: string;
+    displayText: string | null;
+    isDivided: boolean;
+}
+
+/**
+ * Groups duplicate ingredient names and sums compatible quantities.
+ * Ingredients used more than once are marked as divided.
+ * @param ingredients - Raw ingredient list from the parsed recipe
+ * @returns One entry per unique ingredient name
+ */
+export function consolidateIngredients(ingredients: Ingredient[]): ConsolidatedIngredient[] {
+    const groups = new Map<string, Ingredient[]>();
+
+    ingredients.forEach(ing => {
+        const name = ing.alias ?? ing.name;
+        if (!groups.has(name)) groups.set(name, []);
+        groups.get(name)!.push(ing);
+    });
+
+    const result: ConsolidatedIngredient[] = [];
+
+    groups.forEach((group, name) => {
+        const isDivided = group.length > 1;
+
+        if (!isDivided) {
+            const ing = group[0];
+            result.push({
+                name,
+                displayText: ing.quantity ? quantity_display(ing.quantity) : null,
+                isDivided: false
+            });
+            return;
+        }
+
+        // Group numeric quantities by unit, collect non-numeric display texts
+        const unitTotals = new Map<string | null, number>();
+        const fallbackTexts: string[] = [];
+
+        group.forEach(ing => {
+            if (!ing.quantity) return;
+            const num = getQuantityValue(ing.quantity);
+            const unit = getQuantityUnit(ing.quantity);
+            if (num !== null) {
+                unitTotals.set(unit, (unitTotals.get(unit) ?? 0) + num);
+            } else {
+                fallbackTexts.push(quantity_display(ing.quantity));
+            }
+        });
+
+        const parts: string[] = [];
+        unitTotals.forEach((total, unit) => {
+            parts.push(unit ? `${formatNumber(total)} ${unit}` : formatNumber(total));
+        });
+        parts.push(...fallbackTexts);
+
+        result.push({
+            name,
+            displayText: parts.length > 0 ? parts.join(', ') : null,
+            isDivided: true
+        });
+    });
+
+    return result;
 }
 
 /** Get all steps with their parts expanded */
