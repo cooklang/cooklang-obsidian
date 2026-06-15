@@ -1,23 +1,71 @@
+/**
+ * IngredientListRenderer — checklist grouped by Cooklang section when the recipe
+ * has named sections. Quantities come from the already-scaled recipe (CookView
+ * re-parses with scale). Checkboxes are keyed by ingredient name so scaling /
+ * re-render preserves checked state.
+ */
 import { CooklangSettings } from '../settings';
 import { getFlatIngredients } from '../recipeHelpers';
-import type { SectionView } from '../utils/sectionHelpers';
+import type { FlatIngredient } from '@cooklang/cooklang-ts';
+import { hasNamedSections, type SectionView } from '../utils/sectionHelpers';
 import type { RenderContext } from './types';
 
 export class IngredientListRenderer {
     constructor(private settings: CooklangSettings) {}
 
-    render(container: HTMLElement, ctx: RenderContext, _sections: SectionView[]): void {
+    render(container: HTMLElement, ctx: RenderContext, sections: SectionView[]): void {
         if (!this.settings.showIngredientList) return;
-        const items = getFlatIngredients(ctx.recipe);
-        if (!items.length) return;
+
+        const all = getFlatIngredients(ctx.recipe);
+        if (!all.length) return;
+
         const region = container.createDiv({ cls: 'cook-ingredients' });
         region.id = 'cook-ingredients';
-        region.createEl('h2', { cls: 'cook-section-title', text: this.settings.ingredientLabel || 'Ingredients' });
-        const ul = region.createEl('ul', { cls: 'cook-ing-list' });
+        region.createEl('h2', {
+            cls: 'cook-section-title',
+            text: this.settings.ingredientLabel || 'Ingredients',
+        });
+
+        if (hasNamedSections(sections) && sections.length > 1) {
+            // Group ingredients by section using each section's ingredientIndices.
+            sections.forEach(section => {
+                const items = section.ingredientIndices
+                    .map(i => all[i])
+                    .filter((x): x is FlatIngredient => !!x);
+                if (!items.length) return;
+                if (section.name) {
+                    region.createEl('h3', { cls: 'cook-subhead', text: section.name });
+                }
+                this.renderList(region, items, ctx);
+            });
+        } else {
+            this.renderList(region, all, ctx);
+        }
+    }
+
+    private renderList(parent: HTMLElement, items: FlatIngredient[], ctx: RenderContext): void {
+        const ul = parent.createEl('ul', { cls: 'cook-ing-list' });
+        const checked = ctx.state.checkedIngredients;
+
         items.forEach(ing => {
-            const li = ul.createEl('li', { cls: 'cook-ing' });
+            const key = ing.name;
+            const isChecked = checked.has(key);
+
+            const li = ul.createEl('li', {
+                cls: isChecked ? 'cook-ing done' : 'cook-ing',
+            });
+            li.createSpan({ cls: 'cook-ing-box' });
             li.createSpan({ cls: 'cook-ing-name', text: ing.name });
-            if (ing.displayText) li.createSpan({ cls: 'cook-ing-qty', text: ing.displayText });
+            if (ing.displayText) {
+                const qty = ing.unit ? `${ing.displayText} ${ing.unit}` : ing.displayText;
+                li.createSpan({ cls: 'cook-ing-qty', text: qty });
+            }
+
+            li.addEventListener('click', () => {
+                if (checked.has(key)) checked.delete(key);
+                else checked.add(key);
+                ctx.callbacks.onIngredientToggle();
+            });
         });
     }
 }
