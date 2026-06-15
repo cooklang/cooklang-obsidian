@@ -40,6 +40,14 @@ describe('buildMetaPills', () => {
         expect(pills.find(p => p.kind === 'time')!.text).toBe('30 min');
     });
 
+    it('builds an author pill with its url', () => {
+        const recipe = { author: { name: 'Jane Cook', url: 'https://jane.example' }, tags: new Set() } as any;
+        const pill = buildMetaPills(recipe, null).find(p => p.kind === 'author');
+        expect(pill).toBeTruthy();
+        expect(pill!.text).toBe('Jane Cook');
+        expect(pill!.url).toBe('https://jane.example');
+    });
+
     it('emits no pills when nothing is present', () => {
         const recipe = { tags: new Set() } as any;
         expect(buildMetaPills(recipe, null)).toEqual([]);

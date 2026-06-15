@@ -56,9 +56,10 @@ export class IngredientListRenderer {
             });
             li.createSpan({ cls: 'cook-ing-box' });
             li.createSpan({ cls: 'cook-ing-name', text: ing.name });
+            // displayText already includes the unit (e.g. "3/4 tsp"), so it is
+            // used as-is — concatenating ing.unit would duplicate it.
             if (ing.displayText) {
-                const qty = ing.unit ? `${ing.displayText} ${ing.unit}` : ing.displayText;
-                li.createSpan({ cls: 'cook-ing-qty', text: qty });
+                li.createSpan({ cls: 'cook-ing-qty', text: ing.displayText });
             }
 
             li.addEventListener('click', () => {

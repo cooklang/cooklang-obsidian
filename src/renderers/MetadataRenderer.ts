@@ -11,7 +11,7 @@ import { getMetadata } from '../recipeHelpers';
 const SHOWN_KEYS = new Set([
     'title', 'description', 'servings', 'serves', 'yield', 'time', 'prep time',
     'prep_time', 'cook time', 'cook_time', 'tags', 'tag', 'source', 'author',
-    'difficulty', 'course', 'cuisine', 'diet', 'images', 'image', 'introduction',
+    'difficulty', 'course', 'cuisine', 'diet', 'images', 'image',
 ]);
 
 export class MetadataRenderer {

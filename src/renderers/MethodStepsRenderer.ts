@@ -136,7 +136,9 @@ export class MethodStepsRenderer {
             const unit = timer.quantity?.unit;
             const multiplier = unit ? unitMap[String(unit).toLowerCase()] ?? 1 : 1;
             const seconds = numericQty * multiplier;
-            target.createEl('span', { cls: 'cook-amt', text: formatTime(seconds) });
+            // `amount` class is required: TimerService.attachTimerToButton updates
+            // the live countdown via button.querySelector('.amount').
+            target.createEl('span', { cls: 'cook-amt amount', text: formatTime(seconds) });
             if (target instanceof HTMLButtonElement) {
                 this.timerService.attachTimerToButton(target, seconds, timer.name ?? '');
             }

@@ -8,7 +8,7 @@
 import { App, TFile } from 'obsidian';
 import { CooklangSettings } from '../settings';
 import { TimerService } from '../services/TimerService';
-import { getSections, hasNamedSections } from '../utils/sectionHelpers';
+import { getSections } from '../utils/sectionHelpers';
 import { findRecipeImages } from '../utils/imageHelpers';
 import { HeroRenderer } from './HeroRenderer';
 import { ScalerBarRenderer } from './ScalerBarRenderer';
@@ -78,8 +78,5 @@ export class PreviewRenderer {
 
         // Leftover custom metadata ("More details")
         this.metadataRenderer.render(ctx.recipe, container);
-
-        // Silence unused-warning for hasNamedSections import consumers (used by renderers)
-        void hasNamedSections;
     }
 }

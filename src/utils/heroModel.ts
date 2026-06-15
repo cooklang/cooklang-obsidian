@@ -8,7 +8,7 @@ import type { CooklangRecipe } from '@cooklang/cooklang-ts';
 type RecipeTime = number | { prep_time?: number; cook_time?: number };
 
 export type PillKind =
-    | 'time' | 'servings' | 'difficulty' | 'source'
+    | 'time' | 'servings' | 'difficulty' | 'source' | 'author'
     | 'course' | 'cuisine' | 'diet' | 'tag';
 
 export interface MetaPill {
@@ -81,6 +81,13 @@ export function buildMetaPills(
 
     const diet = asText(recipe.diet);
     if (diet) pills.push({ kind: 'diet', icon: '🌱', text: diet });
+
+    if (recipe.author) {
+        const text = recipe.author.name ?? recipe.author.url ?? null;
+        if (text) {
+            pills.push({ kind: 'author', icon: '✍', text, url: recipe.author.url });
+        }
+    }
 
     if (recipe.source) {
         const text = recipe.source.name ?? recipe.source.url ?? null;

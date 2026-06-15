@@ -27,7 +27,7 @@ export class HeroRenderer {
             const row = body.createDiv({ cls: 'cook-pills' });
             for (const pill of pills) {
                 const cls = pill.kind === 'tag' ? 'cook-pill cook-pill-tag' : 'cook-pill';
-                if (pill.url && pill.kind === 'source') {
+                if (pill.url && (pill.kind === 'source' || pill.kind === 'author')) {
                     const a = row.createEl('a', {
                         cls,
                         href: pill.url,
