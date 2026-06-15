@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.7.1
 
 ### Added
 - Ingredient list now combines the same ingredient listed multiple times into one
