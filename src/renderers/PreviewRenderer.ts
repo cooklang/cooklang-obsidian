@@ -1,101 +1,82 @@
 /**
- * PreviewRenderer - Orchestrates all preview rendering
+ * PreviewRenderer — layout orchestrator.
  *
- * Coordinates rendering of all recipe sections by delegating to
- * specialized renderer modules. Handles overall preview layout.
+ * Emits the rich single-page layout: hero → sticky scaler bar → two-column
+ * (ingredients | steps). Honors the layout settings; falls back to a stacked
+ * single column when twoColumnLayout is off.
  */
-
-import type { CooklangRecipe } from '@cooklang/cooklang-ts';
 import { App, TFile } from 'obsidian';
 import { CooklangSettings } from '../settings';
 import { TimerService } from '../services/TimerService';
+import { getSections } from '../utils/sectionHelpers';
 import { findRecipeImages } from '../utils/imageHelpers';
-import { MetadataRenderer } from './MetadataRenderer';
+import { HeroRenderer } from './HeroRenderer';
+import { ScalerBarRenderer } from './ScalerBarRenderer';
 import { IngredientListRenderer } from './IngredientListRenderer';
 import { CookwareListRenderer } from './CookwareListRenderer';
 import { TimerListRenderer } from './TimerListRenderer';
 import { MethodStepsRenderer } from './MethodStepsRenderer';
+import { MetadataRenderer } from './MetadataRenderer';
+import type { RenderContext } from './types';
 
-/**
- * Orchestrates rendering of recipe preview
- */
 export class PreviewRenderer {
-    private metadataRenderer: MetadataRenderer;
+    private hero: HeroRenderer;
+    private scalerBar: ScalerBarRenderer;
     private ingredientRenderer: IngredientListRenderer;
     private cookwareRenderer: CookwareListRenderer;
     private timerListRenderer: TimerListRenderer;
     private methodStepsRenderer: MethodStepsRenderer;
+    private metadataRenderer: MetadataRenderer;
 
     constructor(
         private app: App,
         private settings: CooklangSettings,
-        private timerService: TimerService
+        private timerService: TimerService,
     ) {
-        // Initialize all specialized renderers
-        this.metadataRenderer = new MetadataRenderer(settings);
-        this.ingredientRenderer = new IngredientListRenderer(settings);
-        this.cookwareRenderer = new CookwareListRenderer(settings);
-        this.timerListRenderer = new TimerListRenderer(settings);
-        this.methodStepsRenderer = new MethodStepsRenderer(settings, timerService);
+        this.buildRenderers();
     }
 
-    /**
-     * Render complete recipe preview
-     * @param recipe - Parsed recipe object
-     * @param container - Container element to render into
-     * @param file - Recipe file (for finding images)
-     * @param checkedIngredients - Set of checked ingredient IDs
-     * @param onIngredientToggle - Callback when ingredient is toggled
-     */
-    public render(
-        recipe: CooklangRecipe,
-        container: HTMLElement,
-        file: TFile | null,
-        checkedIngredients?: Set<string>,
-        onIngredientToggle?: () => void
-    ): void {
-        // Clear container
-        container.empty();
-
-        // Render main image if enabled and exists
-        if (this.settings.showImages && file) {
-            this.renderMainImage(container, file);
-        }
-
-        // Render all sections in order
-        this.metadataRenderer.render(recipe, container);
-        this.ingredientRenderer.render(recipe, container, checkedIngredients, onIngredientToggle);
-        this.cookwareRenderer.render(recipe, container);
-        this.timerListRenderer.render(recipe, container);
-        this.methodStepsRenderer.render(recipe, container);
+    private buildRenderers(): void {
+        this.hero = new HeroRenderer(this.app, this.settings);
+        this.scalerBar = new ScalerBarRenderer(this.settings);
+        this.ingredientRenderer = new IngredientListRenderer(this.settings);
+        this.cookwareRenderer = new CookwareListRenderer(this.settings);
+        this.timerListRenderer = new TimerListRenderer(this.settings);
+        this.methodStepsRenderer = new MethodStepsRenderer(this.app, this.settings, this.timerService);
+        this.metadataRenderer = new MetadataRenderer(this.settings);
     }
 
-    /**
-     * Render main recipe image
-     * @param container - Container element to render into
-     * @param file - Recipe file
-     */
-    private renderMainImage(container: HTMLElement, file: TFile): void {
-        const { mainImage } = findRecipeImages(file);
-
-        if (mainImage) {
-            const img = container.createEl('img', { cls: 'main-image' });
-            img.src = this.app.vault.getResourcePath(mainImage);
-        }
-    }
-
-    /**
-     * Update settings for all renderers
-     * @param settings - New settings object
-     */
     public updateSettings(settings: CooklangSettings): void {
         this.settings = settings;
+        this.buildRenderers();
+    }
 
-        // Update settings for all renderers
-        this.metadataRenderer = new MetadataRenderer(settings);
-        this.ingredientRenderer = new IngredientListRenderer(settings);
-        this.cookwareRenderer = new CookwareListRenderer(settings);
-        this.timerListRenderer = new TimerListRenderer(settings);
-        this.methodStepsRenderer = new MethodStepsRenderer(settings, this.timerService);
+    public render(container: HTMLElement, file: TFile | null, ctx: RenderContext): void {
+        container.empty();
+        container.addClass('cook-rich');
+
+        const sections = getSections(ctx.recipe);
+        const images = findRecipeImages(file);
+
+        // Hero (title image, title, description, pills)
+        this.hero.render(container, ctx, images.mainImage);
+
+        // Sticky scaler/nav bar
+        this.scalerBar.render(container, ctx);
+
+        // Two-column (or stacked) body
+        const cols = container.createDiv({ cls: 'cook-cols' });
+        if (!this.settings.twoColumnLayout) cols.addClass('cook-cols-stacked');
+
+        const aside = cols.createDiv({ cls: 'cook-aside' });
+        this.ingredientRenderer.render(aside, ctx);
+        this.cookwareRenderer.render(ctx.recipe, aside);
+        this.timerListRenderer.render(ctx.recipe, aside);
+
+        const main = cols.createDiv({ cls: 'cook-main' });
+        this.methodStepsRenderer.render(main, ctx, sections, file, images.allImages);
+
+        // Leftover custom metadata ("More details")
+        this.metadataRenderer.render(ctx.recipe, container);
     }
 }

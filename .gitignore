@@ -13,3 +13,6 @@ data.json
 *.wasm
 
 .DS_Store
+
+# Superpowers brainstorm scratch
+.superpowers/

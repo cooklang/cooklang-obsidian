@@ -1,87 +1,57 @@
 /**
- * IngredientListRenderer - Renders recipe ingredients list
- *
- * Handles rendering of the ingredients section with quantities.
+ * IngredientListRenderer — a single combined ingredient checklist for the whole
+ * recipe (CookCLI-style). Duplicate ingredients are merged and their quantities
+ * summed by the parser's own grouping (`recipe.groupedIngredients`), which
+ * handles fractions and mixed units (e.g. "1 cup + 2 tbsp"). Quantities reflect
+ * the already-scaled recipe (CookView re-parses with scale). Checkboxes are
+ * keyed by ingredient name so scaling / re-render preserves checked state.
  */
-
-import type { CooklangRecipe } from '@cooklang/cooklang-ts';
 import { CooklangSettings } from '../settings';
-import { getFlatIngredients } from '../recipeHelpers';
+import {
+    ingredient_should_be_listed,
+    ingredient_display_name,
+    grouped_quantity_is_empty,
+    grouped_quantity_display,
+} from '../recipeHelpers';
+import type { RenderContext } from './types';
 
-/**
- * Renders recipe ingredients list section
- */
 export class IngredientListRenderer {
     constructor(private settings: CooklangSettings) {}
 
-    /**
-     * Render ingredients list section if enabled and ingredients exist
-     * @param recipe - Parsed recipe object
-     * @param container - Container element to render into
-     * @param checkedIngredients - Set of checked ingredient IDs
-     * @param onToggle - Callback when ingredient is toggled
-     */
-    public render(
-        recipe: CooklangRecipe, 
-        container: HTMLElement,
-        checkedIngredients?: Set<string>,
-        onToggle?: () => void
-    ): void {
-        if (!this.settings.showIngredientList) {
-            return; // Feature disabled
-        }
+    render(container: HTMLElement, ctx: RenderContext): void {
+        if (!this.settings.showIngredientList) return;
 
-        const ingredients = getFlatIngredients(recipe);
+        const grouped = ctx.recipe.groupedIngredients
+            .filter(([ingredient]) => ingredient_should_be_listed(ingredient));
+        if (!grouped.length) return;
 
-        if (!ingredients || ingredients.length === 0) {
-            return; // No ingredients to render
-        }
-
-        // Add the Ingredients header
-        container.createEl('h2', {
-            cls: 'ingredients-header',
-            text: this.settings.ingredientLabel || 'Ingredients'
+        const region = container.createDiv({ cls: 'cook-ingredients' });
+        region.id = 'cook-ingredients';
+        region.createEl('h2', {
+            cls: 'cook-section-title',
+            text: this.settings.ingredientLabel || 'Ingredients',
         });
 
-        // Add the ingredients list
-        const ul = container.createEl('ul', { cls: 'ingredients' });
+        const ul = region.createEl('ul', { cls: 'cook-ing-list' });
+        const checked = ctx.state.checkedIngredients;
 
-        ingredients.forEach(ingredient => {
-            // Create unique ID for this ingredient
-            const ingredientId = `${ingredient.name}-${ingredient.displayText || 'none'}`;
-            const isChecked = checkedIngredients?.has(ingredientId) || false;
+        for (const [ingredient, quantity] of grouped) {
+            const name = ingredient_display_name(ingredient);
+            const isChecked = checked.has(name);
 
-            const li = ul.createEl('li', { 
-                cls: `cook-ingredient ${isChecked ? 'ingredient-checked' : ''}`
+            const li = ul.createEl('li', { cls: isChecked ? 'cook-ing done' : 'cook-ing' });
+            li.createSpan({ cls: 'cook-ing-box' });
+            li.createSpan({ cls: 'cook-ing-name', text: name });
+
+            if (!grouped_quantity_is_empty(quantity)) {
+                li.createSpan({ cls: 'cook-ing-qty', text: grouped_quantity_display(quantity) });
+            }
+
+            li.addEventListener('click', () => {
+                if (checked.has(name)) checked.delete(name);
+                else checked.add(name);
+                ctx.callbacks.onIngredientToggle();
             });
-
-            // Apply inline styles for checked state
-            if (isChecked) {
-                li.style.textDecoration = 'line-through';
-                li.style.opacity = '0.5';
-            }
-
-            // Add click handler if checkedIngredients is provided
-            if (checkedIngredients && onToggle) {
-                li.style.cursor = 'pointer';
-                li.onclick = () => {
-                    if (isChecked) {
-                        checkedIngredients.delete(ingredientId);
-                    } else {
-                        checkedIngredients.add(ingredientId);
-                    }
-                    onToggle();
-                };
-            }
-
-            // Add quantity if present
-            if (ingredient.displayText) {
-                li.createEl('span', { cls: 'amount', text: ingredient.displayText });
-                li.appendText(' ');
-            }
-
-            // Add ingredient name
-            li.appendText(ingredient.name);
-        });
+        }
     }
 }

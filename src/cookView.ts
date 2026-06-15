@@ -12,6 +12,7 @@ import {string} from "postcss-selector-parser";
 import { parserService } from './services/ParserService';
 import { TimerService } from './services/TimerService';
 import { PreviewRenderer } from './renderers/PreviewRenderer';
+import { parseServingsValue, computeScale, clampServings } from './utils/scaling';
 import alarmMp3 from './alarm.mp3';
 import timerMp3 from './timer.mp3';
 
@@ -39,6 +40,8 @@ export class CookView extends TextFileView {
     previewRenderer: PreviewRenderer;
     data: string = '';
     checkedIngredients: Set<string> = new Set();
+    scale: number = 1;
+    currentStep: number = -1;
 
     constructor(leaf: WorkspaceLeaf, settings: CooklangSettings) {
         super(leaf);
@@ -79,8 +82,10 @@ export class CookView extends TextFileView {
         // Initialize Editor with proper theme based on Obsidian theme
         this.initializeEditor();
 
-        // Set default view
-        this.setViewMode('source'); // Start in source mode by default
+        // Set default view (used when a .cook file opens in a fresh leaf, e.g.
+        // selecting it in the file tree). A persisted per-leaf mode, if any, is
+        // restored later in setState and takes precedence.
+        this.setViewMode(this.settings.defaultView === 'preview' ? 'preview' : 'source');
     }
 
     async onload() {
@@ -153,11 +158,7 @@ export class CookView extends TextFileView {
             this.sourceEl.style.display = 'none';
             this.previewEl.style.display = 'block';
             // Parse and render the preview
-            if (parserService.isReady()) {
-                const [rawRecipe, report] = parserService.parse(this.data);
-                this.rawRecipe = rawRecipe;
-                this.renderPreview();
-            }
+            this.renderPreview();
         }
     }
 
@@ -288,6 +289,9 @@ export class CookView extends TextFileView {
             }
         });
         this.data = '';
+        this.scale = 1;
+        this.currentStep = -1;
+        this.checkedIngredients.clear();
     }
 
     getDisplayText() {
@@ -308,14 +312,18 @@ export class CookView extends TextFileView {
         const state = super.getState();
         return {
             ...state,
-            mode: this.currentView
+            mode: this.currentView,
+            scale: this.scale,
+            currentStep: this.currentStep,
         };
     }
 
     // Override to restore the mode from view state
     async setState(state: any, result: ViewStateResult) {
         await super.setState(state, result);
-        
+        if (typeof state.scale === 'number' && state.scale > 0) this.scale = state.scale;
+        if (typeof state.currentStep === 'number') this.currentStep = state.currentStep;
+
         // If a mode was specified in the state, switch to that mode
         if (state.mode && (state.mode === 'source' || state.mode === 'preview')) {
             // Use setTimeout to ensure the view is fully loaded first
@@ -323,7 +331,7 @@ export class CookView extends TextFileView {
                 this.setViewMode(state.mode);
             }, 10);
         }
-        
+
         return;
     }
 
@@ -338,16 +346,40 @@ export class CookView extends TextFileView {
 
     // render the preview view
     renderPreview() {
-        // we can't render what we don't have...
-        if (!this.rawRecipe) return;
+        if (!parserService.isReady()) return;
 
-        // Delegate to preview renderer with checked ingredients state
-        this.previewRenderer.render(
-            this.rawRecipe, 
-            this.previewEl, 
-            this.file,
-            this.checkedIngredients,
-            () => this.renderPreview() // Re-render on toggle
-        );
+        // Re-parse at the current scale so quantities (list + inline) rescale.
+        const [rawRecipe] = parserService.parse(this.data, this.scale);
+        this.rawRecipe = rawRecipe;
+
+        const baseServings = parseServingsValue(rawRecipe.servings);
+        const displayServings = baseServings != null
+            ? clampServings(baseServings * this.scale)
+            : null;
+
+        this.previewRenderer.updateSettings(this.settings);
+        this.previewRenderer.render(this.previewEl, this.file, {
+            recipe: rawRecipe,
+            file: this.file,
+            state: {
+                scale: this.scale,
+                baseServings,
+                displayServings,
+                checkedIngredients: this.checkedIngredients,
+                currentStep: this.currentStep,
+            },
+            callbacks: {
+                onScaleChange: (targetServings: number) => {
+                    if (baseServings == null) return;
+                    this.scale = computeScale(targetServings, baseServings);
+                    this.renderPreview();
+                },
+                onIngredientToggle: () => this.renderPreview(),
+                onStepActivate: (index: number) => {
+                    this.currentStep = this.currentStep === index ? -1 : index;
+                    this.renderPreview();
+                },
+            },
+        });
     }
 }

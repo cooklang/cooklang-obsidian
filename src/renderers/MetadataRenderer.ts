@@ -1,64 +1,45 @@
 /**
- * MetadataRenderer - Renders recipe metadata section
- *
- * Handles rendering of recipe metadata (author, time, servings, etc.)
- * with special handling for tags and URLs.
+ * MetadataRenderer — collapsible "More details" for custom metadata keys not
+ * already surfaced as hero pills / typed fields.
  */
-
 import type { CooklangRecipe } from '@cooklang/cooklang-ts';
 import { CooklangSettings } from '../settings';
 import { isValidUrl } from '../utils/urlValidators';
 import { getMetadata } from '../recipeHelpers';
 
-/**
- * Renders recipe metadata section
- */
+// Keys already shown in the hero or handled elsewhere.
+const SHOWN_KEYS = new Set([
+    'title', 'description', 'servings', 'serves', 'yield', 'time', 'prep time',
+    'prep_time', 'cook time', 'cook_time', 'tags', 'tag', 'source', 'author',
+    'difficulty', 'course', 'cuisine', 'diet', 'images', 'image',
+]);
+
 export class MetadataRenderer {
     constructor(private settings: CooklangSettings) {}
 
-    /**
-     * Render metadata section if metadata exists
-     * @param recipe - Parsed recipe object
-     * @param container - Container element to render into
-     */
-    public render(recipe: CooklangRecipe, container: HTMLElement): void {
+    render(recipe: CooklangRecipe, container: HTMLElement): void {
         const metadata = getMetadata(recipe);
+        const entries = Object.entries(metadata)
+            .filter(([key]) => !SHOWN_KEYS.has(key.toLowerCase().trim()));
+        if (!entries.length) return;
 
-        if (!metadata || Object.keys(metadata).length === 0) {
-            return; // No metadata to render
-        }
-
-        // Add the metadata header
-        container.createEl('h2', {
-            cls: 'metadata-header',
-            text: this.settings.metadataLabel || 'Metadata'
+        const details = container.createEl('details', { cls: 'cook-more' });
+        details.createEl('summary', {
+            cls: 'cook-more-summary',
+            text: this.settings.metadataLabel || 'More details',
         });
+        const ul = details.createEl('ul', { cls: 'cook-more-list' });
 
-        // Create metadata list
-        const ul = container.createEl('ul', { cls: 'metadata' });
-
-        Object.entries(metadata).forEach(([key, value]) => {
+        entries.forEach(([key, value]) => {
             const li = ul.createEl('li');
-            li.createEl('span', { cls: 'metadata-key', text: key });
-
-            // Special handling for tags - prefix with hashtag
-            if (key === 'tags') {
-                const tags = value
-                    .split(",")
-                    .map(s => `#${s.trim()}`)
-                    .join(", ");
-                li.appendText(tags);
-            }
-            // Special handling for URLs - create clickable link
-            else if (isValidUrl(value)) {
+            li.createSpan({ cls: 'cook-more-key', text: key });
+            if (isValidUrl(value)) {
                 li.createEl('a', {
                     text: value,
-                    attr: { href: value, target: '_blank', rel: 'noopener' }
+                    attr: { href: value, target: '_blank', rel: 'noopener' },
                 });
-            }
-            // Default - just append text
-            else {
-                li.appendText(`${value}`);
+            } else {
+                li.appendText(String(value));
             }
         });
     }

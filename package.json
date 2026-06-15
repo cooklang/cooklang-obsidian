@@ -7,7 +7,9 @@
   "scripts": {
     "instal-deps": "npm install",
     "dev": "rollup --config rollup.config.js -w",
-    "build": "rollup --config rollup.config.js --environment BUILD:production"
+    "build": "rollup --config rollup.config.js --environment BUILD:production",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "keywords": [],
   "author": "",
@@ -40,7 +42,8 @@
     "rollup-plugin-postcss": "^4.0.2",
     "sass": "^1.71.1",
     "tslib": "^2.6.2",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "vitest": "^2.1.9"
   },
   "dependencies": {
     "@cooklang/cooklang-ts": "https://pkg.pr.new/cooklang/cooklang-rs/@cooklang/cooklang-ts@de669dd"

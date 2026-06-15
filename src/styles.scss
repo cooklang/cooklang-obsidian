@@ -194,3 +194,151 @@
     padding: 0 4px;
   }
 }
+
+/* ===== Rich Cooklang preview ===== */
+/* `cook-rich` is added to the .cook-preview-view element itself, so the
+   container rule must be a compound selector (no descendant combinator). */
+.cook-preview-view.cook-rich {
+  container-type: inline-size;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 var(--size-4-4, 16px) var(--size-4-8, 32px);
+  color: var(--text-normal);
+}
+
+/* Hero */
+.cook-hero {
+  display: flex;
+  flex-wrap: wrap-reverse;
+  align-items: center;
+  gap: var(--size-4-6, 24px);
+  padding: var(--size-4-6, 24px) 0;
+}
+.cook-hero-body { flex: 1 1 260px; min-width: 0; }
+.cook-hero-title { margin: 0 0 var(--size-4-2, 8px); font-size: 1.9em; line-height: 1.15; }
+.cook-hero-desc { margin: 0 0 var(--size-4-3, 12px); color: var(--text-muted); max-width: 60ch; }
+.cook-hero-image { flex: 1 1 240px; max-width: 42%; }
+.cook-hero-image img { width: 100%; height: auto; border-radius: var(--radius-l, 12px); object-fit: cover; }
+
+/* Pills */
+.cook-pills { display: flex; flex-wrap: wrap; gap: var(--size-2-2, 6px); }
+.cook-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 26px; padding: 0 11px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 13px; font-size: 0.8em; color: var(--text-muted);
+  text-decoration: none;
+}
+a.cook-pill:hover { color: var(--text-normal); border-color: var(--text-accent); }
+.cook-pill-icon { opacity: 0.85; }
+.cook-pill-tag { background: transparent; border-color: var(--text-accent); color: var(--text-accent); }
+
+/* Sticky bar */
+.cook-bar {
+  position: sticky; top: 0; z-index: 5;
+  display: flex; align-items: center; gap: var(--size-4-4, 16px);
+  padding: var(--size-2-3, 8px) 0;
+  background: var(--background-primary);
+  border-top: 1px solid var(--background-modifier-border);
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+.cook-bar-nav { display: flex; gap: var(--size-4-4, 16px); }
+.cook-bar-link { font-size: 0.85em; font-weight: 600; color: var(--text-muted); text-decoration: none; }
+.cook-bar-link:hover { color: var(--text-accent); }
+.cook-stepper {
+  margin-left: auto; display: flex; align-items: center; gap: 6px;
+  border: 1px solid var(--background-modifier-border); border-radius: 14px; height: 30px; padding: 0 6px;
+}
+.cook-stepper-btn {
+  width: 22px; height: 22px; border: none; border-radius: 50%;
+  background: transparent; color: var(--text-muted); font-size: 1em; cursor: pointer; line-height: 1;
+}
+.cook-stepper-btn:hover { background: var(--background-modifier-hover); color: var(--text-normal); }
+.cook-stepper-val { font-size: 0.85em; font-variant-numeric: tabular-nums; }
+.cook-stepper-val b { color: var(--text-normal); }
+
+/* Two-column layout */
+.cook-cols { display: block; padding-top: var(--size-4-5, 20px); }
+@container (min-width: 600px) {
+  .cook-cols:not(.cook-cols-stacked) {
+    display: grid; grid-template-columns: 240px 1fr; gap: var(--size-4-8, 32px); align-items: start;
+  }
+  .cook-cols:not(.cook-cols-stacked) .cook-aside { position: sticky; top: 56px; }
+}
+
+/* Section titles + bands */
+.cook-section-title {
+  font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.07em;
+  color: var(--text-faint); font-weight: 700; margin: 0 0 var(--size-4-3, 12px);
+}
+.cook-subhead {
+  font-size: 0.72em; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--text-faint); font-weight: 700; margin: var(--size-4-3, 12px) 0 4px;
+}
+.cook-section-band {
+  font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.07em;
+  color: var(--text-accent); font-weight: 700; margin: var(--size-4-4, 16px) 0 4px;
+}
+
+/* Ingredient checklist */
+.cook-ing-list { list-style: none; margin: 0; padding: 0; }
+.cook-ing {
+  display: flex; align-items: center; gap: 10px; padding: 7px 0; cursor: pointer;
+  border-bottom: 1px solid var(--background-modifier-border); font-size: 0.92em;
+}
+.cook-ing:last-child { border-bottom: none; }
+.cook-ing-box {
+  width: 17px; height: 17px; flex: none; border-radius: 5px;
+  border: 1.5px solid var(--text-faint);
+}
+.cook-ing.done .cook-ing-box {
+  background: var(--interactive-accent); border-color: var(--interactive-accent); position: relative;
+}
+.cook-ing.done .cook-ing-box::after {
+  content: '✓'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  color: var(--text-on-accent); font-size: 0.7em;
+}
+.cook-ing-name { flex: 1; }
+.cook-ing.done .cook-ing-name { text-decoration: line-through; color: var(--text-faint); }
+.cook-ing-qty { color: var(--text-muted); font-variant-numeric: tabular-nums; font-size: 0.85em; }
+
+/* Steps */
+.cook-step {
+  display: flex; gap: var(--size-4-4, 16px); padding: var(--size-4-3, 12px) 0;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+.cook-step.cur {
+  background: var(--background-modifier-hover);
+  box-shadow: inset 3px 0 0 var(--interactive-accent);
+  border-radius: 0 8px 8px 0; padding-left: 12px; margin-left: -12px;
+}
+.cook-step.done { opacity: 0.5; }
+.cook-step-n { flex: none; color: var(--text-accent); font-weight: 700; }
+.cook-step-bodywrap { flex: 1; min-width: 0; }
+.cook-step-text { line-height: 1.6; }
+.cook-step-image { margin-top: var(--size-4-2, 8px); }
+.cook-step-image img { max-width: 100%; border-radius: var(--radius-m, 8px); }
+
+/* Inline components */
+.cook-ig-hl { color: var(--color-green, var(--text-accent)); font-weight: 600; }
+.cook-cw-hl { color: var(--color-orange, var(--text-accent)); font-weight: 600; }
+.cook-amt { color: var(--text-muted); }
+.cook-timer-btn {
+  background: transparent; border: 1px solid var(--text-accent); color: var(--text-accent);
+  border-radius: 11px; padding: 1px 8px; font-size: 0.9em; cursor: pointer;
+}
+
+/* Notes */
+.cook-note {
+  display: flex; gap: 10px; padding: 10px 12px; margin: var(--size-4-2, 8px) 0;
+  background: var(--background-secondary); border-left: 3px solid var(--interactive-accent);
+  border-radius: 0 6px 6px 0; color: var(--text-muted); font-size: 0.9em;
+}
+
+/* More details */
+.cook-more { margin-top: var(--size-4-6, 24px); }
+.cook-more-summary { cursor: pointer; color: var(--text-muted); font-size: 0.85em; }
+.cook-more-list { list-style: none; margin: var(--size-4-2, 8px) 0 0; padding: 0; }
+.cook-more-list li { padding: 3px 0; color: var(--text-muted); font-size: 0.85em; }
+.cook-more-key { font-weight: 600; color: var(--text-normal); margin-right: 6px; text-transform: capitalize; }

@@ -13,7 +13,10 @@ export {
     getQuantityUnit,
     quantity_display,
     ingredient_display_name,
-    cookware_display_name
+    cookware_display_name,
+    ingredient_should_be_listed,
+    grouped_quantity_is_empty,
+    grouped_quantity_display
 } from '@cooklang/cooklang-ts';
 
 import type { CooklangRecipe } from '@cooklang/cooklang-ts';
