@@ -14,6 +14,7 @@ import {
 import { formatTime, createUnitMap } from '../utils/timeFormatters';
 import type { SectionView, StepView, StepPart } from '../utils/sectionHelpers';
 import { getStepImageFor } from '../utils/stepImages';
+import { renderReferenceLink } from './referenceLink';
 import type { RenderContext } from './types';
 
 export class MethodStepsRenderer {
@@ -79,7 +80,7 @@ export class MethodStepsRenderer {
 
         const bodyWrap = li.createDiv({ cls: 'cook-step-bodywrap' });
         const body = bodyWrap.createDiv({ cls: 'cook-step-text' });
-        step.parts.forEach(part => this.renderPart(body, part, unitMap));
+        step.parts.forEach(part => this.renderPart(body, part, unitMap, file));
 
         // Per-step image
         if (this.settings.showImages && file) {
@@ -97,7 +98,7 @@ export class MethodStepsRenderer {
         }
     }
 
-    private renderPart(body: HTMLElement, part: StepPart, unitMap: Record<string, number>): void {
+    private renderPart(body: HTMLElement, part: StepPart, unitMap: Record<string, number>, file: TFile | null): void {
         if (part.type === 'text') {
             body.appendText(part.value);
             return;
@@ -105,8 +106,14 @@ export class MethodStepsRenderer {
         const span = body.createEl('span');
         if (part.type === 'ingredient') {
             span.addClass('cook-ig');
-            span.appendText(ingredient_display_name(part.ingredient));
-            if (this.settings.highlightIngredientCookware) span.addClass('cook-ig-hl');
+            const ref = (part.ingredient as any).reference;
+            if (ref) {
+                renderReferenceLink(this.app, file,
+                    { name: ref.name, components: ref.components ?? [] }, span);
+            } else {
+                span.appendText(ingredient_display_name(part.ingredient));
+                if (this.settings.highlightIngredientCookware) span.addClass('cook-ig-hl');
+            }
             if (this.settings.showQuantitiesInline && part.ingredient.quantity) {
                 span.appendText(' ');
                 span.createEl('span', {

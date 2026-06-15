@@ -1,29 +1,34 @@
 /**
  * IngredientListRenderer — a single combined ingredient checklist for the whole
- * recipe (CookCLI-style). Duplicate ingredients are merged and their quantities
- * summed by the parser's own grouping (`recipe.groupedIngredients`), which
- * handles fractions and mixed units (e.g. "1 cup + 2 tbsp"). Quantities reflect
- * the already-scaled recipe (CookView re-parses with scale). Checkboxes are
- * keyed by ingredient name so scaling / re-render preserves checked state.
+ * recipe. Rows are merged by name and quantities summed per unit (see
+ * aggregateIngredients); recipe references render as links to the target recipe.
+ * Quantities reflect the already-scaled recipe (CookView re-parses with scale).
+ * Checkboxes are keyed by ingredient name so scaling / re-render preserves state.
  */
+import { App } from 'obsidian';
 import { CooklangSettings } from '../settings';
 import {
     ingredient_should_be_listed,
     ingredient_display_name,
-    grouped_quantity_is_empty,
-    grouped_quantity_display,
+    getQuantityValue,
+    getQuantityUnit,
+    quantity_display,
 } from '../recipeHelpers';
+import { aggregateIngredients, type AggInput } from '../utils/ingredientAggregator';
+import { renderReferenceLink } from './referenceLink';
 import type { RenderContext } from './types';
 
 export class IngredientListRenderer {
-    constructor(private settings: CooklangSettings) {}
+    constructor(private app: App, private settings: CooklangSettings) {}
 
     render(container: HTMLElement, ctx: RenderContext): void {
         if (!this.settings.showIngredientList) return;
 
-        const grouped = ctx.recipe.groupedIngredients
-            .filter(([ingredient]) => ingredient_should_be_listed(ingredient));
-        if (!grouped.length) return;
+        const inputs: AggInput[] = ctx.recipe.ingredients
+            .filter((ing: any) => ingredient_should_be_listed(ing))
+            .map((ing: any) => this.toAggInput(ing));
+        const rows = aggregateIngredients(inputs);
+        if (!rows.length) return;
 
         const region = container.createDiv({ cls: 'cook-ingredients' });
         region.id = 'cook-ingredients';
@@ -35,23 +40,57 @@ export class IngredientListRenderer {
         const ul = region.createEl('ul', { cls: 'cook-ing-list' });
         const checked = ctx.state.checkedIngredients;
 
-        for (const [ingredient, quantity] of grouped) {
-            const name = ingredient_display_name(ingredient);
-            const isChecked = checked.has(name);
-
+        for (const row of rows) {
+            const isChecked = checked.has(row.name);
             const li = ul.createEl('li', { cls: isChecked ? 'cook-ing done' : 'cook-ing' });
             li.createSpan({ cls: 'cook-ing-box' });
-            li.createSpan({ cls: 'cook-ing-name', text: name });
 
-            if (!grouped_quantity_is_empty(quantity)) {
-                li.createSpan({ cls: 'cook-ing-qty', text: grouped_quantity_display(quantity) });
+            const nameEl = li.createSpan({ cls: 'cook-ing-name' });
+            if (row.reference) {
+                renderReferenceLink(this.app, ctx.file, row.reference, nameEl);
+            } else {
+                nameEl.setText(row.name);
             }
 
-            li.addEventListener('click', () => {
-                if (checked.has(name)) checked.delete(name);
-                else checked.add(name);
+            if (row.displayQty) {
+                li.createSpan({ cls: 'cook-ing-qty', text: row.displayQty });
+            }
+
+            li.addEventListener('click', (e) => {
+                // Ignore clicks on the reference link itself.
+                if ((e.target as HTMLElement).closest('a')) return;
+                if (checked.has(row.name)) checked.delete(row.name);
+                else checked.add(row.name);
                 ctx.callbacks.onIngredientToggle();
             });
         }
+    }
+
+    private toAggInput(ing: any): AggInput {
+        const q = ing.quantity;
+        let quantityValue: number | null = null;
+        let unit: string | null = null;
+        let quantityText: string | null = null;
+
+        if (q) {
+            if (q.value?.type === 'number') {
+                quantityValue = getQuantityValue(q);
+                unit = getQuantityUnit(q);
+            } else {
+                // range or text amount — show as-is, don't sum
+                quantityText = quantity_display(q);
+            }
+        }
+
+        return {
+            name: ingredient_display_name(ing),
+            quantityValue,
+            unit,
+            quantityText,
+            note: ing.note ?? null,
+            reference: ing.reference
+                ? { name: ing.reference.name, components: ing.reference.components ?? [] }
+                : null,
+        };
     }
 }

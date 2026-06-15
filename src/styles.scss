@@ -320,6 +320,17 @@ a.cook-pill:hover { color: var(--text-normal); border-color: var(--text-accent);
 .cook-step-image { margin-top: var(--size-4-2, 8px); }
 .cook-step-image img { max-width: 100%; border-radius: var(--radius-m, 8px); }
 
+/* Recipe reference links */
+.cook-ref-link {
+  color: var(--link-color, var(--text-accent));
+  text-decoration: underline;
+  text-decoration-style: dashed;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.cook-ref-link:hover { text-decoration-style: solid; }
+.cook-ref-missing { color: var(--text-muted); font-style: italic; }
+
 /* Inline components */
 .cook-ig-hl { color: var(--color-green, var(--text-accent)); font-weight: 600; }
 .cook-cw-hl { color: var(--color-orange, var(--text-accent)); font-weight: 600; }
