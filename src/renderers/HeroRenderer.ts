@@ -14,8 +14,10 @@ export class HeroRenderer {
 
         const body = hero.createDiv({ cls: 'cook-hero-body' });
 
-        const title = ctx.recipe.title?.trim();
-        body.createEl('h1', { cls: 'cook-hero-title', text: title || 'Recipe' });
+        // Cooklang's convention is filename-as-title, so when there's no `title:`
+        // metadata, fall back to the file's basename before the generic label.
+        const title = ctx.recipe.title?.trim() || ctx.file?.basename || 'Recipe';
+        body.createEl('h1', { cls: 'cook-hero-title', text: title });
 
         const description = ctx.recipe.description?.trim();
         if (description) {
