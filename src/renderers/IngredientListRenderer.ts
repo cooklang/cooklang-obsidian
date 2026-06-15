@@ -10,10 +10,9 @@ import { CooklangSettings } from '../settings';
 import {
     ingredient_should_be_listed,
     ingredient_display_name,
-    getQuantityValue,
-    getQuantityUnit,
     quantity_display,
 } from '../recipeHelpers';
+import { numericFromQuantity } from '../utils/quantityValue';
 import { aggregateIngredients, type AggInput } from '../utils/ingredientAggregator';
 import { renderReferenceLink } from './referenceLink';
 import type { RenderContext } from './types';
@@ -73,9 +72,10 @@ export class IngredientListRenderer {
         let quantityText: string | null = null;
 
         if (q) {
-            if (q.value?.type === 'number') {
-                quantityValue = getQuantityValue(q);
-                unit = getQuantityUnit(q);
+            const num = numericFromQuantity(q);
+            if (num !== null) {
+                quantityValue = num;
+                unit = q.unit ?? null; // author's unit ("cups"), not the abbreviated canonical form
             } else {
                 // range or text amount — show as-is, don't sum
                 quantityText = quantity_display(q);
