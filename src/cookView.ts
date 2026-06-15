@@ -82,8 +82,10 @@ export class CookView extends TextFileView {
         // Initialize Editor with proper theme based on Obsidian theme
         this.initializeEditor();
 
-        // Set default view
-        this.setViewMode('source'); // Start in source mode by default
+        // Set default view (used when a .cook file opens in a fresh leaf, e.g.
+        // selecting it in the file tree). A persisted per-leaf mode, if any, is
+        // restored later in setState and takes precedence.
+        this.setViewMode(this.settings.defaultView === 'preview' ? 'preview' : 'source');
     }
 
     async onload() {

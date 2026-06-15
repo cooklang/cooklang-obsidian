@@ -18,6 +18,7 @@ export class CooklangSettings {
   timersRing: boolean = true;
   lineWrap: boolean = true;
   highlightIngredientCookware: boolean = false;
+  defaultView: 'source' | 'preview' = 'source';
   showServingsScaler: boolean = true;
   twoColumnLayout: boolean = true;
   enableStepTracking: boolean = true;
@@ -46,6 +47,18 @@ export class CookSettingsTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName('Preview Options')
       .setHeading();
+
+    new Setting(containerEl)
+      .setName('Default view')
+      .setDesc('Which mode to show when a recipe opens in a new tab (e.g. selecting it in the file tree)')
+      .addDropdown(dropdown => dropdown
+        .addOption('source', 'Source (editor)')
+        .addOption('preview', 'Preview')
+        .setValue(this.plugin.settings.defaultView)
+        .onChange((value: string) => {
+          this.plugin.settings.defaultView = value === 'preview' ? 'preview' : 'source';
+          this.plugin.saveData(this.plugin.settings);
+        }));
 
     new Setting(containerEl)
       .setName('Show images')
