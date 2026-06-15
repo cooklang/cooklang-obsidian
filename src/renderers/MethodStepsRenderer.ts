@@ -128,6 +128,9 @@ export class MethodStepsRenderer {
         let target: HTMLElement = span;
         if (this.settings.showTimersInline) {
             target = span.createEl('button', { cls: 'cook-timer-btn' });
+            // Don't let a timer click bubble to the step's tap-to-track handler,
+            // which would re-render and destroy the timer the moment it starts.
+            target.addEventListener('click', (e) => e.stopPropagation());
         }
         target.appendText('⏱');
         const numericQty = getQuantityValue(timer.quantity);
