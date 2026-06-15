@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.7.0
 
 ### Added
 - Redesigned recipe preview into a single rich page: hero with title image and meta
