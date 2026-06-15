@@ -13,6 +13,11 @@
 - New settings: **Default view** (open recipes in source or preview), **Servings
   scaler**, **Two-column layout**, **Step tracking**, and a **Servings label**.
 
+### Changed
+- Switched the parser dependency from the temporary `@cooklang/cooklang-ts` preview
+  build to the published `@cooklang/cooklang` package, so the plugin builds and
+  releases reproducibly.
+
 ## 0.6.3
 
 ### Fixed

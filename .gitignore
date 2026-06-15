@@ -16,3 +16,6 @@ data.json
 
 # Superpowers brainstorm scratch
 .superpowers/
+
+# tsc outDir
+build/

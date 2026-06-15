@@ -1,4 +1,4 @@
-import type { CooklangRecipe } from '@cooklang/cooklang-ts';
+import type { CooklangRecipe } from '@cooklang/cooklang';
 import {TextFileView, setIcon, TFile, Keymap, WorkspaceLeaf, ViewStateResult, Notice} from 'obsidian'
 import {CooklangSettings} from './settings';
 import {EditorView, keymap, highlightActiveLine, lineNumbers, ViewPlugin} from "@codemirror/view"

@@ -4,7 +4,7 @@
  * Handles rendering of the cookware section with quantities.
  */
 
-import type { CooklangRecipe } from '@cooklang/cooklang-ts';
+import type { CooklangRecipe } from '@cooklang/cooklang';
 import { CooklangSettings } from '../settings';
 import { getFlatCookware } from '../recipeHelpers';
 

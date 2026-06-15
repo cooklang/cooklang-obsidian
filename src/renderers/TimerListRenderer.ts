@@ -4,7 +4,7 @@
  * Handles rendering of the timers section with durations.
  */
 
-import type { CooklangRecipe } from '@cooklang/cooklang-ts';
+import type { CooklangRecipe } from '@cooklang/cooklang';
 import { CooklangSettings } from '../settings';
 import { getFlatTimers } from '../recipeHelpers';
 

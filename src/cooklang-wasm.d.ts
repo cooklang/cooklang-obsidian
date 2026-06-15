@@ -1,1 +1,1 @@
-/// <reference types="@cooklang/cooklang-ts/pkg-types" />
+/// <reference types="@cooklang/cooklang/pkg-types" />

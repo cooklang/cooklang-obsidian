@@ -17,9 +17,9 @@ export {
     ingredient_should_be_listed,
     grouped_quantity_is_empty,
     grouped_quantity_display
-} from '@cooklang/cooklang-ts';
+} from '@cooklang/cooklang';
 
-import type { CooklangRecipe } from '@cooklang/cooklang-ts';
+import type { CooklangRecipe } from '@cooklang/cooklang';
 
 /** Convert raw metadata Map to plain object */
 export function getMetadata(recipe: CooklangRecipe): Record<string, string> {

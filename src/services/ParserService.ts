@@ -6,10 +6,10 @@
  * WASM is initialized only once across all recipe views.
  */
 
-import type { CooklangRecipe } from '@cooklang/cooklang-ts';
-import * as wasmBindings from '@cooklang/cooklang-ts/pkg/cooklang_wasm_bg.js';
-import { default as wasmbin } from '@cooklang/cooklang-ts/pkg/cooklang_wasm_bg.wasm';
-import { CooklangRecipe as CooklangRecipeClass } from '@cooklang/cooklang-ts';
+import type { CooklangRecipe } from '@cooklang/cooklang';
+import * as wasmBindings from '@cooklang/cooklang/pkg/cooklang_wasm_bg.js';
+import { default as wasmbin } from '@cooklang/cooklang/pkg/cooklang_wasm_bg.wasm';
+import { CooklangRecipe as CooklangRecipeClass } from '@cooklang/cooklang';
 
 /**
  * Parser interface wrapping the raw WASM parser
@@ -65,16 +65,13 @@ class ParserService {
                     wasmModule = wasmbin;
                 }
 
-                // Provide wasm-bindgen glue functions as imports
+                // Provide the entire wasm-bindgen glue module as the import
+                // namespace. The wasm only pulls the functions it needs, so
+                // passing everything keeps this resilient to wasm-bindgen build
+                // changes (e.g. glue symbols that get added/removed/renamed
+                // between versions) instead of hand-listing a fragile subset.
                 const imports = {
-                    './cooklang_wasm_bg.js': {
-                        __wbindgen_is_undefined: wasmBindings.__wbindgen_is_undefined,
-                        __wbindgen_string_get: wasmBindings.__wbindgen_string_get,
-                        __wbg_parse_def2e24ef1252aff: wasmBindings.__wbg_parse_def2e24ef1252aff,
-                        __wbg_stringify_f7ed6987935b4a24: wasmBindings.__wbg_stringify_f7ed6987935b4a24,
-                        __wbindgen_throw: wasmBindings.__wbindgen_throw,
-                        __wbindgen_init_externref_table: wasmBindings.__wbindgen_init_externref_table
-                    }
+                    './cooklang_wasm_bg.js': wasmBindings as unknown as WebAssembly.ModuleImports
                 };
 
                 // Instantiate the WASM module
@@ -84,7 +81,18 @@ class ParserService {
 
                 // Set the WASM exports for the bindings to use (this is global state)
                 wasmBindings.__wbg_set_wasm(wasmInstance.exports);
-                wasmBindings.__wbindgen_init_externref_table();
+
+                // Run wasm-bindgen's start (initialises the externref table, etc.)
+                // when the build exports it. Older builds exposed
+                // __wbindgen_init_externref_table on the glue; current builds run
+                // __wbindgen_start from the instance instead. Guarded so it works
+                // either way.
+                const wasmExports = wasmInstance.exports as any;
+                if (typeof wasmExports.__wbindgen_start === 'function') {
+                    wasmExports.__wbindgen_start();
+                } else if (typeof (wasmBindings as any).__wbindgen_init_externref_table === 'function') {
+                    (wasmBindings as any).__wbindgen_init_externref_table();
+                }
 
                 // Create the parser instance (using the shared WASM instance)
                 const rawParser = new wasmBindings.Parser();

@@ -11,7 +11,7 @@ import type {
     Ingredient,
     Cookware,
     Timer,
-} from '@cooklang/cooklang-ts';
+} from '@cooklang/cooklang';
 
 export type StepPart =
     | { type: 'text'; value: string }

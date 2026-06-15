@@ -2,7 +2,7 @@
  * Pure servings-scaling math used by the scaler bar and CookView.
  */
 
-// `@cooklang/cooklang-ts` does not re-export its `Servings` type, so mirror it
+// `@cooklang/cooklang` does not re-export its `Servings` type, so mirror it
 // locally (it is `number | string`).
 type Servings = number | string;
 

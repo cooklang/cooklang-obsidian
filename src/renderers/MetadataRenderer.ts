@@ -2,7 +2,7 @@
  * MetadataRenderer — collapsible "More details" for custom metadata keys not
  * already surfaced as hero pills / typed fields.
  */
-import type { CooklangRecipe } from '@cooklang/cooklang-ts';
+import type { CooklangRecipe } from '@cooklang/cooklang';
 import { CooklangSettings } from '../settings';
 import { isValidUrl } from '../utils/urlValidators';
 import { getMetadata } from '../recipeHelpers';

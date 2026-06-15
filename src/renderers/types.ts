@@ -1,4 +1,4 @@
-import type { CooklangRecipe } from '@cooklang/cooklang-ts';
+import type { CooklangRecipe } from '@cooklang/cooklang';
 import type { TFile } from 'obsidian';
 
 export interface PreviewState {

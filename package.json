@@ -24,6 +24,7 @@
     "@codemirror/state": "^6.4.0",
     "@codemirror/theme-one-dark": "^6.1.2",
     "@codemirror/view": "^6.23.1",
+    "@cooklang/cooklang": "^0.18.7",
     "@lezer/common": "^1.2.1",
     "@lezer/highlight": "^1.2.1",
     "@lezer/lr": "^1.3.14",
@@ -44,8 +45,5 @@
     "tslib": "^2.6.2",
     "typescript": "^5.3.3",
     "vitest": "^2.1.9"
-  },
-  "dependencies": {
-    "@cooklang/cooklang-ts": "https://pkg.pr.new/cooklang/cooklang-rs/@cooklang/cooklang-ts@de669dd"
   }
 }
