@@ -1,23 +1,29 @@
 /**
- * IngredientListRenderer — checklist grouped by Cooklang section when the recipe
- * has named sections. Quantities come from the already-scaled recipe (CookView
- * re-parses with scale). Checkboxes are keyed by ingredient name so scaling /
- * re-render preserves checked state.
+ * IngredientListRenderer — a single combined ingredient checklist for the whole
+ * recipe (CookCLI-style). Duplicate ingredients are merged and their quantities
+ * summed by the parser's own grouping (`recipe.groupedIngredients`), which
+ * handles fractions and mixed units (e.g. "1 cup + 2 tbsp"). Quantities reflect
+ * the already-scaled recipe (CookView re-parses with scale). Checkboxes are
+ * keyed by ingredient name so scaling / re-render preserves checked state.
  */
 import { CooklangSettings } from '../settings';
-import { getFlatIngredients } from '../recipeHelpers';
-import type { FlatIngredient } from '@cooklang/cooklang-ts';
-import { hasNamedSections, type SectionView } from '../utils/sectionHelpers';
+import {
+    ingredient_should_be_listed,
+    ingredient_display_name,
+    grouped_quantity_is_empty,
+    grouped_quantity_display,
+} from '../recipeHelpers';
 import type { RenderContext } from './types';
 
 export class IngredientListRenderer {
     constructor(private settings: CooklangSettings) {}
 
-    render(container: HTMLElement, ctx: RenderContext, sections: SectionView[]): void {
+    render(container: HTMLElement, ctx: RenderContext): void {
         if (!this.settings.showIngredientList) return;
 
-        const all = getFlatIngredients(ctx.recipe);
-        if (!all.length) return;
+        const grouped = ctx.recipe.groupedIngredients
+            .filter(([ingredient]) => ingredient_should_be_listed(ingredient));
+        if (!grouped.length) return;
 
         const region = container.createDiv({ cls: 'cook-ingredients' });
         region.id = 'cook-ingredients';
@@ -26,47 +32,26 @@ export class IngredientListRenderer {
             text: this.settings.ingredientLabel || 'Ingredients',
         });
 
-        if (hasNamedSections(sections) && sections.length > 1) {
-            // Group ingredients by section using each section's ingredientIndices.
-            sections.forEach(section => {
-                const items = section.ingredientIndices
-                    .map(i => all[i])
-                    .filter((x): x is FlatIngredient => !!x);
-                if (!items.length) return;
-                if (section.name) {
-                    region.createEl('h3', { cls: 'cook-subhead', text: section.name });
-                }
-                this.renderList(region, items, ctx);
-            });
-        } else {
-            this.renderList(region, all, ctx);
-        }
-    }
-
-    private renderList(parent: HTMLElement, items: FlatIngredient[], ctx: RenderContext): void {
-        const ul = parent.createEl('ul', { cls: 'cook-ing-list' });
+        const ul = region.createEl('ul', { cls: 'cook-ing-list' });
         const checked = ctx.state.checkedIngredients;
 
-        items.forEach(ing => {
-            const key = ing.name;
-            const isChecked = checked.has(key);
+        for (const [ingredient, quantity] of grouped) {
+            const name = ingredient_display_name(ingredient);
+            const isChecked = checked.has(name);
 
-            const li = ul.createEl('li', {
-                cls: isChecked ? 'cook-ing done' : 'cook-ing',
-            });
+            const li = ul.createEl('li', { cls: isChecked ? 'cook-ing done' : 'cook-ing' });
             li.createSpan({ cls: 'cook-ing-box' });
-            li.createSpan({ cls: 'cook-ing-name', text: ing.name });
-            // displayText already includes the unit (e.g. "3/4 tsp"), so it is
-            // used as-is — concatenating ing.unit would duplicate it.
-            if (ing.displayText) {
-                li.createSpan({ cls: 'cook-ing-qty', text: ing.displayText });
+            li.createSpan({ cls: 'cook-ing-name', text: name });
+
+            if (!grouped_quantity_is_empty(quantity)) {
+                li.createSpan({ cls: 'cook-ing-qty', text: grouped_quantity_display(quantity) });
             }
 
             li.addEventListener('click', () => {
-                if (checked.has(key)) checked.delete(key);
-                else checked.add(key);
+                if (checked.has(name)) checked.delete(name);
+                else checked.add(name);
                 ctx.callbacks.onIngredientToggle();
             });
-        });
+        }
     }
 }

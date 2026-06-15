@@ -69,7 +69,7 @@ export class PreviewRenderer {
         if (!this.settings.twoColumnLayout) cols.addClass('cook-cols-stacked');
 
         const aside = cols.createDiv({ cls: 'cook-aside' });
-        this.ingredientRenderer.render(aside, ctx, sections);
+        this.ingredientRenderer.render(aside, ctx);
         this.cookwareRenderer.render(ctx.recipe, aside);
         this.timerListRenderer.render(ctx.recipe, aside);
 
