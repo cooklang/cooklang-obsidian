@@ -1700,7 +1700,9 @@ Add all rich-layout CSS using only Obsidian variables, then verify across light/
 Append to `src/styles.scss`:
 ```scss
 /* ===== Rich Cooklang preview ===== */
-.cook-preview-view .cook-rich {
+/* `cook-rich` is added to the .cook-preview-view element itself, so this must be
+   a compound selector (no descendant combinator) or container-type won't apply. */
+.cook-preview-view.cook-rich {
   container-type: inline-size;
   max-width: 1000px;
   margin: 0 auto;
