@@ -18,6 +18,10 @@ export class CooklangSettings {
   timersRing: boolean = true;
   lineWrap: boolean = true;
   highlightIngredientCookware: boolean = false;
+  showServingsScaler: boolean = true;
+  twoColumnLayout: boolean = true;
+  enableStepTracking: boolean = true;
+  servingsLabel: string = "";
   metadataLabel: string = "";
   ingredientLabel: string = "";
   cookwareLabel: string = "";
@@ -83,6 +87,39 @@ export class CookSettingsTab extends PluginSettingTab {
         .setValue(this.plugin.settings.highlightIngredientCookware)
         .onChange((value: boolean) => {
           this.plugin.settings.highlightIngredientCookware = value;
+          this.plugin.saveData(this.plugin.settings);
+          this.plugin.reloadCookViews();
+        }));
+
+    new Setting(containerEl)
+      .setName('Servings scaler')
+      .setDesc('Show a +/- control to rescale ingredient quantities by servings')
+      .addToggle(toggle => toggle
+        .setValue(this.plugin.settings.showServingsScaler)
+        .onChange((value: boolean) => {
+          this.plugin.settings.showServingsScaler = value;
+          this.plugin.saveData(this.plugin.settings);
+          this.plugin.reloadCookViews();
+        }));
+
+    new Setting(containerEl)
+      .setName('Two-column layout')
+      .setDesc('Show ingredients beside the steps on wide panes (stacks on narrow panes)')
+      .addToggle(toggle => toggle
+        .setValue(this.plugin.settings.twoColumnLayout)
+        .onChange((value: boolean) => {
+          this.plugin.settings.twoColumnLayout = value;
+          this.plugin.saveData(this.plugin.settings);
+          this.plugin.reloadCookViews();
+        }));
+
+    new Setting(containerEl)
+      .setName('Step tracking')
+      .setDesc('Tap a step to mark it current and dim completed steps')
+      .addToggle(toggle => toggle
+        .setValue(this.plugin.settings.enableStepTracking)
+        .onChange((value: boolean) => {
+          this.plugin.settings.enableStepTracking = value;
           this.plugin.saveData(this.plugin.settings);
           this.plugin.reloadCookViews();
         }));
@@ -188,6 +225,18 @@ export class CookSettingsTab extends PluginSettingTab {
       .setPlaceholder("Ingredients")
       .onChange(async (value) => {
         this.plugin.settings.ingredientLabel = value;
+        this.plugin.saveData(this.plugin.settings);
+        this.plugin.reloadCookViews();
+      }));
+
+    new Setting(containerEl)
+      .setName("Servings Label")
+      .setDesc("Choose your label for servings")
+      .addText((text) => text
+      .setValue(this.plugin.settings.servingsLabel)
+      .setPlaceholder("servings")
+      .onChange(async (value) => {
+        this.plugin.settings.servingsLabel = value;
         this.plugin.saveData(this.plugin.settings);
         this.plugin.reloadCookViews();
       }));
