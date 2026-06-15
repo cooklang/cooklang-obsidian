@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- Ingredient list now combines the same ingredient listed multiple times into one
+  row, summing quantities that share a unit (different units shown side by side;
+  ranges/textual amounts listed as-is).
+- Recipe references (`@./Components/Beans`) render as clickable links to the
+  referenced `.cook` file — both in the ingredient list and inline in the steps —
+  falling back to plain text when the target isn't found.
+
 ## 0.7.0
 
 ### Added

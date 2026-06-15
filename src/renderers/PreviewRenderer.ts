@@ -39,7 +39,7 @@ export class PreviewRenderer {
     private buildRenderers(): void {
         this.hero = new HeroRenderer(this.app, this.settings);
         this.scalerBar = new ScalerBarRenderer(this.settings);
-        this.ingredientRenderer = new IngredientListRenderer(this.settings);
+        this.ingredientRenderer = new IngredientListRenderer(this.app, this.settings);
         this.cookwareRenderer = new CookwareListRenderer(this.settings);
         this.timerListRenderer = new TimerListRenderer(this.settings);
         this.methodStepsRenderer = new MethodStepsRenderer(this.app, this.settings, this.timerService);
