@@ -1,7 +1,10 @@
 /**
  * Pure servings-scaling math used by the scaler bar and CookView.
  */
-import type { Servings } from '@cooklang/cooklang-ts';
+
+// `@cooklang/cooklang-ts` does not re-export its `Servings` type, so mirror it
+// locally (it is `number | string`).
+type Servings = number | string;
 
 /** Numeric base servings from recipe metadata, or null if not derivable. */
 export function parseServingsValue(servings: Servings | undefined): number | null {

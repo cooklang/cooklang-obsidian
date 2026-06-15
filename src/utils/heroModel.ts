@@ -1,7 +1,11 @@
 /**
  * Pure model for hero meta pills, derived from the typed recipe fields.
  */
-import type { CooklangRecipe, RecipeTime } from '@cooklang/cooklang-ts';
+import type { CooklangRecipe } from '@cooklang/cooklang-ts';
+
+// `@cooklang/cooklang-ts` does not re-export its `RecipeTime` type, so mirror it
+// locally (minutes as a number, or a prep/cook breakdown).
+type RecipeTime = number | { prep_time?: number; cook_time?: number };
 
 export type PillKind =
     | 'time' | 'servings' | 'difficulty' | 'source'
