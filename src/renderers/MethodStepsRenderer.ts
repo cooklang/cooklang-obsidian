@@ -1,156 +1,40 @@
-/**
- * MethodStepsRenderer - Renders recipe method steps
- *
- * Handles rendering of method steps with inline ingredients,
- * cookware, and interactive timers.
- */
-
-import type { CooklangRecipe } from '@cooklang/cooklang-ts';
+import { App } from 'obsidian';
 import { CooklangSettings } from '../settings';
 import { TimerService } from '../services/TimerService';
-import {
-    getSteps,
-    ingredient_display_name,
-    cookware_display_name,
-    quantity_display,
-    getQuantityValue
-} from '../recipeHelpers';
-import { formatTime, createUnitMap } from '../utils/timeFormatters';
+import type { SectionView, StepPart } from '../utils/sectionHelpers';
+import type { TFile } from 'obsidian';
+import type { RenderContext } from './types';
 
-/**
- * Renders recipe method steps with inline components
- */
 export class MethodStepsRenderer {
     constructor(
+        private app: App,
         private settings: CooklangSettings,
-        private timerService: TimerService
+        private timerService: TimerService,
     ) {}
 
-    /**
-     * Render method steps section
-     * @param recipe - Parsed recipe object
-     * @param container - Container element to render into
-     */
-    public render(recipe: CooklangRecipe, container: HTMLElement): void {
-        const steps = getSteps(recipe);
-
-        // Add the Method header
-        container.createEl('h2', {
-            cls: 'method-header',
-            text: this.settings.methodLabel || 'Method'
-        });
-
-        // Add the Method list
-        const methodOl = container.createEl('ol', { cls: 'method' });
-
-        // Create unit map for time conversion
-        const unitMap = createUnitMap(
-            this.settings.minutesLabel || "m,min,minute,minutes",
-            this.settings.hoursLabel || "h,hr,hrs,hour,hours"
-        );
-
-        steps.forEach((step, i) => {
-            const li = methodOl.createEl('li');
-
-            // Add step text with inline components
-            const text = li.createEl('div', { cls: 'step-text' });
-
-            step.forEach((part) => {
-                if (part.type === 'text') {
-                    text.appendText(part.value);
-                } else {
-                    const span = text.createEl('span');
-
-                    if (part.type === "ingredient") {
-                        this.renderInlineIngredient(span, part.ingredient);
-                    } else if (part.type === "cookware") {
-                        this.renderInlineCookware(span, part.cookware);
-                    } else if (part.type === "timer") {
-                        this.renderInlineTimer(span, part.timer, unitMap);
-                    }
-                }
-            });
-        });
-    }
-
-    /**
-     * Render inline ingredient component
-     */
-    private renderInlineIngredient(span: HTMLSpanElement, ingredient: any): void {
-        span.addClass('ingredient');
-        span.appendText(ingredient_display_name(ingredient));
-
-        // Highlight color if enabled
-        if (this.settings.highlightIngredientCookware) {
-            span.addClass('ingredient-highlight')
-        }
-
-        if (this.settings.showQuantitiesInline && ingredient.quantity) {
-            span.appendText(' (');
-            span.createEl('span', {
-                cls: 'amount',
-                text: quantity_display(ingredient.quantity)
-            });
-            span.appendText(')');
-        }
-    }
-
-    /**
-     * Render inline cookware component
-     */
-    private renderInlineCookware(span: HTMLSpanElement, cookware: any): void {
-        span.addClass('cookware');
-        span.appendText(cookware_display_name(cookware));
-
-        // Highlight color if enabled
-        if (this.settings.highlightIngredientCookware) {
-            span.addClass('cookware-highlight')
-        }
-
-        if (cookware.quantity) {
-            span.appendText(' (');
-            span.createEl('span', {
-                cls: 'amount',
-                text: quantity_display(cookware.quantity)
-            });
-            span.appendText(')');
-        }
-    }
-
-    /**
-     * Render inline timer component with interactive button
-     */
-    private renderInlineTimer(
-        span: HTMLSpanElement,
-        timer: any,
-        unitMap: Record<string, number>
+    render(
+        container: HTMLElement,
+        _ctx: RenderContext,
+        sections: SectionView[],
+        _file: TFile | null,
+        _allImages: TFile[],
     ): void {
-        span.addClass('timer');
-
-        // If `showTimersInline` is true nest everything in a button element.
-        if (this.settings.showTimersInline) {
-            span = span.createEl('button', { cls: 'timer-button' });
-        }
-        span.appendText('⏲');
-
-        const numericQty = getQuantityValue(timer.quantity);
-        if (numericQty !== null) {
-            span.appendText(' ');
-            const unit = timer.quantity?.unit;
-            const multiplier = unit ? unitMap[unit.toLowerCase()] ?? 1 : 1;
-            const seconds = numericQty * multiplier;
-
-            span.createEl('span', { cls: 'amount', text: formatTime(seconds) });
-
-            // Attach timer functionality if the element is a button.
-            if (span instanceof HTMLButtonElement) {
-                this.timerService.attachTimerToButton(span, seconds, timer.name ?? '');
-            }
-        }
-
-        if (timer.name) {
-            span.appendText(' ');
-            span.createEl('span', { cls: 'name', text: timer.name });
-        }
+        const region = container.createDiv({ cls: 'cook-steps' });
+        region.id = 'cook-steps';
+        region.createEl('h2', { cls: 'cook-section-title', text: this.settings.methodLabel || 'Method' });
+        sections.forEach(section => {
+            section.steps.forEach(step => {
+                const li = region.createDiv({ cls: 'cook-step' });
+                li.createSpan({ cls: 'cook-step-n', text: `${step.globalIndex + 1}.` });
+                const body = li.createDiv({ cls: 'cook-step-text' });
+                step.parts.forEach((part: StepPart) => {
+                    if (part.type === 'text') body.appendText(part.value);
+                    else if (part.type === 'ingredient') body.createSpan({ text: part.ingredient.name });
+                    else if (part.type === 'cookware') body.createSpan({ text: part.cookware.name });
+                    else if (part.type === 'timer') body.createSpan({ text: '⏱' });
+                });
+            });
+        });
+        void this.timerService; void this.app;
     }
 }
