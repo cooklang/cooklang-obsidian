@@ -1,8 +1,19 @@
-import { App } from 'obsidian';
+/**
+ * MethodStepsRenderer — section bands, note callouts, numbered steps with inline
+ * ingredients/cookware/timers, per-step images, and current-step tracking.
+ */
+import { App, TFile } from 'obsidian';
 import { CooklangSettings } from '../settings';
 import { TimerService } from '../services/TimerService';
-import type { SectionView, StepPart } from '../utils/sectionHelpers';
-import type { TFile } from 'obsidian';
+import {
+    ingredient_display_name,
+    cookware_display_name,
+    quantity_display,
+    getQuantityValue,
+} from '../recipeHelpers';
+import { formatTime, createUnitMap } from '../utils/timeFormatters';
+import type { SectionView, StepView, StepPart } from '../utils/sectionHelpers';
+import { getStepImageFor } from '../utils/stepImages';
 import type { RenderContext } from './types';
 
 export class MethodStepsRenderer {
@@ -14,27 +25,125 @@ export class MethodStepsRenderer {
 
     render(
         container: HTMLElement,
-        _ctx: RenderContext,
+        ctx: RenderContext,
         sections: SectionView[],
-        _file: TFile | null,
-        _allImages: TFile[],
+        file: TFile | null,
+        allImages: TFile[],
     ): void {
         const region = container.createDiv({ cls: 'cook-steps' });
         region.id = 'cook-steps';
-        region.createEl('h2', { cls: 'cook-section-title', text: this.settings.methodLabel || 'Method' });
+        region.createEl('h2', {
+            cls: 'cook-section-title',
+            text: this.settings.methodLabel || 'Method',
+        });
+
+        const unitMap = createUnitMap(
+            this.settings.minutesLabel || 'm,min,minute,minutes',
+            this.settings.hoursLabel || 'h,hr,hrs,hour,hours',
+        );
+
         sections.forEach(section => {
+            if (section.name && sections.length > 1) {
+                region.createEl('div', { cls: 'cook-section-band', text: section.name });
+            }
+
             section.steps.forEach(step => {
-                const li = region.createDiv({ cls: 'cook-step' });
-                li.createSpan({ cls: 'cook-step-n', text: `${step.globalIndex + 1}.` });
-                const body = li.createDiv({ cls: 'cook-step-text' });
-                step.parts.forEach((part: StepPart) => {
-                    if (part.type === 'text') body.appendText(part.value);
-                    else if (part.type === 'ingredient') body.createSpan({ text: part.ingredient.name });
-                    else if (part.type === 'cookware') body.createSpan({ text: part.cookware.name });
-                    else if (part.type === 'timer') body.createSpan({ text: '⏱' });
-                });
+                this.renderStep(region, step, ctx, unitMap, file, allImages);
+            });
+
+            section.notes.forEach(note => {
+                const callout = region.createDiv({ cls: 'cook-note' });
+                callout.createSpan({ cls: 'cook-note-icon', text: '💡' });
+                callout.createSpan({ cls: 'cook-note-text', text: note });
             });
         });
-        void this.timerService; void this.app;
+    }
+
+    private renderStep(
+        region: HTMLElement,
+        step: StepView,
+        ctx: RenderContext,
+        unitMap: Record<string, number>,
+        file: TFile | null,
+        allImages: TFile[],
+    ): void {
+        const tracking = this.settings.enableStepTracking;
+        const isCurrent = tracking && ctx.state.currentStep === step.globalIndex;
+        const isDone = tracking && ctx.state.currentStep > step.globalIndex;
+
+        const li = region.createDiv({
+            cls: 'cook-step' + (isCurrent ? ' cur' : '') + (isDone ? ' done' : ''),
+        });
+
+        li.createSpan({ cls: 'cook-step-n', text: `${step.globalIndex + 1}.` });
+
+        const bodyWrap = li.createDiv({ cls: 'cook-step-bodywrap' });
+        const body = bodyWrap.createDiv({ cls: 'cook-step-text' });
+        step.parts.forEach(part => this.renderPart(body, part, unitMap));
+
+        // Per-step image
+        if (this.settings.showImages && file) {
+            const img = getStepImageFor(step.globalIndex, file.basename, allImages);
+            if (img) {
+                const fig = bodyWrap.createDiv({ cls: 'cook-step-image' });
+                const el = fig.createEl('img');
+                el.src = this.app.vault.getResourcePath(img);
+                el.alt = '';
+            }
+        }
+
+        if (tracking) {
+            li.addEventListener('click', () => ctx.callbacks.onStepActivate(step.globalIndex));
+        }
+    }
+
+    private renderPart(body: HTMLElement, part: StepPart, unitMap: Record<string, number>): void {
+        if (part.type === 'text') {
+            body.appendText(part.value);
+            return;
+        }
+        const span = body.createEl('span');
+        if (part.type === 'ingredient') {
+            span.addClass('cook-ig');
+            span.appendText(ingredient_display_name(part.ingredient));
+            if (this.settings.highlightIngredientCookware) span.addClass('cook-ig-hl');
+            if (this.settings.showQuantitiesInline && part.ingredient.quantity) {
+                span.appendText(' ');
+                span.createEl('span', {
+                    cls: 'cook-amt',
+                    text: '(' + quantity_display(part.ingredient.quantity) + ')',
+                });
+            }
+        } else if (part.type === 'cookware') {
+            span.addClass('cook-cw');
+            span.appendText(cookware_display_name(part.cookware));
+            if (this.settings.highlightIngredientCookware) span.addClass('cook-cw-hl');
+        } else if (part.type === 'timer') {
+            this.renderTimer(span, part.timer, unitMap);
+        }
+    }
+
+    private renderTimer(span: HTMLElement, timer: any, unitMap: Record<string, number>): void {
+        span.addClass('cook-timer');
+        let target: HTMLElement = span;
+        if (this.settings.showTimersInline) {
+            target = span.createEl('button', { cls: 'cook-timer-btn' });
+        }
+        target.appendText('⏱');
+        const numericQty = getQuantityValue(timer.quantity);
+        if (numericQty !== null) {
+            target.appendText(' ');
+            const unit = timer.quantity?.unit;
+            const multiplier = unit ? unitMap[String(unit).toLowerCase()] ?? 1 : 1;
+            const seconds = numericQty * multiplier;
+            target.createEl('span', { cls: 'cook-amt', text: formatTime(seconds) });
+            if (target instanceof HTMLButtonElement) {
+                this.timerService.attachTimerToButton(target, seconds, timer.name ?? '');
+            }
+        }
+        if (timer.name) {
+            target.appendText(' ');
+            target.createEl('span', { cls: 'cook-timer-name', text: timer.name });
+        }
     }
 }
