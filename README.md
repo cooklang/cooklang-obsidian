@@ -12,6 +12,26 @@ A plugin for [Obsidian](https://obsidian.md) adding support for [Cooklang](https
 - This plugin has been submitted community plugins repo. You can install it from Communinty Plugins within Obsidian.
 - You can build and install the plugin manually by checking out the files to `<your vault>/.obsidian/plugins/cooklang-obsidian` and running `npm install` and then `npm run build`.
 
+## Rich preview
+
+Opening a `.cook` file and toggling Preview shows a single rich recipe page:
+
+- **Hero** with the recipe title, description, **title image** (a sibling file named like
+  the recipe, e.g. `Curry.jpg`), and meta pills for total time, servings, difficulty,
+  source and tags.
+- **Servings scaler** — a `− N servings +` control in the sticky bar that rescales every
+  ingredient quantity (and inline quantities in the steps) in real time.
+- **Two-column layout** on wide panes: a sticky ingredient checklist beside the steps; it
+  stacks into a single column on narrow panes and mobile.
+- **Cooklang sections** (`= Section =`) group both the ingredients and the steps, and
+  `> notes` render as callouts.
+- **Per-step images** following the [Cooklang convention](https://cooklang.org/docs/spec/#adding-pictures)
+  (`Recipe.0.jpg` for the first step, `Recipe.1.jpg` for the second, …).
+- **Step tracking** — tap a step to mark it current and dim completed steps.
+
+Each of these can be toggled in the plugin settings (Servings scaler, Two-column layout,
+Step tracking), falling back to a simple stacked list.
+
 ## Security
 > Third-party plugins can access files on your computer, connect to the internet, and even install additional programs.
 
@@ -29,10 +49,10 @@ This is the stuff I would ideally like to include in this plugin that isn't avai
 - [x] Include options for showing ingredients list, tools list and time
     - [x] (calculate total time)
 - [ ] Unit conversion (metric <-> imperial)
-- [ ] Scaling up/down (check spec)
+- [x] Scaling up/down (check spec)
 - [ ] Shopping list and `.conf` file support (needs designing)
 - [ ] Better metadata support.
-    - [ ] Making source links clickable.
+    - [x] Making source links clickable.
     - [ ] Support for Obsidian tagging.
 - [ ] (Maybe, pending feedback) Markdown formatting support.
 

@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- Redesigned recipe preview into a single rich page: hero with title image and meta
+  pills (time, servings, difficulty, source, tags), a sticky servings scaler that
+  rescales quantities live, a two-column ingredients/steps layout, Cooklang section &
+  note support, per-step images, and tap-to-track current step. Fully themed via
+  Obsidian CSS variables, so it adapts to any theme.
+- New settings: **Servings scaler**, **Two-column layout**, **Step tracking**, and a
+  **Servings label**.
+
 ## 0.6.3
 
 ### Fixed
