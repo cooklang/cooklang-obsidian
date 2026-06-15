@@ -511,7 +511,10 @@ Expected: FAIL — functions not defined.
 /**
  * Pure servings-scaling math used by the scaler bar and CookView.
  */
-import type { Servings } from '@cooklang/cooklang-ts';
+
+// `@cooklang/cooklang-ts` does not re-export its `Servings` type, so mirror it
+// locally (it is `number | string`).
+type Servings = number | string;
 
 /** Numeric base servings from recipe metadata, or null if not derivable. */
 export function parseServingsValue(servings: Servings | undefined): number | null {
@@ -627,7 +630,11 @@ Expected: FAIL — functions not defined.
 /**
  * Pure model for hero meta pills, derived from the typed recipe fields.
  */
-import type { CooklangRecipe, RecipeTime } from '@cooklang/cooklang-ts';
+import type { CooklangRecipe } from '@cooklang/cooklang-ts';
+
+// `@cooklang/cooklang-ts` does not re-export its `RecipeTime` type, so mirror it
+// locally (minutes as a number, or a prep/cook breakdown).
+type RecipeTime = number | { prep_time?: number; cook_time?: number };
 
 export type PillKind =
     | 'time' | 'servings' | 'difficulty' | 'source'
