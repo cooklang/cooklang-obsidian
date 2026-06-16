@@ -18,6 +18,7 @@ export class CooklangSettings {
   timersRing: boolean = true;
   lineWrap: boolean = true;
   highlightIngredientCookware: boolean = false;
+  groupIngredientsBySection: boolean = false;
   defaultView: 'source' | 'preview' = 'source';
   showServingsScaler: boolean = true;
   twoColumnLayout: boolean = true;
@@ -89,6 +90,17 @@ export class CookSettingsTab extends PluginSettingTab {
         .setValue(this.plugin.settings.showIngredientList)
         .onChange((value: boolean) => {
           this.plugin.settings.showIngredientList = value;
+          this.plugin.saveData(this.plugin.settings);
+          this.plugin.reloadCookViews();
+        }));
+
+    new Setting(containerEl)
+      .setName('Group ingredients by section')
+      .setDesc('List ingredients under each recipe section’s title (only affects recipes that use = Section headers)')
+      .addToggle(toggle => toggle
+        .setValue(this.plugin.settings.groupIngredientsBySection)
+        .onChange((value: boolean) => {
+          this.plugin.settings.groupIngredientsBySection = value;
           this.plugin.saveData(this.plugin.settings);
           this.plugin.reloadCookViews();
         }));
