@@ -1,7 +1,12 @@
 import './styles.scss'
-import { Plugin, WorkspaceLeaf, addIcon, TFile, TFolder, Menu } from 'obsidian';
+import { Plugin, WorkspaceLeaf, addIcon, TFile, TFolder, Menu, MarkdownPostProcessorContext } from 'obsidian';
 import { CookView } from './cookView'
 import { CooklangSettings, CookSettingsTab } from './settings'
+import alarmMp3 from './alarm.mp3';
+import timerMp3 from './timer.mp3';
+import { parserService } from './services/ParserService';
+import { TimerService } from './services/TimerService';
+import { MarkdownRecipeRenderer } from './renderers/MarkdownRecipeRenderer';
 
 // CodeMirror is loaded globally by Obsidian
 declare const CodeMirror: any;
@@ -9,6 +14,8 @@ declare const CodeMirror: any;
 export default class CookPlugin extends Plugin {
 
   settings: CooklangSettings;
+  embedTimerService: TimerService;
+  markdownRecipeRenderer: MarkdownRecipeRenderer;
 
   async onload() {
     super.onload();
@@ -20,6 +27,50 @@ export default class CookPlugin extends Plugin {
     // register the view and extensions
     this.registerView("cook", this.cookViewCreator);
     this.registerExtensions(["cook"], "cook");
+
+    // Render ```cook / ```cooklang fenced blocks inside markdown notes as a
+    // compact, read-only recipe (#73).
+    this.embedTimerService = new TimerService(this.settings, {
+      tickSoundUrl: timerMp3,
+      alarmSoundUrl: alarmMp3,
+      tickVolume: 0.3,
+      alarmVolume: 0.3,
+    });
+    this.register(() => this.embedTimerService.dispose());
+    this.markdownRecipeRenderer = new MarkdownRecipeRenderer(this.app, this.embedTimerService);
+
+    const renderRecipeBlock = async (
+      source: string,
+      el: HTMLElement,
+      ctx: MarkdownPostProcessorContext,
+    ): Promise<void> => {
+      if (!source.trim()) {
+        el.empty();
+        el.createDiv({ cls: 'cook-embed-empty', text: 'Empty recipe block.' });
+        return;
+      }
+      try {
+        await parserService.initialize();
+      } catch (e) {
+        renderEmbedError(el, source, 'Cooklang parser failed to load.');
+        return;
+      }
+      let recipe;
+      try {
+        [recipe] = parserService.parse(source);
+      } catch (e) {
+        renderEmbedError(el, source, 'Could not parse this recipe.');
+        return;
+      }
+      const abstract = ctx.sourcePath
+        ? this.app.vault.getAbstractFileByPath(ctx.sourcePath)
+        : null;
+      const file = abstract instanceof TFile ? abstract : null;
+      this.markdownRecipeRenderer.render(el, file, recipe, this.settings);
+    };
+
+    this.registerMarkdownCodeBlockProcessor('cook', renderRecipeBlock);
+    this.registerMarkdownCodeBlockProcessor('cooklang', renderRecipeBlock);
 
     // Auto-detect recipe files by frontmatter (recipe: true)
     this.registerEvent(
@@ -273,4 +324,11 @@ export default class CookPlugin extends Plugin {
     </svg>
     `);
   }
+}
+
+function renderEmbedError(el: HTMLElement, source: string, message: string): void {
+  el.empty();
+  const wrap = el.createDiv({ cls: 'cook-embed-error' });
+  wrap.createDiv({ cls: 'cook-embed-error-msg', text: message });
+  wrap.createEl('pre').createEl('code', { text: source });
 }

@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- ` ```cook ` (and ` ```cooklang `) fenced code blocks inside markdown notes now
+  render as a compact, read-only recipe — ingredients list plus numbered steps —
+  in reading mode (#73).
+
+### Fixed
+- Clicking a running timer in the recipe preview no longer starts a second
+  countdown; repeat clicks while a timer is counting down are ignored, fixing the
+  erratic display caused by overlapping intervals (#74).
+- Ingredient, cookware, and timer names with umlauts or accents (e.g. `@Möhre`,
+  `#Schäler`) are now fully highlighted in the editor instead of being cut off at
+  the first non-ASCII letter (#29).
+
 ## 0.7.1
 
 ### Added
