@@ -371,3 +371,11 @@ a.cook-pill:hover { color: var(--text-normal); border-color: var(--text-accent);
   font-size: var(--font-ui-small);
   margin-bottom: var(--size-2-2, 6px);
 }
+
+/* Per-section ingredient sub-headings (#69) */
+.cook-ing-group-title {
+  margin: var(--size-4-3, 12px) 0 var(--size-2-2, 6px);
+  font-size: 0.8em;
+  font-weight: 700;
+  color: var(--text-muted);
+}
