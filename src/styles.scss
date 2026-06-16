@@ -353,3 +353,21 @@ a.cook-pill:hover { color: var(--text-normal); border-color: var(--text-accent);
 .cook-more-list { list-style: none; margin: var(--size-4-2, 8px) 0 0; padding: 0; }
 .cook-more-list li { padding: 3px 0; color: var(--text-muted); font-size: 0.85em; }
 .cook-more-key { font-weight: 600; color: var(--text-normal); margin-right: 6px; text-transform: capitalize; }
+
+/* Embedded ```cook blocks in markdown notes (#73) */
+.cook-embed {
+  margin: var(--size-4-2, 8px) 0;
+}
+.cook-embed .cook-section-title {
+  margin-top: var(--size-4-3, 12px);
+}
+.cook-embed-empty {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  font-style: italic;
+}
+.cook-embed-error-msg {
+  color: var(--text-error);
+  font-size: var(--font-ui-small);
+  margin-bottom: var(--size-2-2, 6px);
+}
