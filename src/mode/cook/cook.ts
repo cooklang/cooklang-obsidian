@@ -108,24 +108,29 @@ export const cooklang = StreamLanguage.define({
       return "comment";
     }
 
+    // Single-word names (no braces) run up to the first non-letter/digit.
+    // `\p{L}`/`\p{N}` with the `u` flag keep umlauts and accents highlighted,
+    // where the old ASCII `\b` boundary stopped at the first non-ASCII letter
+    // (e.g. `@Möhre` only highlighted `@M`). `\p{M}` covers combining accents.
+
     // Handle ingredients (@ingredient{amount})
     if (stream.match(/^@([^@#~]+?(?={))/)) {
       return "variable";
-    } else if (stream.match(/^@(.+?\b)/)) {
+    } else if (stream.match(/^@([\p{L}\p{N}][\p{L}\p{N}\p{M}_]*)/u)) {
       return "variable";
     }
 
     // Handle cookware (#cookware{amount})
     if (stream.match(/^#([^@#~]+?(?={))/)) {
       return "keyword";
-    } else if (stream.match(/^#(.+?\b)/)) {
+    } else if (stream.match(/^#([\p{L}\p{N}][\p{L}\p{N}\p{M}_]*)/u)) {
       return "keyword";
     }
 
     // Handle timers (~timer{amount})
     if (stream.match(/^~([^@#~]+?(?={))/)) {
       return "number";
-    } else if (stream.match(/^~(.+?\b)/)) {
+    } else if (stream.match(/^~([\p{L}\p{N}][\p{L}\p{N}\p{M}_]*)/u)) {
       return "number";
     }
 

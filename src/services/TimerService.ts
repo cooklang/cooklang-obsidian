@@ -65,8 +65,17 @@ export class TimerService {
      * @param name - Timer name/label
      */
     public attachTimerToButton(button: HTMLElement, seconds: number, name: string): void {
+        let activeTimerId: string | null = null;
         button.onclick = () => {
-            this.startTimer(seconds, name, (remaining) => {
+            // Ignore repeat clicks while this button's timer is still counting
+            // down. Otherwise each click spawns another interval and they all
+            // write to the same `.amount` span, producing an erratic countdown.
+            if (activeTimerId) {
+                const existing = this.getTimer(activeTimerId);
+                if (existing && existing.isRunning) return;
+            }
+
+            activeTimerId = this.startTimer(seconds, name, (remaining) => {
                 const span = button.querySelector('.amount');
                 if (span) {
                     span.textContent = formatTime(remaining);
