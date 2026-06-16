@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Added
+- ` ```cook ` (and ` ```cooklang `) fenced code blocks inside markdown notes now
+  render as a compact, read-only recipe — ingredients list plus numbered steps —
+  in reading mode (#73).
+
 ### Fixed
 - Clicking a running timer in the recipe preview no longer starts a second
   countdown; repeat clicks while a timer is counting down are ignored, fixing the
