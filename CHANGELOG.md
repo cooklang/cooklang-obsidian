@@ -6,6 +6,9 @@
 - ` ```cook ` (and ` ```cooklang `) fenced code blocks inside markdown notes now
   render as a compact, read-only recipe — ingredients list plus numbered steps —
   in reading mode (#73).
+- New **Group ingredients by section** setting (off by default): when a recipe
+  uses `= Section` headers, the ingredient list is split under each section's
+  title, with quantities aggregated within each section (#69).
 
 ### Fixed
 - Clicking a running timer in the recipe preview no longer starts a second
