@@ -1,10 +1,11 @@
 /**
  * Pure helpers for matching Cooklang per-step images.
  *
- * Convention (https://cooklang.org/docs/spec/#adding-pictures): a step image is
- * a sibling file named "<recipeBasename>.<stepIndex>.<ext>" where stepIndex is
- * the 0-based position of the step across the whole recipe. The main/title
- * image is "<recipeBasename>.<ext>" with no numeric suffix.
+ * Convention (https://cooklang.org/docs/conventions/): a step image is a sibling
+ * file named "<recipeBasename>.<stepNumber>.<ext>" where stepNumber is the
+ * 1-based position of the step across the whole recipe (the first step's image
+ * ends in ".1"). The main/title image is "<recipeBasename>.<ext>" with no
+ * numeric suffix.
  *
  * Generic over a minimal { basename, extension } shape so this stays free of
  * the Obsidian runtime and unit-testable.
@@ -15,10 +16,10 @@ export interface ImageLike {
 }
 
 /**
- * Returns the 0-based step index encoded in an image basename, or null if the
+ * Returns the 1-based step number encoded in an image basename, or null if the
  * basename is not a "<recipeBasename>.<digits>" step image.
  */
-export function extractStepIndex(imageBasename: string, recipeBasename: string): number | null {
+export function extractStepNumber(imageBasename: string, recipeBasename: string): number | null {
     const prefix = recipeBasename + '.';
     if (!imageBasename.startsWith(prefix)) return null;
     const suffix = imageBasename.slice(prefix.length);
@@ -27,12 +28,12 @@ export function extractStepIndex(imageBasename: string, recipeBasename: string):
 }
 
 export function getStepImageFor<T extends ImageLike>(
-    stepIndex: number,
+    stepNumber: number,
     recipeBasename: string,
     images: T[],
 ): T | null {
     for (const image of images) {
-        if (extractStepIndex(image.basename, recipeBasename) === stepIndex) {
+        if (extractStepNumber(image.basename, recipeBasename) === stepNumber) {
             return image;
         }
     }

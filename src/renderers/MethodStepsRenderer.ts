@@ -84,7 +84,9 @@ export class MethodStepsRenderer {
 
         // Per-step image
         if (this.settings.showImages && file) {
-            const img = getStepImageFor(step.globalIndex, file.basename, allImages);
+            // Step images use 1-based numbering per the Cooklang convention,
+            // while globalIndex is 0-based — hence the +1.
+            const img = getStepImageFor(step.globalIndex + 1, file.basename, allImages);
             if (img) {
                 const fig = bodyWrap.createDiv({ cls: 'cook-step-image' });
                 const el = fig.createEl('img');
