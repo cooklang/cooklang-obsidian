@@ -100,17 +100,19 @@ jobs:
       - name: Package
         env:
           TAG: ${{ needs.release-please.outputs.tag_name }}
+          REPO: ${{ github.event.repository.name }}
         run: |
-          mkdir ${{ github.event.repository.name }}
-          cp main.js manifest.json styles.css README.md ${{ github.event.repository.name }}
-          zip -r "${{ github.event.repository.name }}-${TAG}.zip" ${{ github.event.repository.name }}
+          mkdir "$REPO"
+          cp main.js manifest.json styles.css README.md "$REPO"
+          zip -r "$REPO-${TAG}.zip" "$REPO"
       - name: Upload release assets
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ needs.release-please.outputs.tag_name }}
+          REPO: ${{ github.event.repository.name }}
         run: |
           gh release upload "${TAG}" \
-            main.js manifest.json styles.css "${{ github.event.repository.name }}-${TAG}.zip" \
+            main.js manifest.json styles.css "$REPO-${TAG}.zip" \
             --clobber
 ```
 
