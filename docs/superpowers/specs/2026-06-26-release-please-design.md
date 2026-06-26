@@ -98,20 +98,23 @@ jobs:
       - run: npm ci
       - run: npm run build
       - name: Package
+        env:
+          TAG: ${{ needs.release-please.outputs.tag_name }}
         run: |
           mkdir ${{ github.event.repository.name }}
           cp main.js manifest.json styles.css README.md ${{ github.event.repository.name }}
-          zip -r ${{ github.event.repository.name }}.zip ${{ github.event.repository.name }}
+          zip -r "${{ github.event.repository.name }}-${TAG}.zip" ${{ github.event.repository.name }}
       - name: Upload release assets
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.release-please.outputs.tag_name }}
         run: |
-          gh release upload "${{ needs.release-please.outputs.tag_name }}" \
-            main.js manifest.json styles.css "${{ github.event.repository.name }}.zip" \
+          gh release upload "${TAG}" \
+            main.js manifest.json styles.css "${{ github.event.repository.name }}-${TAG}.zip" \
             --clobber
 ```
 
-The `build` job checks out the merge commit of the release PR, which already contains the bumped `manifest.json`, so the attached `manifest.json` carries the new version.
+The `build` job checks out the merge commit of the release PR, which already contains the bumped `manifest.json`, so the attached `manifest.json` carries the new version. The zip asset keeps the tagged name (`cooklang-obsidian-<tag>.zip`) for parity with the previous release workflow.
 
 #### 4. Delete `.github/workflows/version.yml`
 
