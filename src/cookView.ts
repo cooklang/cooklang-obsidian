@@ -12,7 +12,7 @@ import {string} from "postcss-selector-parser";
 import { parserService } from './services/ParserService';
 import { TimerService } from './services/TimerService';
 import { PreviewRenderer } from './renderers/PreviewRenderer';
-import { parseServingsValue, computeScale, clampServings } from './utils/scaling';
+import { parseServingsValue, computeScale, deriveServingsState } from './utils/scaling';
 import alarmMp3 from './alarm.mp3';
 import timerMp3 from './timer.mp3';
 
@@ -352,10 +352,15 @@ export class CookView extends TextFileView {
         const [rawRecipe] = parserService.parse(this.data, this.scale);
         this.rawRecipe = rawRecipe;
 
-        const baseServings = parseServingsValue(rawRecipe.servings);
-        const displayServings = baseServings != null
-            ? clampServings(baseServings * this.scale)
-            : null;
+        // The parser scales (and rounds) the `servings` metadata, so the servings
+        // on `rawRecipe` already reflect `this.scale`. Read the unscaled base from
+        // a scale-1 parse to compute scale targets and the displayed count
+        // correctly (see issue #83).
+        const [baseRecipe] = parserService.parse(this.data);
+        const { baseServings, displayServings } = deriveServingsState(
+            parseServingsValue(baseRecipe.servings),
+            this.scale,
+        );
 
         this.previewRenderer.updateSettings(this.settings);
         this.previewRenderer.render(this.previewEl, this.file, {
