@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.8.1](https://github.com/cooklang/cooklang-obsidian/compare/0.8.0...0.8.1) (2026-06-29)
+
+
+### Bug Fixes
+
+* correct servings scaling factor and reachable targets ([#83](https://github.com/cooklang/cooklang-obsidian/issues/83)) ([405d72c](https://github.com/cooklang/cooklang-obsidian/commit/405d72c5882c6f39afd03643dcdce1a5bd9c2efe))
+* correct servings scaling factor and reachable targets ([#83](https://github.com/cooklang/cooklang-obsidian/issues/83)) ([61b0227](https://github.com/cooklang/cooklang-obsidian/commit/61b022709fa09b60220a3b449573417072876ce1))
+* use 1-based step image numbering to match cookcli ([dbcb806](https://github.com/cooklang/cooklang-obsidian/commit/dbcb8063ff902d6105c4a0198ee33d3f59e4c878)), closes [#80](https://github.com/cooklang/cooklang-obsidian/issues/80)
+
 ## 0.8.0
 
 ### Added
