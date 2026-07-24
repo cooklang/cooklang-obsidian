@@ -11,6 +11,7 @@ function makeRecipe() {
             {
                 name: 'Curry paste',
                 content: [
+                    { type: 'text', value: 'Prep everything before starting.' },
                     { type: 'step', value: { number: 1, items: [
                         { type: 'text', value: 'Blitz the ' },
                         { type: 'ingredient', index: 0 },
@@ -19,6 +20,10 @@ function makeRecipe() {
                         { type: 'text', value: '.' },
                     ] } },
                     { type: 'text', value: 'Make double and freeze.' },
+                    { type: 'step', value: { number: 2, items: [
+                        { type: 'text', value: 'Set aside.' },
+                    ] } },
+                    { type: 'text', value: 'Keep it warm.' },
                 ],
             },
             {
@@ -44,23 +49,35 @@ describe('getSections', () => {
 
     it('assigns a global 0-based step index across sections', () => {
         const s = getSections(makeRecipe());
-        expect(s[0].steps[0].globalIndex).toBe(0);
-        expect(s[1].steps[0].globalIndex).toBe(1);
+        expect(s[0].entries[1]).toMatchObject({ type: 'step', step: { globalIndex: 0 } });
+        expect(s[0].entries[3]).toMatchObject({ type: 'step', step: { globalIndex: 1 } });
+        expect(s[1].entries[0]).toMatchObject({ type: 'step', step: { globalIndex: 2 } });
     });
 
     it('resolves step parts to ingredient/cookware/timer objects', () => {
         const s = getSections(makeRecipe());
-        const parts = s[0].steps[0].parts;
+        const entry = s[0].entries[1];
+        expect(entry.type).toBe('step');
+        if (entry.type !== 'step') throw new Error('Expected a step entry');
+        const parts = entry.step.parts;
         expect(parts[0]).toEqual({ type: 'text', value: 'Blitz the ' });
         expect(parts[1]).toEqual({ type: 'ingredient', ingredient: { name: 'paste' } });
         expect(parts[3]).toEqual({ type: 'cookware', cookware: { name: 'blender' } });
-        expect(s[1].steps[0].parts[1]).toEqual({ type: 'timer', timer: { name: null } });
+        const timerEntry = s[1].entries[0];
+        expect(timerEntry.type).toBe('step');
+        if (timerEntry.type !== 'step') throw new Error('Expected a step entry');
+        expect(timerEntry.step.parts[1]).toEqual({ type: 'timer', timer: { name: null } });
     });
 
-    it('collects text blocks as notes', () => {
+    it('preserves notes before, between, and after steps', () => {
         const s = getSections(makeRecipe());
-        expect(s[0].notes).toEqual(['Make double and freeze.']);
-        expect(s[1].notes).toEqual([]);
+        expect(s[0].entries.map(entry => entry.type === 'step' ? 'step' : entry.note)).toEqual([
+            'Prep everything before starting.',
+            'step',
+            'Make double and freeze.',
+            'step',
+            'Keep it warm.',
+        ]);
     });
 
     it('collects unique ingredient indices per section in first-seen order', () => {
