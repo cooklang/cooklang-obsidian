@@ -1,10 +1,11 @@
 /**
  * Renders a Cooklang recipe reference (e.g. `@./Components/Beans`) as a link to
- * the referenced `.cook` file. If the target file can't be found in the vault,
- * it falls back to plain styled text (no dead link).
+ * the referenced `.cook` file, or a same-path `.md` file marked `recipe: true`.
+ * If neither target can be found, it falls back to plain styled text (no dead
+ * link).
  */
 import { App, TFile } from 'obsidian';
-import { resolveReferencePath } from '../utils/recipeReferences';
+import { resolveReferenceCandidatePaths } from '../utils/recipeReferences';
 import type { RecipeRefTarget } from '../utils/ingredientAggregator';
 
 export function renderReferenceLink(
@@ -15,10 +16,21 @@ export function renderReferenceLink(
 ): void {
     const folder = sourceFile?.parent?.path ?? '';
     const normalizedFolder = folder === '/' ? '' : folder;
-    const targetPath = resolveReferencePath(normalizedFolder, ref.components ?? [], ref.name);
-    const target = app.vault.getAbstractFileByPath(targetPath);
+    const [cookPath, markdownPath] = resolveReferenceCandidatePaths(
+        normalizedFolder,
+        ref.components ?? [],
+        ref.name,
+    );
+    const cookTarget = app.vault.getAbstractFileByPath(cookPath);
+    const markdownTarget = app.vault.getAbstractFileByPath(markdownPath);
+    const target = cookTarget instanceof TFile
+        ? cookTarget
+        : markdownTarget instanceof TFile
+            && app.metadataCache.getFileCache(markdownTarget)?.frontmatter?.recipe === true
+            ? markdownTarget
+            : null;
 
-    if (target instanceof TFile) {
+    if (target) {
         const link = parent.createEl('a', {
             cls: 'cook-ref-link',
             text: ref.name,
