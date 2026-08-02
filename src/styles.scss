@@ -346,6 +346,10 @@ a.cook-pill:hover { color: var(--text-normal); border-color: var(--text-accent);
   background: var(--background-secondary); border-left: 3px solid var(--interactive-accent);
   border-radius: 0 6px 6px 0; color: var(--text-muted); font-size: 0.9em;
 }
+.cook-note-text {
+  // The Cooklang parser turns a backslash continuation into a newline.
+  white-space: pre-line;
+}
 
 /* More details */
 .cook-more { margin-top: var(--size-4-6, 24px); }
