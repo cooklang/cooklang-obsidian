@@ -48,14 +48,14 @@ export class MethodStepsRenderer {
                 region.createEl('div', { cls: 'cook-section-band', text: section.name });
             }
 
-            section.steps.forEach(step => {
-                this.renderStep(region, step, ctx, unitMap, file, allImages);
-            });
-
-            section.notes.forEach(note => {
+            section.entries.forEach(entry => {
+                if (entry.type === 'step') {
+                    this.renderStep(region, entry.step, ctx, unitMap, file, allImages);
+                    return;
+                }
                 const callout = region.createDiv({ cls: 'cook-note' });
                 callout.createSpan({ cls: 'cook-note-icon', text: '💡' });
-                callout.createSpan({ cls: 'cook-note-text', text: note });
+                callout.createSpan({ cls: 'cook-note-text', text: entry.note });
             });
         });
     }

@@ -96,7 +96,10 @@ export default class CookPlugin extends Plugin {
                     type: 'cook',
                     state: { 
                       file: file.path,
-                      mode: 'preview'
+                      mode: 'preview',
+                      // Do not add the transient markdown view to navigation
+                      // history; Back should return to the note opened before it.
+                      sync: true
                     }
                   });
                 }

@@ -2,7 +2,7 @@
  * Section view-model helpers.
  *
  * Reads recipe.sections into a structure the renderers can consume directly,
- * preserving section names, ordering text blocks as notes, and assigning each
+ * preserving section names and content order, and assigning each
  * step a global 0-based index (used for per-step images and current-step
  * tracking). Pure — imports types only, no WASM/Obsidian runtime.
  */
@@ -27,10 +27,14 @@ export interface StepView {
     parts: StepPart[];
 }
 
+export type SectionEntry =
+    | { type: 'step'; step: StepView }
+    | { type: 'note'; note: string };
+
 export interface SectionView {
     name: string | null;
-    steps: StepView[];
-    notes: string[];
+    /** Steps and notes in the order they appear in the Cooklang source. */
+    entries: SectionEntry[];
     /** Unique ingredient indices referenced in this section, first-seen order. */
     ingredientIndices: number[];
 }
@@ -51,15 +55,14 @@ export function getSections(recipe: CooklangRecipe): SectionView[] {
     for (const section of recipe.sections) {
         const view: SectionView = {
             name: section.name ?? null,
-            steps: [],
-            notes: [],
+            entries: [],
             ingredientIndices: [],
         };
         const seen = new Set<number>();
 
         for (const content of section.content) {
             if (content.type === 'text') {
-                view.notes.push(normalizeNoteText(content.value));
+                view.entries.push({ type: 'note', note: normalizeNoteText(content.value) });
                 continue;
             }
             // content.type === 'step'
@@ -82,7 +85,10 @@ export function getSections(recipe: CooklangRecipe): SectionView[] {
                 }
                 // 'inlineQuantity' items are ignored in the preview
             }
-            view.steps.push({ number: step.number, globalIndex: globalIndex++, parts });
+            view.entries.push({
+                type: 'step',
+                step: { number: step.number, globalIndex: globalIndex++, parts },
+            });
         }
         result.push(view);
     }

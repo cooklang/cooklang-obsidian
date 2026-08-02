@@ -32,6 +32,22 @@ Opening a `.cook` file and toggling Preview shows a single rich recipe page:
 Each of these can be toggled in the plugin settings (Servings scaler, Two-column layout,
 Step tracking), falling back to a simple stacked list.
 
+## Recipe references
+
+Reference another recipe with Cooklang ingredient syntax, for example
+`@./Components/Beans`. References resolve relative to the recipe containing
+them. The plugin opens a matching `.cook` file first, following the Cooklang
+convention. If no `.cook` file exists, it falls back to a same-path Markdown
+file only when its frontmatter contains the Boolean flag:
+
+```yaml
+---
+recipe: true
+---
+```
+
+This works in full recipe views and in embedded `cook`/`cooklang` blocks.
+
 ## Security
 > Third-party plugins can access files on your computer, connect to the internet, and even install additional programs.
 
