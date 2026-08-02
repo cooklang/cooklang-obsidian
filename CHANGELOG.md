@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.9.0](https://github.com/cooklang/cooklang-obsidian/compare/0.8.1...0.9.0) (2026-08-02)
+
+
+### Features
+
+* resolve markdown recipe references ([8f14ec1](https://github.com/cooklang/cooklang-obsidian/commit/8f14ec17e1affe72578a47dc8e880c8e8b5f1c64))
+* support markdown recipe references ([a8fc3c8](https://github.com/cooklang/cooklang-obsidian/commit/a8fc3c88fb622c358931c2c5bfff410f0666ae9b))
+
+
+### Bug Fixes
+
+* end note highlighting at line end in cooklang mode ([47f52a6](https://github.com/cooklang/cooklang-obsidian/commit/47f52a6ee2a63de3f17d133f072e0e09610d0ed5))
+* preserve adjacent note line breaks ([19b870d](https://github.com/cooklang/cooklang-obsidian/commit/19b870ddb3e8b8b4c2028047be1d093c16a9ad49))
+* preserve back navigation for markdown recipes ([bef9aa6](https://github.com/cooklang/cooklang-obsidian/commit/bef9aa629c2a18c75ad5a69a9c4b4aca5c2b86ed))
+* preserve back navigation for Markdown recipes ([7eb21fd](https://github.com/cooklang/cooklang-obsidian/commit/7eb21fda0eb3b71f578e7ba5c9b41638bd1278a9))
+* preserve inline Cooklang note order ([699f20e](https://github.com/cooklang/cooklang-obsidian/commit/699f20e5c3d18ad0943d2f29e0805ca4e2f5cba7))
+* preserve inline Cooklang note order ([e134c2f](https://github.com/cooklang/cooklang-obsidian/commit/e134c2f94efb55b44329fd33fe5806e24a861c83))
+* preserve line breaks in cook note text ([7491efe](https://github.com/cooklang/cooklang-obsidian/commit/7491efea7aa587d389569feb78a879efa900e340))
+* preserve note block line breaks ([83d4290](https://github.com/cooklang/cooklang-obsidian/commit/83d42907f6db49eb118f8393fb751736f7fd1ecb))
+* stop note syntax highlighting at line end ([261a0f1](https://github.com/cooklang/cooklang-obsidian/commit/261a0f1dbd7758f3d0853aace2247433020d7b4e))
+* strip repeated note marker in section notes ([51d51dd](https://github.com/cooklang/cooklang-obsidian/commit/51d51ddc082f234ce383e3d4ba8a8ca558f12697))
+
 ## [0.8.1](https://github.com/cooklang/cooklang-obsidian/compare/0.8.0...0.8.1) (2026-06-29)
 
 
