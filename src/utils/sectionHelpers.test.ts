@@ -82,11 +82,14 @@ describe('getSections', () => {
 
     it('removes a repeated note marker after a backslash-created newline', () => {
         const recipe = makeRecipe();
-        recipe.sections[0].content[1].value = 'First line\n> second line';
+        recipe.sections[0].content[2].value = 'First line\n> second line';
 
         const s = getSections(recipe);
 
-        expect(s[0].notes).toEqual(['First line\nsecond line']);
+        expect(s[0].entries[2]).toEqual({
+            type: 'note',
+            note: 'First line\nsecond line',
+        });
     });
 
     it('collects unique ingredient indices per section in first-seen order', () => {
