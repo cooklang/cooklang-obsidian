@@ -4,7 +4,8 @@
  * A reference like `@./Components/Beans` parses to
  * { name: "Beans", components: [".", "Components"] }. The components are a path
  * relative to the referencing recipe's own folder; "." stays, ".." goes up.
- * This resolves that to a concrete `<...>.cook` vault path.
+ * This resolves that to concrete vault paths, with `.cook` remaining the
+ * primary Cooklang target and a `.md` recipe as a plugin-specific fallback.
  */
 
 /**
@@ -21,6 +22,28 @@ export function resolveReferencePath(
     components: string[],
     name: string,
 ): string {
+    return resolveReferenceBasePath(recipeFolder, components, name) + '.cook';
+}
+
+/**
+ * Resolve the ordered vault-path candidates for a recipe reference. `.cook`
+ * remains first to preserve the Cooklang convention; callers may use the
+ * `.md` path only when it is known to be a Cooklang recipe in Obsidian.
+ */
+export function resolveReferenceCandidatePaths(
+    recipeFolder: string,
+    components: string[],
+    name: string,
+): [cookPath: string, markdownPath: string] {
+    const basePath = resolveReferenceBasePath(recipeFolder, components, name);
+    return [basePath + '.cook', basePath + '.md'];
+}
+
+function resolveReferenceBasePath(
+    recipeFolder: string,
+    components: string[],
+    name: string,
+): string {
     const segments = recipeFolder ? recipeFolder.split('/').filter(Boolean) : [];
 
     for (const component of components) {
@@ -33,5 +56,5 @@ export function resolveReferencePath(
     }
     segments.push(name);
 
-    return segments.join('/') + '.cook';
+    return segments.join('/');
 }
