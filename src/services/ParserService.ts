@@ -10,7 +10,6 @@ import type { CooklangRecipe } from '@cooklang/cooklang';
 import * as wasmBindings from '@cooklang/cooklang/pkg/cooklang_wasm_bg.js';
 import { default as wasmbin } from '@cooklang/cooklang/pkg/cooklang_wasm_bg.wasm';
 import { CooklangRecipe as CooklangRecipeClass } from '@cooklang/cooklang';
-import { preserveAdjacentNoteLineBreaks } from '../utils/noteBlocks';
 
 /**
  * Parser interface wrapping the raw WASM parser
@@ -101,7 +100,7 @@ class ParserService {
                 // Create a wrapper that uses the library's CooklangRecipe wrapper
                 this.parser = {
                     parse: (input: string, scale?: number | null) => {
-                        const raw = rawParser.parse(preserveAdjacentNoteLineBreaks(input), scale);
+                        const raw = rawParser.parse(input, scale);
                         return [
                             new CooklangRecipeClass(
                                 raw,
