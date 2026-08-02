@@ -39,6 +39,15 @@ export interface SectionView {
     ingredientIndices: number[];
 }
 
+/**
+ * The parser preserves a repeated note marker as literal text when it follows
+ * a backslash continuation, e.g. `> first\\\n> second` becomes
+ * `first\n> second`. Remove that structural marker before rendering.
+ */
+export function normalizeNoteText(note: string): string {
+    return note.replace(/\n[ \t]*>[ \t]?/g, '\n');
+}
+
 export function getSections(recipe: CooklangRecipe): SectionView[] {
     const result: SectionView[] = [];
     let globalIndex = 0;
@@ -53,7 +62,7 @@ export function getSections(recipe: CooklangRecipe): SectionView[] {
 
         for (const content of section.content) {
             if (content.type === 'text') {
-                view.entries.push({ type: 'note', note: content.value });
+                view.entries.push({ type: 'note', note: normalizeNoteText(content.value) });
                 continue;
             }
             // content.type === 'step'
