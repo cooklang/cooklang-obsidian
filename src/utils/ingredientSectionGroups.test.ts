@@ -4,7 +4,7 @@ import type { AggInput } from './ingredientAggregator';
 import { buildSectionGroups } from './ingredientSectionGroups';
 
 function section(name: string | null, ingredientIndices: number[]): SectionView {
-    return { name, steps: [], notes: [], ingredientIndices };
+    return { name, entries: [], ingredientIndices };
 }
 
 // index -> AggInput (or null for an ingredient that should not be listed)
