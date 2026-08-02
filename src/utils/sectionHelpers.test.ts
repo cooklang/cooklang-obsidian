@@ -63,6 +63,15 @@ describe('getSections', () => {
         expect(s[1].notes).toEqual([]);
     });
 
+    it('removes a repeated note marker after a backslash-created newline', () => {
+        const recipe = makeRecipe();
+        recipe.sections[0].content[1].value = 'First line\n> second line';
+
+        const s = getSections(recipe);
+
+        expect(s[0].notes).toEqual(['First line\nsecond line']);
+    });
+
     it('collects unique ingredient indices per section in first-seen order', () => {
         const s = getSections(makeRecipe());
         expect(s[0].ingredientIndices).toEqual([0]);
