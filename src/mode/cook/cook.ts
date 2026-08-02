@@ -13,7 +13,6 @@ export const cooklang = StreamLanguage.define({
       position: null as string | null,
       inFrontmatter: false,  // Track if we're in frontmatter
       inMetadata: false,     // Track if we're in metadata section
-      inNote: false,         // Track if we're in a note
       inComment: false       // Track if we're in a comment
     };
   },
@@ -99,11 +98,6 @@ export const cooklang = StreamLanguage.define({
 
     // Check for notes (lines starting with >)
     if (sol && stream.match(/^>/)) {
-      state.inNote = true;
-      return "comment";
-    }
-
-    if (state.inNote) {
       stream.skipToEnd();
       return "comment";
     }
