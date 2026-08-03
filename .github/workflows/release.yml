@@ -1,4 +1,5 @@
 name: Release
+
 on:
   push:
     branches:
@@ -6,44 +7,74 @@ on:
 
 permissions:
   contents: write
+  issues: write
   pull-requests: write
 
 jobs:
-  release-please:
-    runs-on: ubuntu-latest
-    outputs:
-      release_created: ${{ steps.release.outputs.release_created }}
-      tag_name: ${{ steps.release.outputs.tag_name }}
-    steps:
-      - uses: googleapis/release-please-action@v4
-        id: release
-
   build:
-    needs: release-please
-    if: ${{ needs.release-please.outputs.release_created }}
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: '20.x'
-          cache: 'npm'
+          cache: npm
+
       - run: npm ci
+      - run: npm test
       - run: npm run build
-      - name: Package
+
+      - name: Save built release files
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-files
+          path: |
+            main.js
+            manifest.json
+            styles.css
+            README.md
+          if-no-files-found: error
+
+  release-please:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Run Release Please
+        id: release
+        uses: googleapis/release-please-action@v4
+
+      - name: Download built release files
+        if: ${{ steps.release.outputs.release_created == 'true' }}
+        uses: actions/download-artifact@v5
+        with:
+          name: release-files
+          path: release-files
+
+      - name: Package release
+        if: ${{ steps.release.outputs.release_created == 'true' }}
+        working-directory: release-files
         env:
-          TAG: ${{ needs.release-please.outputs.tag_name }}
+          TAG: ${{ steps.release.outputs.tag_name }}
           REPO: ${{ github.event.repository.name }}
         run: |
           mkdir "$REPO"
-          cp main.js manifest.json styles.css README.md "$REPO"
+          cp main.js manifest.json styles.css README.md "$REPO/"
           zip -r "$REPO-${TAG}.zip" "$REPO"
+
       - name: Upload release assets
+        if: ${{ steps.release.outputs.release_created == 'true' }}
+        working-directory: release-files
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ needs.release-please.outputs.tag_name }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.release.outputs.tag_name }}
           REPO: ${{ github.event.repository.name }}
         run: |
-          gh release upload "${TAG}" \
-            main.js manifest.json styles.css "$REPO-${TAG}.zip" \
+          gh release upload "$TAG" \
+            main.js \
+            manifest.json \
+            styles.css \
+            "$REPO-${TAG}.zip" \
             --clobber
