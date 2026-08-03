@@ -72,7 +72,7 @@ jobs:
           TAG: ${{ steps.release.outputs.tag_name }}
           REPO: ${{ github.event.repository.name }}
         run: |
-          gh release upload "$TAG" \
+          gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" \
             main.js \
             manifest.json \
             styles.css \
