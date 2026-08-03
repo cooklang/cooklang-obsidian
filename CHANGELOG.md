@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.2](https://github.com/cooklang/cooklang-obsidian/compare/0.9.1...0.9.2) (2026-08-03)
+
+
+### Bug Fixes
+
+* specify repository for release upload ([20803c5](https://github.com/cooklang/cooklang-obsidian/commit/20803c56445260a52e3ccbc57053f160e4062a10))
+
 ## [0.9.1](https://github.com/cooklang/cooklang-obsidian/compare/0.9.0...0.9.1) (2026-08-03)
 
 
