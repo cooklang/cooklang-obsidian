@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.1](https://github.com/cooklang/cooklang-obsidian/compare/0.9.0...0.9.1) (2026-08-03)
+
+
+### Bug Fixes
+
+* restore TypeScript build after SectionView migration ([5cfb17a](https://github.com/cooklang/cooklang-obsidian/commit/5cfb17a28c39dbe2eb2e9cf29973c37751de619a))
+
 ## [0.9.0](https://github.com/cooklang/cooklang-obsidian/compare/0.8.1...0.9.0) (2026-08-02)
 
 
