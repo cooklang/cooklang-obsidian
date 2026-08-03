@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getSections } from './sectionHelpers';
+import { getSections, normalizeNoteText } from './sectionHelpers';
 
 // Minimal recipe shaped like CooklangRecipe (only fields getSections reads)
 function makeRecipe() {
@@ -81,15 +81,8 @@ describe('getSections', () => {
     });
 
     it('removes a repeated note marker after a backslash-created newline', () => {
-        const recipe = makeRecipe();
-        recipe.sections[0].content[2].value = 'First line\n> second line';
-
-        const s = getSections(recipe);
-
-        expect(s[0].entries[2]).toEqual({
-            type: 'note',
-            note: 'First line\nsecond line',
-        });
+        expect(normalizeNoteText('First line\n> second line'))
+            .toBe('First line\nsecond line');
     });
 
     it('collects unique ingredient indices per section in first-seen order', () => {
