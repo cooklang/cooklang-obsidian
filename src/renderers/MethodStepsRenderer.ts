@@ -156,7 +156,6 @@ export class MethodStepsRenderer {
             }
         }
         if (timer.name) {
-            target.appendText(' ');
             target.createEl('span', { cls: 'cook-timer-name', text: timer.name });
         }
     }

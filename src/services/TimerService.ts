@@ -9,7 +9,7 @@
 import { Howl } from 'howler';
 import { Notice } from 'obsidian';
 import { formatTime } from '../utils/timeFormatters';
-import { CooklangSettings } from 'src/settings';
+import type { CooklangSettings } from '../settings';
 
 /**
  * Timer state data
@@ -66,21 +66,27 @@ export class TimerService {
      */
     public attachTimerToButton(button: HTMLElement, seconds: number, name: string): void {
         let activeTimerId: string | null = null;
+        const updateButton = (remaining: number): void => {
+            const span = button.querySelector('.amount');
+            if (span) {
+                span.textContent = formatTime(remaining);
+            }
+        };
+
         button.onclick = () => {
-            // Ignore repeat clicks while this button's timer is still counting
-            // down. Otherwise each click spawns another interval and they all
-            // write to the same `.amount` span, producing an erratic countdown.
             if (activeTimerId) {
                 const existing = this.getTimer(activeTimerId);
-                if (existing && existing.isRunning) return;
+                if (existing?.isRunning) {
+                    this.pauseTimer(activeTimerId);
+                    return;
+                }
+                if ((existing?.remaining ?? 0) > 0) {
+                    this.resumeTimer(activeTimerId, updateButton);
+                    return;
+                }
             }
 
-            activeTimerId = this.startTimer(seconds, name, (remaining) => {
-                const span = button.querySelector('.amount');
-                if (span) {
-                    span.textContent = formatTime(remaining);
-                }
-            });
+            activeTimerId = this.startTimer(seconds, name, updateButton);
         };
     }
 
@@ -96,34 +102,31 @@ export class TimerService {
         name: string,
         onTick: (remaining: number) => void
     ): string {
-        const timerId = this.generateTimerId();
-        let remaining = seconds;
+        const timer: Timer = {
+            id: this.generateTimerId(),
+            duration: seconds,
+            remaining: seconds,
+            label: name,
+            isRunning: true
+        };
 
         // Play tick sound when timer starts
         this.playTick();
 
         const intervalId = window.setInterval(() => {
-            remaining--;
-            onTick(remaining);
+            timer.remaining--;
+            onTick(timer.remaining);
 
-            if (remaining <= 0) {
-                this.stopTimer(timerId);
+            if (timer.remaining <= 0) {
+                this.stopTimer(timer.id);
                 this.playAlarm();
                 new Notice(`Timer "${name}" has finished!`, 5000);
             }
         }, 1000);
 
-        const timer: Timer = {
-            id: timerId,
-            duration: seconds,
-            remaining,
-            label: name,
-            isRunning: true,
-            intervalId
-        };
-
-        this.timers.set(timerId, timer);
-        return timerId;
+        timer.intervalId = intervalId;
+        this.timers.set(timer.id, timer);
+        return timer.id;
     }
 
     /**
@@ -135,6 +138,7 @@ export class TimerService {
         if (timer && timer.intervalId) {
             clearInterval(timer.intervalId);
             timer.isRunning = false;
+            timer.intervalId = undefined;
         }
     }
 

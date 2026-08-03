@@ -339,6 +339,7 @@ a.cook-pill:hover { color: var(--text-normal); border-color: var(--text-accent);
   background: transparent; border: 1px solid var(--text-accent); color: var(--text-accent);
   border-radius: 11px; padding: 1px 8px; font-size: 0.9em; cursor: pointer;
 }
+.cook-timer-name { margin-inline-start: 0.25em; }
 
 /* Notes */
 .cook-note {
