@@ -10,7 +10,7 @@ A plugin for [Obsidian](https://obsidian.md) adding support for [Cooklang](https
 
 ## Installation
 - This plugin has been submitted community plugins repo. You can install it from Communinty Plugins within Obsidian.
-- You can build and install the plugin manually by checking out the files to `<your vault>/.obsidian/plugins/cooklang-obsidian` and running `npm install` and then `npm run build`.
+- You can build and install the plugin manually with Node.js 24 LTS and npm 11 by checking out the files to `<your vault>/.obsidian/plugins/cooklang-obsidian`, then running `npm ci` and `npm run build`.
 
 ## Rich preview
 

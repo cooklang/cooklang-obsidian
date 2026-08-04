@@ -129,6 +129,9 @@ export class MethodStepsRenderer {
             if (this.settings.highlightIngredientCookware) span.addClass('cook-cw-hl');
         } else if (part.type === 'timer') {
             this.renderTimer(span, part.timer, unitMap);
+        } else if (part.type === 'inlineQuantity') {
+            span.addClass('cook-amt');
+            span.appendText(quantity_display(part.quantity));
         }
     }
 
