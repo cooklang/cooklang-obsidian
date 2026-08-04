@@ -20,13 +20,13 @@ import { MetadataRenderer } from './MetadataRenderer';
 import type { RenderContext } from './types';
 
 export class PreviewRenderer {
-    private hero: HeroRenderer;
-    private scalerBar: ScalerBarRenderer;
-    private ingredientRenderer: IngredientListRenderer;
-    private cookwareRenderer: CookwareListRenderer;
-    private timerListRenderer: TimerListRenderer;
-    private methodStepsRenderer: MethodStepsRenderer;
-    private metadataRenderer: MetadataRenderer;
+    private hero!: HeroRenderer;
+    private scalerBar!: ScalerBarRenderer;
+    private ingredientRenderer!: IngredientListRenderer;
+    private cookwareRenderer!: CookwareListRenderer;
+    private timerListRenderer!: TimerListRenderer;
+    private methodStepsRenderer!: MethodStepsRenderer;
+    private metadataRenderer!: MetadataRenderer;
 
     constructor(
         private app: App,

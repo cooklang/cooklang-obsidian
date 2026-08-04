@@ -1,17 +1,16 @@
 {
   "compilerOptions": {
-    "baseUrl": ".",
     "inlineSourceMap": true,
     "inlineSources": true,
     "module": "ESNext",
     "target": "es6",
     "allowJs": true,
     "noImplicitAny": true,
-    "moduleResolution": "node",
+    "moduleResolution": "Bundler",
     "importHelpers": true,
     "isolatedModules": true,
+    "skipLibCheck": true,
     "strictNullChecks": true,
-    "outDir": "./build",
     "lib": [
       "dom",
       "es5",

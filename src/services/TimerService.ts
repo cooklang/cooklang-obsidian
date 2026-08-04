@@ -9,7 +9,7 @@
 import { Howl } from 'howler';
 import { Notice } from 'obsidian';
 import { formatTime } from '../utils/timeFormatters';
-import { CooklangSettings } from 'src/settings';
+import { CooklangSettings } from '../settings';
 
 /**
  * Timer state data

@@ -1,5 +1,18 @@
 # Dev flow
 
+## Prerequisites
+
+- [Node.js 24 LTS](https://nodejs.org/)
+- npm 11
+
+With [nvm](https://github.com/nvm-sh/nvm), install and select the repository's
+Node.js version:
+
+```sh
+nvm install
+nvm use
+```
+
 1. Create a symbolic link to the repo inside Obsidian plugins dir
 
 ```sh
@@ -10,8 +23,8 @@ $ ln -s ../../../../Cooklang/cooklang-obsidian
 
 2. Install dependencies
 
-```
-npm install
+```sh
+npm ci
 ```
 
 3. Build the plugin
