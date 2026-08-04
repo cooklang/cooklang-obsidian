@@ -7,6 +7,11 @@ function makeRecipe() {
         ingredients: [{ name: 'paste' }, { name: 'coconut milk' }],
         cookware: [{ name: 'blender' }],
         timers: [{ name: null }],
+        inlineQuantities: [{
+            value: { type: 'number', value: { type: 'regular', value: 60 } },
+            unit: 'ml',
+            scalable: false,
+        }],
         sections: [
             {
                 name: 'Curry paste',
@@ -22,6 +27,7 @@ function makeRecipe() {
                     { type: 'text', value: 'Make double and freeze.' },
                     { type: 'step', value: { number: 2, items: [
                         { type: 'text', value: 'Set aside.' },
+                        { type: 'inlineQuantity', index: 0 },
                     ] } },
                     { type: 'text', value: 'Keep it warm.' },
                 ],
@@ -63,6 +69,13 @@ describe('getSections', () => {
         expect(parts[0]).toEqual({ type: 'text', value: 'Blitz the ' });
         expect(parts[1]).toEqual({ type: 'ingredient', ingredient: { name: 'paste' } });
         expect(parts[3]).toEqual({ type: 'cookware', cookware: { name: 'blender' } });
+        const inlineQuantityEntry = s[0].entries[3];
+        expect(inlineQuantityEntry.type).toBe('step');
+        if (inlineQuantityEntry.type !== 'step') throw new Error('Expected a step entry');
+        expect(inlineQuantityEntry.step.parts[1]).toEqual({
+            type: 'inlineQuantity',
+            quantity: makeRecipe().inlineQuantities[0],
+        });
         const timerEntry = s[1].entries[0];
         expect(timerEntry.type).toBe('step');
         if (timerEntry.type !== 'step') throw new Error('Expected a step entry');
