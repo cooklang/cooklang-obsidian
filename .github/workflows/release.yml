@@ -27,17 +27,6 @@ jobs:
       - run: npm test
       - run: npm run build
 
-      - name: Save built release files
-        uses: actions/upload-artifact@v7
-        with:
-          name: release-files
-          path: |
-            main.js
-            manifest.json
-            styles.css
-            README.md
-          if-no-files-found: error
-
   release-please:
     needs: build
     runs-on: ubuntu-latest
@@ -47,16 +36,40 @@ jobs:
         id: release
         uses: googleapis/release-please-action@v5
 
-      - name: Download built release files
+      # Another push may finish first and create the release from this run.
+      # Build the tagged commit instead of reusing this run's earlier build.
+      - name: Check out release commit
         if: ${{ steps.release.outputs.release_created == 'true' }}
-        uses: actions/download-artifact@v8
+        uses: actions/checkout@v7
         with:
-          name: release-files
-          path: release-files
+          ref: ${{ steps.release.outputs.sha }}
+
+      - name: Set up Node.js
+        if: ${{ steps.release.outputs.release_created == 'true' }}
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+
+      - name: Install dependencies
+        if: ${{ steps.release.outputs.release_created == 'true' }}
+        run: npm ci
+
+      - name: Validate release commit
+        if: ${{ steps.release.outputs.release_created == 'true' }}
+        run: |
+          npm run typecheck
+          npm test
+          npm run build
+
+      - name: Verify release version
+        if: ${{ steps.release.outputs.release_created == 'true' }}
+        env:
+          TAG: ${{ steps.release.outputs.tag_name }}
+        run: node -e 'const fs = require("node:fs"); const version = JSON.parse(fs.readFileSync("manifest.json", "utf8")).version; if (version !== process.env.TAG) throw new Error(`manifest version ${version} does not match release tag ${process.env.TAG}`);'
 
       - name: Package release
         if: ${{ steps.release.outputs.release_created == 'true' }}
-        working-directory: release-files
         env:
           TAG: ${{ steps.release.outputs.tag_name }}
           REPO: ${{ github.event.repository.name }}
@@ -67,7 +80,6 @@ jobs:
 
       - name: Upload release assets
         if: ${{ steps.release.outputs.release_created == 'true' }}
-        working-directory: release-files
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.release.outputs.tag_name }}
