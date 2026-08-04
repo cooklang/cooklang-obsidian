@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.9.3](https://github.com/cooklang/cooklang-obsidian/compare/0.9.2...0.9.3) (2026-08-04)
+
+
+### Bug Fixes
+
+* render inline quantities in recipe steps ([1101248](https://github.com/cooklang/cooklang-obsidian/commit/1101248c21aea0c413ccab7265bf084c40a1a71c))
+* wrap long cookware names ([694c4ba](https://github.com/cooklang/cooklang-obsidian/commit/694c4ba2c3f641cd3a9446323df39ea9e3f7cf04))
+
 ## [0.9.2](https://github.com/cooklang/cooklang-obsidian/compare/0.9.1...0.9.2) (2026-08-03)
 
 
