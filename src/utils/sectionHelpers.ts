@@ -11,13 +11,15 @@ import type {
     Ingredient,
     Cookware,
     Timer,
+    Quantity,
 } from '@cooklang/cooklang';
 
 export type StepPart =
     | { type: 'text'; value: string }
     | { type: 'ingredient'; ingredient: Ingredient }
     | { type: 'cookware'; cookware: Cookware }
-    | { type: 'timer'; timer: Timer };
+    | { type: 'timer'; timer: Timer }
+    | { type: 'inlineQuantity'; quantity: Quantity };
 
 export interface StepView {
     /** Step number within its section (1-based, from parser). */
@@ -82,8 +84,12 @@ export function getSections(recipe: CooklangRecipe): SectionView[] {
                     parts.push({ type: 'cookware', cookware: recipe.cookware[item.index] });
                 } else if (item.type === 'timer') {
                     parts.push({ type: 'timer', timer: recipe.timers[item.index] });
+                } else if (item.type === 'inlineQuantity') {
+                    parts.push({
+                        type: 'inlineQuantity',
+                        quantity: recipe.inlineQuantities[item.index],
+                    });
                 }
-                // 'inlineQuantity' items are ignored in the preview
             }
             view.entries.push({
                 type: 'step',
