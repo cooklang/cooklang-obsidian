@@ -5,6 +5,6 @@
   "authorUrl": "https://github.com/deathau",
   "description": "Edit and display Cooklang recipes in Obsidian",
   "isDesktopOnly": false,
-  "version": "0.9.2",
+  "version": "0.9.3",
   "minAppVersion": "1.8.0"
 }
