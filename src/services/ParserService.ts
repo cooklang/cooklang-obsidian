@@ -90,8 +90,14 @@ class ParserService {
                 const wasmExports = wasmInstance.exports as any;
                 if (typeof wasmExports.__wbindgen_start === 'function') {
                     wasmExports.__wbindgen_start();
-                } else if (typeof (wasmBindings as any).__wbindgen_init_externref_table === 'function') {
-                    (wasmBindings as any).__wbindgen_init_externref_table();
+                } else {
+                    const legacyInitExternrefTable = Reflect.get(
+                        wasmBindings,
+                        '__wbindgen_init_externref_table'
+                    );
+                    if (typeof legacyInitExternrefTable === 'function') {
+                        legacyInitExternrefTable();
+                    }
                 }
 
                 // Create the parser instance (using the shared WASM instance)

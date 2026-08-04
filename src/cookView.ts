@@ -8,7 +8,6 @@ import {oneDark} from "@codemirror/theme-one-dark"
 import {defaultKeymap} from "@codemirror/commands"
 import {cooklang} from './mode/cook/cook'
 import {tags as t} from "@lezer/highlight"
-import {string} from "postcss-selector-parser";
 import { parserService } from './services/ParserService';
 import { TimerService } from './services/TimerService';
 import { PreviewRenderer } from './renderers/PreviewRenderer';
@@ -31,11 +30,11 @@ export class CookView extends TextFileView {
     settings: CooklangSettings;
     previewEl: HTMLElement;
     sourceEl: HTMLElement;
-    editorView: EditorView;
+    editorView!: EditorView;
     rawRecipe: CooklangRecipe | null = null;
     parserReady: Promise<void>;
-    changeModeButton: HTMLElement;
-    currentView: 'source' | 'preview';
+    changeModeButton!: HTMLElement;
+    currentView!: 'source' | 'preview';
     timerService: TimerService;
     previewRenderer: PreviewRenderer;
     data: string = '';

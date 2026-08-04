@@ -1,5 +1,4 @@
-import './styles.scss'
-import { Plugin, WorkspaceLeaf, addIcon, TFile, TFolder, Menu, MarkdownPostProcessorContext } from 'obsidian';
+import { Plugin, WorkspaceLeaf, addIcon, TAbstractFile, TFile, TFolder, Menu, MarkdownPostProcessorContext } from 'obsidian';
 import { CookView } from './cookView'
 import { CooklangSettings, CookSettingsTab } from './settings'
 import alarmMp3 from './alarm.mp3';
@@ -8,14 +7,11 @@ import { parserService } from './services/ParserService';
 import { TimerService } from './services/TimerService';
 import { MarkdownRecipeRenderer } from './renderers/MarkdownRecipeRenderer';
 
-// CodeMirror is loaded globally by Obsidian
-declare const CodeMirror: any;
-
 export default class CookPlugin extends Plugin {
 
-  settings: CooklangSettings;
-  embedTimerService: TimerService;
-  markdownRecipeRenderer: MarkdownRecipeRenderer;
+  settings!: CooklangSettings;
+  embedTimerService!: TimerService;
+  markdownRecipeRenderer!: MarkdownRecipeRenderer;
 
   async onload() {
     super.onload();
@@ -114,7 +110,7 @@ export default class CookPlugin extends Plugin {
 
     // Register file explorer context menu
     this.registerEvent(
-      this.app.workspace.on('file-menu', (menu: Menu, file: TFile | TFolder) => {
+      this.app.workspace.on('file-menu', (menu: Menu, file: TAbstractFile) => {
         if (file instanceof TFolder) {
           // Add "New recipe" option for folders
           menu.addItem((item) => {
