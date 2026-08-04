@@ -30,26 +30,31 @@ export class CookwareListRenderer {
             return; // No cookware to render
         }
 
+        const region = container.createDiv({ cls: 'cook-cookware' });
+
         // Add the Cookware header
-        container.createEl('h2', {
-            cls: 'cookware-header',
+        region.createEl('h2', {
+            cls: 'cook-section-title',
             text: this.settings.cookwareLabel || 'Cookware'
         });
 
         // Add the Cookware list
-        const ul = container.createEl('ul', { cls: 'cookware' });
+        const ul = region.createEl('ul', { cls: 'cook-cookware-list' });
 
         cookwares.forEach(item => {
-            const li = ul.createEl('li');
+            const li = ul.createEl('li', { cls: 'cook-cookware-item' });
 
             // Add quantity if present
             if (item.displayText) {
-                li.createEl('span', { cls: 'amount', text: item.displayText });
+                li.createEl('span', {
+                    cls: 'amount cook-cookware-amount',
+                    text: item.displayText,
+                });
                 li.appendText(' ');
             }
 
             // Add cookware name
-            li.appendText(item.name);
+            li.createEl('span', { cls: 'cook-cookware-name', text: item.name });
         });
     }
 }

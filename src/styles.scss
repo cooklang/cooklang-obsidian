@@ -303,6 +303,27 @@ a.cook-pill:hover { color: var(--text-normal); border-color: var(--text-accent);
 .cook-ing.done .cook-ing-name { text-decoration: line-through; color: var(--text-faint); }
 .cook-ing-qty { color: var(--text-muted); font-variant-numeric: tabular-nums; font-size: 0.85em; }
 
+/* Cookware */
+.cook-cookware { margin-top: var(--size-4-6, 24px); }
+.cook-cookware-list {
+  margin: 0;
+  padding-inline-start: 1.2em;
+  column-count: 2;
+  column-gap: var(--size-4-6, 24px);
+}
+.cook-cookware-item {
+  padding: 3px 0;
+  font-size: 0.92em;
+  break-inside: avoid;
+  overflow-wrap: anywhere;
+}
+.cook-cookware-amount {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85em;
+}
+.cook-cookware-name { min-width: 0; }
+
 /* Steps */
 .cook-step {
   display: flex; gap: var(--size-4-4, 16px); padding: var(--size-4-3, 12px) 0;
