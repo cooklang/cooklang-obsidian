@@ -1,6 +1,6 @@
 {
   "name": "cooklang-obsidian",
-  "version": "0.9.3",
+  "version": "0.9.4",
   "description": "Edit and display Cooklang recipes in Obsidian",
   "main": "main.js",
   "type": "module",
