@@ -37,6 +37,7 @@
     "@types/node": "^24.13.3",
     "howler": "^2.2.4",
     "jsdom": "^30.0.1",
+    "mathjs": "^15.2.0",
     "obsidian": "1.13.1",
     "rollup": "^4.62.4",
     "rollup-plugin-svelte": "^7.2.3",

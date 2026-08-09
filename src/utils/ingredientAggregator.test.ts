@@ -31,8 +31,39 @@ describe('aggregateIngredients', () => {
         const rows = aggregateIngredients([
             ing({ name: 'egg yolks', quantityValue: 7, unit: null }),
             ing({ name: 'egg yolks', quantityValue: 4, unit: 'large' }),
+            ing({ name: 'dressing', quantityValue: 100, unit: 'g' }),
+            ing({ name: 'dressing', quantityValue: 25, unit: 'ml' }),
         ]);
         expect(rows[0].displayQty).toBe('7 + 4 large');
+        expect(rows[1].displayQty).toBe('100 g + 25 ml');
+    });
+
+    it('combines grams and kilograms using the largest denomination present', () => {
+        const rows = aggregateIngredients([
+            ing({ name: 'pizza flour', quantityValue: 150, unit: 'g' }),
+            ing({ name: 'pizza flour', quantityValue: 1.35, unit: 'kg' }),
+        ]);
+        expect(rows[0].displayQty).toBe('1.5 kg');
+
+        const reversed = aggregateIngredients([
+            ing({ name: 'pizza flour', quantityValue: 1.35, unit: 'kilograms' }),
+            ing({ name: 'pizza flour', quantityValue: 150, unit: 'grams' }),
+        ]);
+        expect(reversed[0].displayQty).toBe('1.5 kilograms');
+    });
+
+    it('uses Math.js to combine compatible units and select the best display unit', () => {
+        const rows = aggregateIngredients([
+            ing({ name: 'stock', quantityValue: 750, unit: 'ml' }),
+            ing({ name: 'stock', quantityValue: 0.5, unit: 'l' }),
+            ing({ name: 'butter', quantityValue: 1, unit: 'lb' }),
+            ing({ name: 'butter', quantityValue: 8, unit: 'oz' }),
+            ing({ name: 'vanilla', quantityValue: 1, unit: 'tbsp' }),
+            ing({ name: 'vanilla', quantityValue: 3, unit: 'tsp' }),
+        ]);
+        expect(rows[0].displayQty).toBe('1.25 l');
+        expect(rows[1].displayQty).toBe('1.5 lb');
+        expect(rows[2].displayQty).toBe('2 tbsp');
     });
 
     it('lists range/textual amounts as-is', () => {
