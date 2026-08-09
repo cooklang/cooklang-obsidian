@@ -41,8 +41,23 @@ function sassStyles() {
   };
 }
 
+function isSvelteCircularDependency(warning) {
+  if (warning.code !== 'CIRCULAR_DEPENDENCY' || !warning.ids?.length) {
+    return false;
+  }
+
+  return warning.ids.every(id =>
+    id.replaceAll('\\', '/').includes('/node_modules/svelte/')
+  );
+}
+
 export default {
   input: 'src/main.ts',
+  onwarn(warning, warn) {
+    if (!isSvelteCircularDependency(warning)) {
+      warn(warning);
+    }
+  },
   output: {
     file: 'main.js',
     sourcemap: 'inline',
