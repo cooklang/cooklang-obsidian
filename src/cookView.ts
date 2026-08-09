@@ -1,7 +1,7 @@
 import type { CooklangRecipe } from '@cooklang/cooklang';
-import {TextFileView, setIcon, TFile, Keymap, WorkspaceLeaf, ViewStateResult, Notice} from 'obsidian'
+import {TextFileView, WorkspaceLeaf, ViewStateResult} from 'obsidian'
 import {CooklangSettings} from './settings';
-import {EditorView, keymap, highlightActiveLine, lineNumbers, ViewPlugin} from "@codemirror/view"
+import {EditorView, keymap, highlightActiveLine, lineNumbers} from "@codemirror/view"
 import {EditorState, Extension} from "@codemirror/state"
 import {syntaxHighlighting, defaultHighlightStyle, HighlightStyle} from "@codemirror/language"
 import {oneDark} from "@codemirror/theme-one-dark"
@@ -10,10 +10,15 @@ import {cooklang} from './mode/cook/cook'
 import {tags as t} from "@lezer/highlight"
 import { parserService } from './services/ParserService';
 import { TimerService } from './services/TimerService';
-import { PreviewRenderer } from './renderers/PreviewRenderer';
 import { parseServingsValue, computeScale, deriveServingsState } from './utils/scaling';
 import alarmMp3 from './alarm.mp3';
 import timerMp3 from './timer.mp3';
+import { flushSync, mount, unmount } from 'svelte';
+import { writable, type Writable } from 'svelte/store';
+import CookViewRoot from './ui/CookViewRoot.svelte';
+import { ObsidianRecipeHost } from './ui/ObsidianRecipeHost';
+import { createUiInstanceId } from './ui/instanceIds';
+import type { CookViewMode, RecipeRenderModel } from './ui/types';
 
 // Define a light theme HighlightStyle for Cooklang
 const cooklangLightTheme = HighlightStyle.define([
@@ -28,15 +33,18 @@ const cooklangLightTheme = HighlightStyle.define([
 // This is the custom view
 export class CookView extends TextFileView {
     settings: CooklangSettings;
-    previewEl: HTMLElement;
-    sourceEl: HTMLElement;
+    sourceEl!: HTMLElement;
     editorView!: EditorView;
     rawRecipe: CooklangRecipe | null = null;
     parserReady: Promise<void>;
-    changeModeButton!: HTMLElement;
-    currentView!: 'source' | 'preview';
+    currentView!: CookViewMode;
     timerService: TimerService;
-    previewRenderer: PreviewRenderer;
+    private modeStore: Writable<CookViewMode>;
+    private previewStore: Writable<RecipeRenderModel | null>;
+    private svelteRoot: ReturnType<typeof mount>;
+    private host: ObsidianRecipeHost;
+    private instanceId: string;
+    private editorLineWrap: boolean;
     data: string = '';
     checkedIngredients: Set<string> = new Set();
     scale: number = 1;
@@ -45,6 +53,12 @@ export class CookView extends TextFileView {
     constructor(leaf: WorkspaceLeaf, settings: CooklangSettings) {
         super(leaf);
         this.settings = settings;
+        this.instanceId = createUiInstanceId('cook-view');
+        this.host = new ObsidianRecipeHost(this.app);
+        this.currentView = this.settings.defaultView === 'preview' ? 'preview' : 'source';
+        this.modeStore = writable(this.currentView);
+        this.previewStore = writable<RecipeRenderModel | null>(null);
+        this.editorLineWrap = this.settings.lineWrap;
 
         // Initialize parser asynchronously
         this.parserReady = parserService.initialize();
@@ -60,23 +74,18 @@ export class CookView extends TextFileView {
             },
         );
 
-        // Initialize preview renderer
-        this.previewRenderer = new PreviewRenderer(
-            this.app,
-            this.settings,
-            this.timerService
-        );
-
-        // Add Preview Container
-        this.previewEl = this.contentEl.createDiv({cls: 'cook-preview-view'});
-
-        // Add Source Mode Container with padding
-        this.sourceEl = this.contentEl.createDiv({
-            cls: 'cook-source-view-full',
-            attr: {
-                'style': 'display: block; padding: 0 20px;'
-            }
+        this.svelteRoot = mount(CookViewRoot, {
+            target: this.contentEl,
+            props: {
+                mode: this.modeStore,
+                preview: this.previewStore,
+                onSourceReady: (element: HTMLElement) => {
+                    this.sourceEl = element;
+                },
+            },
         });
+        flushSync();
+        if (!this.sourceEl) throw new Error('Svelte source editor host did not mount.');
 
         // Initialize Editor with proper theme based on Obsidian theme
         this.initializeEditor();
@@ -84,7 +93,7 @@ export class CookView extends TextFileView {
         // Set default view (used when a .cook file opens in a fresh leaf, e.g.
         // selecting it in the file tree). A persisted per-leaf mode, if any, is
         // restored later in setState and takes precedence.
-        this.setViewMode(this.settings.defaultView === 'preview' ? 'preview' : 'source');
+        this.setViewMode(this.currentView);
     }
 
     async onload() {
@@ -92,6 +101,7 @@ export class CookView extends TextFileView {
 
         // Wait for parser to be ready
         await this.parserReady;
+        if (this.currentView === 'preview') this.renderPreview();
 
         // Add mode toggle button to the action buttons in top right
         this.addAction('book-open', 'Toggle Preview', () => {
@@ -132,6 +142,7 @@ export class CookView extends TextFileView {
         if (this.settings.lineWrap) {
             extensions.push(EditorView.lineWrapping);
         }
+        this.editorLineWrap = this.settings.lineWrap;
 
         // Add oneDark theme only in dark mode
         if (isDark) {
@@ -147,18 +158,11 @@ export class CookView extends TextFileView {
         });
     }
 
-    setViewMode(mode: 'source' | 'preview') {
+    setViewMode(mode: CookViewMode) {
         this.currentView = mode;
-
-        if (mode === 'source') {
-            this.previewEl.style.display = 'none';
-            this.sourceEl.style.display = 'block';
-        } else {
-            this.sourceEl.style.display = 'none';
-            this.previewEl.style.display = 'block';
-            // Parse and render the preview
-            this.renderPreview();
-        }
+        this.modeStore.set(mode);
+        if (mode === 'preview') this.renderPreview();
+        else this.editorView.requestMeasure();
     }
 
     switchMode() {
@@ -175,10 +179,7 @@ export class CookView extends TextFileView {
         }
         // Clear checked ingredients state
         this.checkedIngredients.clear();
-    }
-
-    makeTimer(button: HTMLElement, seconds: number, name: string) {
-        this.timerService.attachTimerToButton(button, seconds, name);
+        void unmount(this.svelteRoot);
     }
 
     onPaneMenu(menu: any, source: string) {
@@ -207,17 +208,10 @@ export class CookView extends TextFileView {
 
     // When Obsidian's theme changes, update the editor theme
     onThemeChange() {
-        // Recreate the editor with the appropriate theme
         const currentDoc = this.editorView.state.doc.toString();
         this.editorView.destroy();
+        this.data = currentDoc;
         this.initializeEditor();
-        this.editorView.dispatch({
-            changes: {
-                from: 0,
-                to: 0,
-                insert: currentDoc
-            }
-        });
     }
 
     async onOpen() {
@@ -279,7 +273,7 @@ export class CookView extends TextFileView {
 
     // clear the editor, etc
     clear() {
-        this.previewEl.empty();
+        this.previewStore.set(null);
         this.editorView.dispatch({
             changes: {
                 from: 0,
@@ -361,10 +355,14 @@ export class CookView extends TextFileView {
             this.scale,
         );
 
-        this.previewRenderer.updateSettings(this.settings);
-        this.previewRenderer.render(this.previewEl, this.file, {
+        this.previewStore.set({
+            instanceId: this.instanceId,
+            interactive: true,
             recipe: rawRecipe,
             file: this.file,
+            settings: this.settings,
+            host: this.host,
+            timers: this.timerService,
             state: {
                 scale: this.scale,
                 baseServings,
@@ -378,12 +376,26 @@ export class CookView extends TextFileView {
                     this.scale = computeScale(targetServings, baseServings);
                     this.renderPreview();
                 },
-                onIngredientToggle: () => this.renderPreview(),
+                onIngredientToggle: (ingredientName: string) => {
+                    if (this.checkedIngredients.has(ingredientName)) {
+                        this.checkedIngredients.delete(ingredientName);
+                    } else {
+                        this.checkedIngredients.add(ingredientName);
+                    }
+                    this.renderPreview();
+                },
                 onStepActivate: (index: number) => {
                     this.currentStep = this.currentStep === index ? -1 : index;
                     this.renderPreview();
                 },
             },
         });
+    }
+
+    updateSettings(settings: CooklangSettings): void {
+        const lineWrapChanged = this.editorLineWrap !== settings.lineWrap;
+        this.settings = settings;
+        if (lineWrapChanged) this.onThemeChange();
+        if (this.currentView === 'preview') this.renderPreview();
     }
 }

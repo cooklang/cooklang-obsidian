@@ -9,9 +9,9 @@ vi.mock('howler', () => ({
 
 vi.mock('obsidian', () => ({ Notice: vi.fn() }));
 
-import { TimerService } from './TimerService';
+import { TimerService, type TimerSnapshot } from './TimerService';
 
-describe('TimerService timer buttons', () => {
+describe('TimerService timer controller', () => {
     beforeEach(() => {
         vi.useFakeTimers();
         vi.stubGlobal('window', { setInterval: globalThis.setInterval });
@@ -22,38 +22,54 @@ describe('TimerService timer buttons', () => {
         vi.unstubAllGlobals();
     });
 
-    it('pauses on the second click and resumes on the third click', () => {
+    it('publishes countdown state and toggles start, pause, and resume', () => {
         const service = new TimerService(
             { timersTick: false, timersRing: false } as any,
             { tickSoundUrl: 'tick.mp3', alarmSoundUrl: 'alarm.mp3' },
         );
-        const amount = { textContent: '00:05' };
-        const button = {
-            onclick: null as (() => void) | null,
-            querySelector: () => amount,
-        } as unknown as HTMLElement;
-        const click = (): void => (button.onclick as (() => void) | null)?.();
+        const snapshots: TimerSnapshot[] = [];
+        const unsubscribe = service.subscribe('step-1-timer-1', snapshot => {
+            snapshots.push(snapshot);
+        });
 
-        service.attachTimerToButton(button, 5, 'bake');
-        click();
+        service.toggle('step-1-timer-1', 5, 'bake');
+        expect(snapshots[snapshots.length - 1]).toMatchObject({ remaining: 5, status: 'running' });
         vi.advanceTimersByTime(2000);
 
         const [timer] = service.getAllTimers();
         expect(timer.remaining).toBe(3);
-        expect(amount.textContent).toBe('3s');
+        expect(snapshots[snapshots.length - 1]).toMatchObject({ remaining: 3, status: 'running' });
 
-        click();
+        service.toggle('step-1-timer-1', 5, 'bake');
         expect(timer.isRunning).toBe(false);
+        expect(snapshots[snapshots.length - 1]?.status).toBe('paused');
         vi.advanceTimersByTime(2000);
         expect(timer.remaining).toBe(3);
-        expect(amount.textContent).toBe('3s');
 
-        click();
+        service.toggle('step-1-timer-1', 5, 'bake');
         expect(timer.isRunning).toBe(true);
         vi.advanceTimersByTime(1000);
         expect(timer.remaining).toBe(2);
-        expect(amount.textContent).toBe('2s');
+        expect(snapshots[snapshots.length - 1]).toMatchObject({ remaining: 2, status: 'running' });
         expect(service.getAllTimers()).toHaveLength(1);
+
+        unsubscribe();
+        service.dispose();
+    });
+
+    it('marks a completed timer and starts a fresh countdown when toggled again', () => {
+        const service = new TimerService(
+            { timersTick: false, timersRing: false } as any,
+            { tickSoundUrl: 'tick.mp3', alarmSoundUrl: 'alarm.mp3' },
+        );
+
+        service.toggle('timer', 1, 'rest');
+        vi.advanceTimersByTime(1000);
+        expect(service.getSnapshot('timer')).toMatchObject({ remaining: 0, status: 'completed' });
+
+        service.toggle('timer', 1, 'rest');
+        expect(service.getSnapshot('timer')).toMatchObject({ remaining: 1, status: 'running' });
+        expect(service.getAllTimers()).toHaveLength(2);
 
         service.dispose();
     });

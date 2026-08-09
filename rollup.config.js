@@ -3,8 +3,10 @@ import {nodeResolve} from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
 import url from '@rollup/plugin-url';
 import wasm from '@rollup/plugin-wasm';
+import svelte from 'rollup-plugin-svelte';
 import * as sass from 'sass';
 import {fileURLToPath} from 'node:url';
+import svelteConfig from './svelte.config.js';
 
 const isProd = (process.env.BUILD === 'production');
 const banner =
@@ -39,8 +41,23 @@ function sassStyles() {
   };
 }
 
+function isSvelteCircularDependency(warning) {
+  if (warning.code !== 'CIRCULAR_DEPENDENCY' || !warning.ids?.length) {
+    return false;
+  }
+
+  return warning.ids.every(id =>
+    id.replaceAll('\\', '/').includes('/node_modules/svelte/')
+  );
+}
+
 export default {
   input: 'src/main.ts',
+  onwarn(warning, warn) {
+    if (!isSvelteCircularDependency(warning)) {
+      warn(warning);
+    }
+  },
   output: {
     file: 'main.js',
     sourcemap: 'inline',
@@ -59,6 +76,14 @@ export default {
       ],
       maxFileSize: 10000000 // 10MB limit for WASM files
     }),
+    svelte({
+      ...svelteConfig,
+      emitCss: false,
+      compilerOptions: {
+        ...svelteConfig.compilerOptions,
+        dev: !isProd
+      }
+    }),
     typescript({
       tsconfig: './tsconfig.json',
       outDir: '.',
@@ -69,7 +94,7 @@ export default {
     nodeResolve({
       browser: true,
       preferBuiltins: false,
-      extensions: ['.js', '.ts']
+      extensions: ['.js', '.ts', '.svelte']
     }),
     commonjs({
       include: ['node_modules/**', 'src/mode/**']

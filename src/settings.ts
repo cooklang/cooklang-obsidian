@@ -29,6 +29,7 @@ export class CooklangSettings {
   cookwareLabel: string = "";
   timersLabel: string = "";
   methodLabel: string = "";
+  secondsLabel: string = "";
   minutesLabel: string = "";
   hoursLabel: string = "";
 }
@@ -304,11 +305,23 @@ export class CookSettingsTab extends PluginSettingTab {
       }));
 
     new Setting(containerEl)
+      .setName("Seconds Label")
+      .setDesc("Choose your label(s) for seconds (comma separated)")
+      .addText((text) => text
+      .setValue(this.plugin.settings.secondsLabel)
+      .setPlaceholder("s,sec,secs,second,seconds")
+      .onChange(async (value) => {
+        this.plugin.settings.secondsLabel = value;
+        this.plugin.saveData(this.plugin.settings);
+        this.plugin.reloadCookViews();
+      }));
+
+    new Setting(containerEl)
       .setName("Minutes Label")
       .setDesc("Choose your label(s) for minutes (comma separated)")
       .addText((text) => text
       .setValue(this.plugin.settings.minutesLabel)
-      .setPlaceholder("m,min,minute,minutes")
+      .setPlaceholder("m,min,mins,minute,minutes")
       .onChange(async (value) => {
         this.plugin.settings.minutesLabel = value;
         this.plugin.saveData(this.plugin.settings);
