@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.10.0](https://github.com/cooklang/cooklang-obsidian/compare/0.9.4...0.10.0) (2026-08-09)
+
+
+### Features
+
+* aggregate ingredient units with Math.js ([#110](https://github.com/cooklang/cooklang-obsidian/issues/110)) ([ae99295](https://github.com/cooklang/cooklang-obsidian/commit/ae9929587911bce73f1118bf55543a81a12c4c5e))
+* migrate recipe UI to Svelte 5 ([#109](https://github.com/cooklang/cooklang-obsidian/issues/109)) ([c14328b](https://github.com/cooklang/cooklang-obsidian/commit/c14328b232f8091ae12f1ad6a27e0e779f06e55f))
+
 ## [0.9.4](https://github.com/cooklang/cooklang-obsidian/compare/0.9.3...0.9.4) (2026-08-05)
 
 
