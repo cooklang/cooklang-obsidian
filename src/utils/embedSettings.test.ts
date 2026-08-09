@@ -25,6 +25,7 @@ function makeSettings(overrides: Partial<CooklangSettings> = {}): CooklangSettin
         cookwareLabel: '',
         timersLabel: '',
         methodLabel: 'Steps',
+        secondsLabel: 'segundo',
         minutesLabel: '',
         hoursLabel: '',
         ...overrides,
@@ -44,6 +45,7 @@ describe('embedSettings', () => {
         const result = embedSettings(makeSettings());
         expect(result.ingredientLabel).toBe('Stuff');
         expect(result.methodLabel).toBe('Steps');
+        expect(result.secondsLabel).toBe('segundo');
         expect(result.highlightIngredientCookware).toBe(true);
         expect(result.showQuantitiesInline).toBe(false);
     });

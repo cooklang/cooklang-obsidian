@@ -1,17 +1,29 @@
-import { Plugin, WorkspaceLeaf, addIcon, TAbstractFile, TFile, TFolder, Menu, MarkdownPostProcessorContext } from 'obsidian';
+import {
+  Plugin,
+  WorkspaceLeaf,
+  addIcon,
+  TAbstractFile,
+  TFile,
+  TFolder,
+  Menu,
+  MarkdownPostProcessorContext,
+  MarkdownRenderChild,
+} from 'obsidian';
 import { CookView } from './cookView'
 import { CooklangSettings, CookSettingsTab } from './settings'
-import alarmMp3 from './alarm.mp3';
-import timerMp3 from './timer.mp3';
 import { parserService } from './services/ParserService';
-import { TimerService } from './services/TimerService';
-import { MarkdownRecipeRenderer } from './renderers/MarkdownRecipeRenderer';
+import { mount, unmount } from 'svelte';
+import { writable } from 'svelte/store';
+import RecipeEmbed from './ui/RecipeEmbed.svelte';
+import { ObsidianRecipeHost } from './ui/ObsidianRecipeHost';
+import { createUiInstanceId } from './ui/instanceIds';
+import type { EmbedRenderState } from './ui/types';
+import { embedSettings } from './utils/embedSettings';
 
 export default class CookPlugin extends Plugin {
 
   settings!: CooklangSettings;
-  embedTimerService!: TimerService;
-  markdownRecipeRenderer!: MarkdownRecipeRenderer;
+  recipeHost!: ObsidianRecipeHost;
 
   async onload() {
     super.onload();
@@ -26,43 +38,74 @@ export default class CookPlugin extends Plugin {
 
     // Render ```cook / ```cooklang fenced blocks inside markdown notes as a
     // compact, read-only recipe (#73).
-    this.embedTimerService = new TimerService(this.settings, {
-      tickSoundUrl: timerMp3,
-      alarmSoundUrl: alarmMp3,
-      tickVolume: 0.3,
-      alarmVolume: 0.3,
-    });
-    this.register(() => this.embedTimerService.dispose());
-    this.markdownRecipeRenderer = new MarkdownRecipeRenderer(this.app, this.embedTimerService);
+    this.recipeHost = new ObsidianRecipeHost(this.app);
 
     const renderRecipeBlock = async (
       source: string,
       el: HTMLElement,
       ctx: MarkdownPostProcessorContext,
     ): Promise<void> => {
+      el.empty();
+      const renderState = writable<EmbedRenderState>({ status: 'loading' });
+      const component = mount(RecipeEmbed, {
+        target: el,
+        props: { renderState },
+      });
+      ctx.addChild(new SvelteRenderChild(el, component));
+
       if (!source.trim()) {
-        el.empty();
-        el.createDiv({ cls: 'cook-embed-empty', text: 'Empty recipe block.' });
+        renderState.set({ status: 'empty' });
         return;
       }
       try {
         await parserService.initialize();
       } catch (e) {
-        renderEmbedError(el, source, 'Cooklang parser failed to load.');
+        renderState.set({
+          status: 'error',
+          source,
+          message: 'Cooklang parser failed to load.',
+        });
         return;
       }
       let recipe;
       try {
         [recipe] = parserService.parse(source);
       } catch (e) {
-        renderEmbedError(el, source, 'Could not parse this recipe.');
+        renderState.set({
+          status: 'error',
+          source,
+          message: 'Could not parse this recipe.',
+        });
         return;
       }
       const abstract = ctx.sourcePath
         ? this.app.vault.getAbstractFileByPath(ctx.sourcePath)
         : null;
       const file = abstract instanceof TFile ? abstract : null;
-      this.markdownRecipeRenderer.render(el, file, recipe, this.settings);
+      renderState.set({
+        status: 'ready',
+        model: {
+          instanceId: createUiInstanceId('cook-embed'),
+          interactive: false,
+          recipe,
+          file,
+          settings: embedSettings(this.settings),
+          host: this.recipeHost,
+          timers: null,
+          state: {
+            scale: 1,
+            baseServings: null,
+            displayServings: null,
+            checkedIngredients: new Set<string>(),
+            currentStep: -1,
+          },
+          callbacks: {
+            onScaleChange: () => {},
+            onIngredientToggle: () => {},
+            onStepActivate: () => {},
+          },
+        },
+      });
     };
 
     this.registerMarkdownCodeBlockProcessor('cook', renderRecipeBlock);
@@ -306,8 +349,7 @@ export default class CookPlugin extends Plugin {
   reloadCookViews() {
     this.app.workspace.getLeavesOfType('cook').forEach(leaf => {
       if(leaf.view instanceof CookView) {
-        leaf.view.settings = this.settings;
-        if(leaf.view.rawRecipe) leaf.view.renderPreview();
+        leaf.view.updateSettings(this.settings);
       }
     });
   }
@@ -325,9 +367,15 @@ export default class CookPlugin extends Plugin {
   }
 }
 
-function renderEmbedError(el: HTMLElement, source: string, message: string): void {
-  el.empty();
-  const wrap = el.createDiv({ cls: 'cook-embed-error' });
-  wrap.createDiv({ cls: 'cook-embed-error-msg', text: message });
-  wrap.createEl('pre').createEl('code', { text: source });
+class SvelteRenderChild extends MarkdownRenderChild {
+  constructor(
+    containerEl: HTMLElement,
+    private component: ReturnType<typeof mount>,
+  ) {
+    super(containerEl);
+  }
+
+  onunload(): void {
+    void unmount(this.component);
+  }
 }

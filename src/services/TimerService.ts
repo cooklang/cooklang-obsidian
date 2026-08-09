@@ -8,7 +8,6 @@
 
 import { Howl } from 'howler';
 import { Notice } from 'obsidian';
-import { formatTime } from '../utils/timeFormatters';
 import type { CooklangSettings } from '../settings';
 
 /**
@@ -21,6 +20,16 @@ export interface Timer {
     label: string;
     isRunning: boolean;
     intervalId?: number;
+}
+
+export type TimerStatus = 'running' | 'paused' | 'completed';
+
+export interface TimerSnapshot {
+    id: string;
+    duration: number;
+    remaining: number;
+    label: string;
+    status: TimerStatus;
 }
 
 /**
@@ -38,6 +47,9 @@ export interface TimerServiceConfig {
  */
 export class TimerService {
     private timers: Map<string, Timer> = new Map();
+    private timerIdsByKey: Map<string, string> = new Map();
+    private keysByTimerId: Map<string, string> = new Map();
+    private listeners: Map<string, Set<(snapshot: TimerSnapshot) => void>> = new Map();
     private tickSound: Howl;
     private alarmSound: Howl;
 
@@ -58,35 +70,36 @@ export class TimerService {
         });
     }
 
-    /**
-     * Create a timer button with countdown functionality
-     * @param button - HTML button element to attach timer to
-     * @param seconds - Duration in seconds
-     * @param name - Timer name/label
-     */
-    public attachTimerToButton(button: HTMLElement, seconds: number, name: string): void {
-        let activeTimerId: string | null = null;
-        const updateButton = (remaining: number): void => {
-            const span = button.querySelector('.amount');
-            if (span) {
-                span.textContent = formatTime(remaining);
-            }
-        };
+    public toggle(key: string, seconds: number, label: string): void {
+        const timerId = this.timerIdsByKey.get(key);
+        const timer = timerId ? this.timers.get(timerId) : undefined;
+        if (timer?.isRunning) {
+            this.pauseTimer(timer.id);
+            return;
+        }
+        if (timer && timer.remaining > 0) {
+            this.resumeTimer(timer.id);
+            return;
+        }
+        this.startTimer(seconds, label, undefined, key);
+    }
 
-        button.onclick = () => {
-            if (activeTimerId) {
-                const existing = this.getTimer(activeTimerId);
-                if (existing?.isRunning) {
-                    this.pauseTimer(activeTimerId);
-                    return;
-                }
-                if ((existing?.remaining ?? 0) > 0) {
-                    this.resumeTimer(activeTimerId, updateButton);
-                    return;
-                }
-            }
+    public subscribe(key: string, listener: (snapshot: TimerSnapshot) => void): () => void {
+        let listeners = this.listeners.get(key);
+        if (!listeners) {
+            listeners = new Set();
+            this.listeners.set(key, listeners);
+        }
+        listeners.add(listener);
 
-            activeTimerId = this.startTimer(seconds, name, updateButton);
+        const timerId = this.timerIdsByKey.get(key);
+        const timer = timerId ? this.timers.get(timerId) : undefined;
+        if (timer) listener(this.snapshot(timer));
+
+        return () => {
+            const current = this.listeners.get(key);
+            current?.delete(listener);
+            if (current?.size === 0) this.listeners.delete(key);
         };
     }
 
@@ -100,7 +113,8 @@ export class TimerService {
     public startTimer(
         seconds: number,
         name: string,
-        onTick: (remaining: number) => void
+        onTick: (remaining: number) => void = () => {},
+        key?: string,
     ): string {
         const timer: Timer = {
             id: this.generateTimerId(),
@@ -114,8 +128,9 @@ export class TimerService {
         this.playTick();
 
         const intervalId = window.setInterval(() => {
-            timer.remaining--;
+            timer.remaining = Math.max(0, timer.remaining - 1);
             onTick(timer.remaining);
+            this.notifyTimer(timer.id);
 
             if (timer.remaining <= 0) {
                 this.stopTimer(timer.id);
@@ -126,6 +141,13 @@ export class TimerService {
 
         timer.intervalId = intervalId;
         this.timers.set(timer.id, timer);
+        if (key) {
+            const previousId = this.timerIdsByKey.get(key);
+            if (previousId) this.keysByTimerId.delete(previousId);
+            this.timerIdsByKey.set(key, timer.id);
+            this.keysByTimerId.set(timer.id, key);
+        }
+        this.notifyTimer(timer.id);
         return timer.id;
     }
 
@@ -135,10 +157,11 @@ export class TimerService {
      */
     public stopTimer(timerId: string): void {
         const timer = this.timers.get(timerId);
-        if (timer && timer.intervalId) {
+        if (timer && timer.intervalId !== undefined) {
             clearInterval(timer.intervalId);
             timer.isRunning = false;
             timer.intervalId = undefined;
+            this.notifyTimer(timerId);
         }
     }
 
@@ -148,10 +171,11 @@ export class TimerService {
      */
     public pauseTimer(timerId: string): void {
         const timer = this.timers.get(timerId);
-        if (timer && timer.isRunning && timer.intervalId) {
+        if (timer && timer.isRunning && timer.intervalId !== undefined) {
             clearInterval(timer.intervalId);
             timer.isRunning = false;
             timer.intervalId = undefined;
+            this.notifyTimer(timerId);
         }
     }
 
@@ -160,7 +184,7 @@ export class TimerService {
      * @param timerId - ID of timer to resume
      * @param onTick - Callback for timer updates
      */
-    public resumeTimer(timerId: string, onTick: (remaining: number) => void): void {
+    public resumeTimer(timerId: string, onTick: (remaining: number) => void = () => {}): void {
         const timer = this.timers.get(timerId);
         if (!timer || timer.isRunning) return;
 
@@ -168,6 +192,7 @@ export class TimerService {
             if (timer.remaining > 0) {
                 timer.remaining--;
                 onTick(timer.remaining);
+                this.notifyTimer(timerId);
 
                 if (timer.remaining <= 0) {
                     this.stopTimer(timerId);
@@ -179,6 +204,7 @@ export class TimerService {
 
         timer.intervalId = intervalId;
         timer.isRunning = true;
+        this.notifyTimer(timerId);
     }
 
     /**
@@ -191,6 +217,7 @@ export class TimerService {
             this.stopTimer(timerId);
             timer.remaining = timer.duration;
             timer.isRunning = false;
+            this.notifyTimer(timerId);
         }
     }
 
@@ -209,6 +236,12 @@ export class TimerService {
      */
     public getAllTimers(): Timer[] {
         return Array.from(this.timers.values());
+    }
+
+    public getSnapshot(key: string): TimerSnapshot | null {
+        const timerId = this.timerIdsByKey.get(key);
+        const timer = timerId ? this.timers.get(timerId) : undefined;
+        return timer ? this.snapshot(timer) : null;
     }
 
     /**
@@ -231,11 +264,14 @@ export class TimerService {
     public dispose(): void {
         // Stop all running timers
         for (const timer of this.timers.values()) {
-            if (timer.intervalId) {
+            if (timer.intervalId !== undefined) {
                 clearInterval(timer.intervalId);
             }
         }
         this.timers.clear();
+        this.timerIdsByKey.clear();
+        this.keysByTimerId.clear();
+        this.listeners.clear();
 
         // Unload sounds
         this.tickSound.unload();
@@ -247,5 +283,27 @@ export class TimerService {
      */
     private generateTimerId(): string {
         return `timer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    }
+
+    private notifyTimer(timerId: string): void {
+        const key = this.keysByTimerId.get(timerId);
+        const timer = this.timers.get(timerId);
+        if (!key || !timer) return;
+        const snapshot = this.snapshot(timer);
+        for (const listener of this.listeners.get(key) ?? []) listener(snapshot);
+    }
+
+    private snapshot(timer: Timer): TimerSnapshot {
+        return {
+            id: timer.id,
+            duration: timer.duration,
+            remaining: timer.remaining,
+            label: timer.label,
+            status: timer.isRunning
+                ? 'running'
+                : timer.remaining <= 0
+                    ? 'completed'
+                    : 'paused',
+        };
     }
 }
