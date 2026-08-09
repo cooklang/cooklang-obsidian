@@ -4,9 +4,19 @@
  * The parser's group_ingredients only merges *references* into their definition;
  * it leaves separate same-name definitions apart (e.g. `@flour{5%cups}` written
  * twice = two entries). This merges rows by display name and sums quantities
- * that share a unit. Different units are shown side by side ("5 cups + 2 tbsp");
- * ranges / textual amounts are listed as-is. No cross-unit conversion.
+ * that share a compatible Math.js unit. The total is rendered with Math.js's
+ * best-fitting unit ("150 g + 1.35 kg" becomes "1.5 kg"). Unrecognized or
+ * incompatible units are shown side by side; ranges / textual amounts are
+ * listed as-is.
  */
+
+import {
+    addDependencies,
+    create,
+    createUnitDependencies,
+    unitDependencies,
+    type Unit,
+} from 'mathjs';
 
 export interface RecipeRefTarget {
     /** Display name of the referenced recipe (e.g. "Beans"). */
@@ -41,17 +51,39 @@ export function formatQuantity(n: number): string {
     return String(Math.round(n * 100) / 100);
 }
 
-/** Group key that treats "cup"/"cups" as the same unit. */
-function unitKey(unit: string | null): string {
+const unitMath = create({ addDependencies, createUnitDependencies, unitDependencies });
+unitMath.createUnit('tbsp', { definition: '1 tablespoon', aliases: ['tbs'] });
+unitMath.createUnit('tsp', '1 teaspoon');
+
+type QuantityBucket =
+    | { type: 'unit'; total: Unit }
+    | { type: 'raw'; key: string; sum: number; unitDisplay: string };
+
+const MATHJS_UNIT_ALIASES: Record<string, string> = {
+    'fl oz': 'floz',
+    'fl. oz.': 'floz',
+};
+
+/** Normalizes plural labels so "cup" and "cups" share a bucket. */
+function normalizeUnit(unit: string | null): string {
     return (unit ?? '').trim().toLowerCase().replace(/s$/, '');
+}
+
+function parsedUnit(value: number, unit: string | null): Unit | null {
+    if (!unit?.trim()) return null;
+    try {
+        const normalized = unit.trim().toLowerCase();
+        return unitMath.unit(value, MATHJS_UNIT_ALIASES[normalized] ?? unit);
+    } catch {
+        return null;
+    }
 }
 
 export function aggregateIngredients(items: AggInput[]): IngredientRow[] {
     const order: string[] = [];
     const groups = new Map<string, {
         name: string;
-        units: Map<string, { sum: number; unitDisplay: string }>;
-        unitOrder: string[];
+        quantities: QuantityBucket[];
         textParts: string[];
         note: string | null;
         reference: RecipeRefTarget | null;
@@ -62,8 +94,7 @@ export function aggregateIngredients(items: AggInput[]): IngredientRow[] {
         if (!group) {
             group = {
                 name: item.name,
-                units: new Map(),
-                unitOrder: [],
+                quantities: [],
                 textParts: [],
                 note: null,
                 reference: null,
@@ -73,14 +104,34 @@ export function aggregateIngredients(items: AggInput[]): IngredientRow[] {
         }
 
         if (item.quantityValue !== null) {
-            const key = unitKey(item.unit);
-            let bucket = group.units.get(key);
-            if (!bucket) {
-                bucket = { sum: 0, unitDisplay: item.unit ?? '' };
-                group.units.set(key, bucket);
-                group.unitOrder.push(key);
+            const quantity = parsedUnit(item.quantityValue, item.unit);
+            if (quantity) {
+                const bucket = group.quantities.find(
+                    (candidate): candidate is Extract<QuantityBucket, { type: 'unit' }> =>
+                        candidate.type === 'unit' && candidate.total.equalBase(quantity),
+                );
+                if (bucket) {
+                    bucket.total = unitMath.add(bucket.total, quantity) as Unit;
+                } else {
+                    group.quantities.push({ type: 'unit', total: quantity });
+                }
+            } else {
+                const key = normalizeUnit(item.unit);
+                const bucket = group.quantities.find(
+                    (candidate): candidate is Extract<QuantityBucket, { type: 'raw' }> =>
+                        candidate.type === 'raw' && candidate.key === key,
+                );
+                if (bucket) {
+                    bucket.sum += item.quantityValue;
+                } else {
+                    group.quantities.push({
+                        type: 'raw',
+                        key,
+                        sum: item.quantityValue,
+                        unitDisplay: item.unit ?? '',
+                    });
+                }
             }
-            bucket.sum += item.quantityValue;
         } else if (item.quantityText) {
             group.textParts.push(item.quantityText);
         }
@@ -91,13 +142,11 @@ export function aggregateIngredients(items: AggInput[]): IngredientRow[] {
 
     return order.map(name => {
         const group = groups.get(name)!;
-        const parts: string[] = [];
-        for (const key of group.unitOrder) {
-            const bucket = group.units.get(key)!;
-            parts.push(bucket.unitDisplay
+        const parts = group.quantities.map(bucket => bucket.type === 'unit'
+            ? bucket.total.toBest().format({ precision: 3 })
+            : bucket.unitDisplay
                 ? `${formatQuantity(bucket.sum)} ${bucket.unitDisplay}`
                 : formatQuantity(bucket.sum));
-        }
         parts.push(...group.textParts);
         return {
             name: group.name,
