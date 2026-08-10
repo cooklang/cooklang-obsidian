@@ -50,6 +50,13 @@ export function formatTimerDuration(duration: TimerDuration): string {
     return `${minimum}–${formatTime(duration.maximumSeconds)}`;
 }
 
+/** Choose a natural slider step for a timer range. */
+export function timerRangeStep(duration: TimerDuration): number {
+    return duration.minimumSeconds % 60 === 0 && duration.maximumSeconds % 60 === 0
+        ? 60
+        : 1;
+}
+
 /**
  * Creates a unit map for converting time units to seconds
  * @param minutesLabel - Comma-separated labels for minutes (e.g., "m,min,minute,minutes")

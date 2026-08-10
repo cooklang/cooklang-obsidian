@@ -5,6 +5,7 @@ import {
     DEFAULT_MINUTES_LABELS,
     DEFAULT_SECONDS_LABELS,
     formatTimerDuration,
+    timerRangeStep,
     timerDurationFromQuantity,
 } from './timeFormatters';
 
@@ -93,5 +94,16 @@ describe('timerDurationFromQuantity', () => {
         const localized = createUnitMap('minuto', 'hora', 'segundo');
         expect(timerDurationFromQuantity(text('1HORA 2MINUTO 3SEGUNDO'), localized))
             .toEqual({ minimumSeconds: 3723, maximumSeconds: 3723 });
+    });
+});
+
+describe('timerRangeStep', () => {
+    it('uses minute steps when both bounds are whole minutes', () => {
+        expect(timerRangeStep({ minimumSeconds: 600, maximumSeconds: 900 })).toBe(60);
+    });
+
+    it('uses second steps when either bound includes seconds', () => {
+        expect(timerRangeStep({ minimumSeconds: 30, maximumSeconds: 90 })).toBe(1);
+        expect(timerRangeStep({ minimumSeconds: 60, maximumSeconds: 90 })).toBe(1);
     });
 });

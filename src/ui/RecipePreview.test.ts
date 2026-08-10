@@ -129,6 +129,7 @@ function model(overrides: Partial<RecipeRenderModel> = {}): RecipeRenderModel {
     };
     const timers: TimerController = {
         toggle: vi.fn(),
+        reset: vi.fn(),
         subscribe: () => () => {},
     };
     return {
@@ -171,11 +172,8 @@ describe('RecipePreview', () => {
         expect(renderModel.callbacks.onStepActivate).toHaveBeenCalledWith(0);
 
         await fireEvent.click(screen.getByRole('button', { name: /Start rest/ }));
-        expect(renderModel.timers?.toggle).toHaveBeenCalledWith(
-            'test-recipe:step-0:part-5',
-            120,
-            'rest',
-        );
+        expect(screen.getByRole('dialog', { name: 'Choose duration for rest' })).toBeTruthy();
+        expect(renderModel.timers?.toggle).not.toHaveBeenCalled();
     });
 
     it('honors settings that hide optional recipe regions', () => {
@@ -222,11 +220,214 @@ describe('ReferenceLink', () => {
 });
 
 describe('TimerButton', () => {
+    it('starts a fixed-duration timer immediately', async () => {
+        const controller: TimerController = {
+            toggle: vi.fn(),
+            reset: vi.fn(),
+            subscribe: () => () => {},
+        };
+        render(TimerButton, {
+            controller,
+            timerKey: 'timer',
+            duration: { minimumSeconds: 60, maximumSeconds: 60 },
+            label: 'rest',
+        });
+
+        await fireEvent.click(screen.getByRole('button', { name: 'Start rest (1:00)' }));
+        expect(controller.toggle).toHaveBeenCalledOnce();
+        expect(controller.toggle).toHaveBeenCalledWith('timer', 60, 'rest');
+    });
+
+    it('opens a range selector and starts the selected duration on pointer release', async () => {
+        const controller: TimerController = {
+            toggle: vi.fn(),
+            reset: vi.fn(),
+            subscribe: () => () => {},
+        };
+        render(TimerButton, {
+            controller,
+            timerKey: 'timer',
+            duration: { minimumSeconds: 60, maximumSeconds: 180 },
+            label: 'rest',
+        });
+
+        const button = screen.getByRole('button', { name: 'Start rest (1:00–3:00)' });
+        await fireEvent.click(button);
+
+        const dialog = screen.getByRole('dialog', { name: 'Choose duration for rest' });
+        const anchor = button.closest('.cook-timer-range-anchor');
+        expect(anchor).toBeTruthy();
+        expect(dialog.parentElement).toBe(anchor);
+        const slider = screen.getByRole('slider', { name: 'Duration for rest' });
+        expect(document.activeElement).toBe(slider);
+        expect(slider.getAttribute('min')).toBe('60');
+        expect(slider.getAttribute('max')).toBe('180');
+        expect(slider.getAttribute('step')).toBe('60');
+        expect((slider as HTMLInputElement).value).toBe('60');
+        expect(screen.getAllByText('1:00')).toHaveLength(2);
+        expect(screen.getByText('3:00')).toBeTruthy();
+        expect(controller.toggle).not.toHaveBeenCalled();
+
+        await fireEvent.input(slider, { target: { value: '120' } });
+        expect(slider.getAttribute('aria-valuetext')).toBe('2:00');
+        await fireEvent.pointerUp(slider);
+
+        expect(controller.toggle).toHaveBeenCalledOnce();
+        expect(controller.toggle).toHaveBeenCalledWith('timer', 120, 'rest');
+        expect(screen.queryByRole('dialog')).toBeNull();
+    });
+
+    it('uses second precision for a range with sub-minute bounds', async () => {
+        render(TimerButton, {
+            controller: { toggle: vi.fn(), reset: vi.fn(), subscribe: () => () => {} },
+            timerKey: 'timer',
+            duration: { minimumSeconds: 30, maximumSeconds: 90 },
+            label: '',
+        });
+
+        await fireEvent.click(screen.getByRole('button', { name: 'Start timer (30s–1:30)' }));
+        expect(screen.getByRole('slider').getAttribute('step')).toBe('1');
+    });
+
+    it('pauses and resumes an existing range timer without opening the selector', async () => {
+        const listeners: Array<(snapshot: TimerSnapshot | null) => void> = [];
+        const controller: TimerController = {
+            toggle: vi.fn(),
+            reset: vi.fn(),
+            subscribe: (_key, callback) => {
+                listeners.push(callback);
+                return () => {};
+            },
+        };
+        render(TimerButton, {
+            controller,
+            timerKey: 'timer',
+            duration: { minimumSeconds: 60, maximumSeconds: 180 },
+            label: 'rest',
+        });
+
+        const listener = listeners[0];
+        if (!listener) throw new Error('Expected the timer component to subscribe.');
+        listener({ id: 'id', duration: 120, remaining: 90, label: 'rest', status: 'running' });
+        const runningButton = await screen.findByRole('button', { name: 'Pause rest (1:30)' });
+        expect(runningButton.parentElement?.classList.contains('cook-timer-running')).toBe(true);
+        await fireEvent.click(runningButton);
+        expect(screen.queryByRole('dialog')).toBeNull();
+
+        listener({ id: 'id', duration: 120, remaining: 90, label: 'rest', status: 'paused' });
+        const pausedButton = await screen.findByRole('button', { name: 'Resume rest (1:30)' });
+        expect(pausedButton.parentElement?.classList.contains('cook-timer-running')).toBe(false);
+        await fireEvent.click(pausedButton);
+        expect(screen.queryByRole('dialog')).toBeNull();
+        expect(controller.toggle).toHaveBeenCalledTimes(2);
+    });
+
+    it('resets an active timer and allows a new range duration to be selected', async () => {
+        const listeners: Array<(snapshot: TimerSnapshot | null) => void> = [];
+        const reset = vi.fn(() => {
+            for (const listener of listeners) listener(null);
+        });
+        const controller: TimerController = {
+            toggle: vi.fn(),
+            reset,
+            subscribe: (_key, callback) => {
+                listeners.push(callback);
+                return () => {};
+            },
+        };
+        render(TimerButton, {
+            controller,
+            timerKey: 'timer',
+            duration: { minimumSeconds: 60, maximumSeconds: 180 },
+            label: 'rest',
+        });
+
+        listeners[0]?.({ id: 'id', duration: 120, remaining: 90, label: 'rest', status: 'running' });
+        const activeTimer = await screen.findByRole('button', { name: 'Pause rest (1:30)' });
+        const resetButton = screen.getByRole('button', { name: 'Reset rest timer' });
+        expect(resetButton.parentElement).toBe(activeTimer.parentElement);
+        expect(activeTimer.parentElement?.classList.contains('cook-timer-chip')).toBe(true);
+        expect(activeTimer.querySelector('.cook-timer-icon')).toBeNull();
+        await fireEvent.click(resetButton);
+
+        expect(reset).toHaveBeenCalledWith('timer');
+        const timerButton = await screen.findByRole('button', { name: 'Start rest (1:00–3:00)' });
+        expect(screen.queryByRole('button', { name: 'Reset rest timer' })).toBeNull();
+
+        await fireEvent.click(timerButton);
+        const slider = screen.getByRole('slider');
+        await fireEvent.input(slider, { target: { value: '180' } });
+        await fireEvent.pointerUp(slider);
+        expect(controller.toggle).toHaveBeenCalledWith('timer', 180, 'rest');
+    });
+
+    it('reopens a completed range at its minimum', async () => {
+        const listeners: Array<(snapshot: TimerSnapshot | null) => void> = [];
+        const controller: TimerController = {
+            toggle: vi.fn(),
+            reset: vi.fn(),
+            subscribe: (_key, callback) => {
+                listeners.push(callback);
+                return () => {};
+            },
+        };
+        render(TimerButton, {
+            controller,
+            timerKey: 'timer',
+            duration: { minimumSeconds: 60, maximumSeconds: 180 },
+            label: 'rest',
+        });
+
+        listeners[0]?.({ id: 'id', duration: 120, remaining: 0, label: 'rest', status: 'completed' });
+        await fireEvent.click(await screen.findByRole('button', { name: 'Start rest (0s)' }));
+        expect((screen.getByRole('slider') as HTMLInputElement).value).toBe('60');
+        expect(controller.toggle).not.toHaveBeenCalled();
+    });
+
+    it('dismisses without starting and supports keyboard activation', async () => {
+        const controller: TimerController = {
+            toggle: vi.fn(),
+            reset: vi.fn(),
+            subscribe: () => () => {},
+        };
+        render(TimerButton, {
+            controller,
+            timerKey: 'timer',
+            duration: { minimumSeconds: 60, maximumSeconds: 180 },
+            label: 'rest',
+        });
+        const button = screen.getByRole('button', { name: 'Start rest (1:00–3:00)' });
+
+        await fireEvent.click(button);
+        await fireEvent.keyDown(document, { key: 'Escape' });
+        expect(screen.queryByRole('dialog')).toBeNull();
+        expect(document.activeElement).toBe(button);
+        expect(controller.toggle).not.toHaveBeenCalled();
+
+        await fireEvent.click(button);
+        await fireEvent.pointerDown(document.body);
+        expect(screen.queryByRole('dialog')).toBeNull();
+        expect(controller.toggle).not.toHaveBeenCalled();
+
+        await fireEvent.click(button);
+        await fireEvent.click(screen.getByRole('button', { name: 'Close timer range selector' }));
+        expect(screen.queryByRole('dialog')).toBeNull();
+        expect(controller.toggle).not.toHaveBeenCalled();
+
+        await fireEvent.click(button);
+        const slider = screen.getByRole('slider');
+        await fireEvent.input(slider, { target: { value: '180' } });
+        await fireEvent.keyDown(slider, { key: 'Enter' });
+        expect(controller.toggle).toHaveBeenCalledOnce();
+        expect(controller.toggle).toHaveBeenCalledWith('timer', 180, 'rest');
+    });
+
     it('reflects subscribed pause state and unsubscribes on unmount', async () => {
-        const listeners: Array<(snapshot: TimerSnapshot) => void> = [];
+        const listeners: Array<(snapshot: TimerSnapshot | null) => void> = [];
         const unsubscribe = vi.fn();
         const controller: TimerController = {
             toggle: vi.fn(),
+            reset: vi.fn(),
             subscribe: (_key, callback) => {
                 listeners.push(callback);
                 return unsubscribe;

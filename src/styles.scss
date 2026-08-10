@@ -374,10 +374,83 @@ a.cook-pill:hover { color: var(--text-normal); border-color: var(--text-accent);
 .cook-cw-hl { color: var(--color-orange, var(--text-accent)); font-weight: 600; }
 .cook-amt { color: var(--text-muted); }
 .cook-timer-btn {
-  background: transparent; border: 1px solid var(--text-accent); color: var(--text-accent);
-  border-radius: 13px; min-height: 26px; padding: 1px 8px; font-size: 0.9em; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 0.25em;
+  min-width: 0; min-height: 22px; padding: 0; border: 0;
+  appearance: none; background: transparent !important; box-shadow: none !important;
+  color: inherit; cursor: pointer; font: inherit;
 }
 .cook-timer-name { margin-inline-start: 0.25em; }
+.cook-timer-range-anchor {
+  position: relative; display: inline-block; vertical-align: middle;
+}
+.cook-timer-chip {
+  display: inline-flex; align-items: center; gap: 0.25em;
+  box-sizing: border-box; min-height: 26px; padding: 1px 8px;
+  background: var(--background-secondary); border: 1px solid var(--text-accent); color: var(--text-accent);
+  border-radius: 13px; font-size: 0.9em;
+}
+.cook-timer-chip:hover { background: var(--background-modifier-hover); }
+.cook-timer-chip.cook-timer-running {
+  animation: cook-timer-border-pulse 1.6s ease-in-out infinite;
+}
+@keyframes cook-timer-border-pulse {
+  0%, 100% {
+    border-color: var(--text-accent);
+    color: var(--text-accent);
+    box-shadow: 0 0 0 0 transparent;
+  }
+  50% {
+    border-color: var(--color-green, var(--interactive-success, #4caf50));
+    color: var(--color-green, var(--interactive-success, #4caf50));
+    box-shadow: 0 0 0 2px var(--color-green, var(--interactive-success, #4caf50));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cook-timer-chip.cook-timer-running {
+    animation: none;
+    border-color: var(--color-green, var(--interactive-success, #4caf50));
+    color: var(--color-green, var(--interactive-success, #4caf50));
+  }
+}
+.cook-timer-icon { display: inline-block; flex: 0 0 1em; width: 1em; text-align: center; }
+.cook-timer-reset-btn {
+  flex: 0 0 1em; width: 1em; height: 22px; padding: 0; border: 0; border-radius: 4px;
+  appearance: none; background: transparent !important; box-shadow: none !important;
+  color: inherit; cursor: pointer; font: inherit;
+}
+.cook-timer-chip .cook-timer-btn:hover,
+.cook-timer-chip .cook-timer-btn:active,
+.cook-timer-chip .cook-timer-btn:focus,
+.cook-timer-chip .cook-timer-reset-btn:hover,
+.cook-timer-chip .cook-timer-reset-btn:active,
+.cook-timer-chip .cook-timer-reset-btn:focus { background: transparent !important; box-shadow: none !important; }
+.cook-timer-range-popover {
+  position: absolute; z-index: var(--layer-popover, 1000); top: calc(100% + 6px);
+  width: min(280px, calc(100vw - 16px));
+  box-sizing: border-box; padding: var(--size-4-3, 12px);
+  background: var(--background-primary); color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border); border-radius: var(--radius-m, 8px);
+  box-shadow: var(--shadow-s); opacity: 0; pointer-events: none;
+}
+.cook-timer-range-popover.cook-timer-range-ready { opacity: 1; pointer-events: auto; }
+.cook-timer-range-header {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--size-4-2, 8px);
+  margin-bottom: var(--size-4-2, 8px);
+}
+.cook-timer-range-value { font-weight: 600; font-variant-numeric: tabular-nums; }
+.cook-timer-range-close {
+  width: 28px; height: 28px; padding: 0; border: 0; border-radius: var(--radius-s, 4px);
+  background: transparent; color: var(--text-muted); cursor: pointer; font: inherit; font-size: 1.25em;
+}
+.cook-timer-range-close:hover { background: var(--background-modifier-hover); color: var(--text-normal); }
+.cook-timer-range-slider { display: block; width: 100%; margin: 0; accent-color: var(--interactive-accent); }
+.cook-timer-range-bounds {
+  display: flex; justify-content: space-between; margin-top: var(--size-2-1, 4px);
+  color: var(--text-muted); font-size: var(--font-ui-smaller); font-variant-numeric: tabular-nums;
+}
+.cook-timer-range-help {
+  display: block; margin-top: var(--size-4-2, 8px); color: var(--text-faint); font-size: var(--font-ui-smaller);
+}
 
 /* Notes */
 .cook-note {
@@ -432,6 +505,9 @@ a.cook-pill:hover { color: var(--text-normal); border-color: var(--text-accent);
 .cook-ing-checkbox:focus-visible,
 .cook-step-toggle:focus-visible,
 .cook-timer-btn:focus-visible,
+.cook-timer-reset-btn:focus-visible,
+.cook-timer-range-close:focus-visible,
+.cook-timer-range-slider:focus-visible,
 .cook-bar-link:focus-visible,
 .cook-ref-link:focus-visible {
   outline: 2px solid var(--interactive-accent);

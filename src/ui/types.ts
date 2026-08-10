@@ -34,7 +34,8 @@ export interface RecipeHostAdapter {
 
 export interface TimerController {
     toggle(key: string, seconds: number, label: string): void;
-    subscribe(key: string, listener: (snapshot: TimerSnapshot) => void): () => void;
+    reset(key: string): void;
+    subscribe(key: string, listener: (snapshot: TimerSnapshot | null) => void): () => void;
 }
 
 export interface RecipeRenderModel {
