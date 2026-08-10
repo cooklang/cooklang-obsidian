@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.1](https://github.com/cooklang/cooklang-obsidian/compare/0.11.0...0.11.1) (2026-08-10)
+
+
+### Bug Fixes
+
+* refine timer range slider UI ([#117](https://github.com/cooklang/cooklang-obsidian/issues/117)) ([fcdc9c0](https://github.com/cooklang/cooklang-obsidian/commit/fcdc9c06b9ba73a565bbf1fd89206a14ae1b04bb))
+
 ## [0.11.0](https://github.com/cooklang/cooklang-obsidian/compare/0.10.0...0.11.0) (2026-08-10)
 
 
