@@ -7,6 +7,8 @@ declare class CookPlugin extends Plugin {
 }
 
 export class CooklangSettings {
+  /** Internal marker used to show release notes only once per plugin version. */
+  lastSeenVersion?: string;
   showImages: boolean = true;
   showIngredientList: boolean = true;
   showCookwareList: boolean = true;

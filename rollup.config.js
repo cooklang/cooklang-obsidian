@@ -5,6 +5,7 @@ import url from '@rollup/plugin-url';
 import wasm from '@rollup/plugin-wasm';
 import svelte from 'rollup-plugin-svelte';
 import * as sass from 'sass';
+import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import svelteConfig from './svelte.config.js';
 
@@ -37,6 +38,19 @@ function sassStyles() {
         fileName: 'styles.css',
         source: css
       });
+    }
+  };
+}
+
+function markdownString() {
+  return {
+    name: 'markdown-string',
+    load(id) {
+      if (!id.endsWith('.md')) {
+        return null;
+      }
+
+      return `export default ${JSON.stringify(readFileSync(id, 'utf8'))};`;
     }
   };
 }
@@ -99,6 +113,7 @@ export default {
     commonjs({
       include: ['node_modules/**', 'src/mode/**']
     }),
+    markdownString(),
     sassStyles(),
     url({
       include: ['**/*.mp3'],

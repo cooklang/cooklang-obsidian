@@ -493,6 +493,14 @@ a.cook-pill:hover { color: var(--text-normal); border-color: var(--text-accent);
   margin-bottom: var(--size-2-2, 6px);
 }
 
+/* Release notes shown once after a plugin update. */
+.cook-changelog-modal {
+  width: min(680px, calc(100vw - 32px));
+}
+.cook-changelog > h2:first-child {
+  margin-top: 0;
+}
+
 /* Per-section ingredient sub-headings (#69) */
 .cook-ing-group-title {
   margin: var(--size-4-3, 12px) 0 var(--size-2-2, 6px);

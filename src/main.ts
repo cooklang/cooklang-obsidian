@@ -19,6 +19,9 @@ import { ObsidianRecipeHost } from './ui/ObsidianRecipeHost';
 import { createUiInstanceId } from './ui/instanceIds';
 import type { EmbedRenderState } from './ui/types';
 import { embedSettings } from './utils/embedSettings';
+import changelog from '../CHANGELOG.md';
+import { ChangelogModal } from './ui/ChangelogModal';
+import { releaseNotesForUpdate } from './utils/releaseNotes';
 
 export default class CookPlugin extends Plugin {
 
@@ -27,7 +30,9 @@ export default class CookPlugin extends Plugin {
 
   async onload() {
     super.onload();
-    this.settings = Object.assign(new CooklangSettings(), await this.loadData());
+    const storedData = await this.loadData();
+    const isFirstInstall = storedData == null;
+    this.settings = Object.assign(new CooklangSettings(), storedData ?? {});
 
     // register a custom icon
     this.addDocumentIcon("cook");
@@ -311,6 +316,39 @@ export default class CookPlugin extends Plugin {
           }
         });
       }
+    });
+
+    await this.showReleaseNotesAfterUpdate(isFirstInstall);
+  }
+
+  private async showReleaseNotesAfterUpdate(isFirstInstall: boolean): Promise<void> {
+    const currentVersion = this.manifest.version;
+    const previousVersion = this.settings.lastSeenVersion;
+
+    if (previousVersion === currentVersion) return;
+
+    this.settings.lastSeenVersion = currentVersion;
+    try {
+      await this.saveData(this.settings);
+    } catch (error) {
+      console.error('Could not save the Cooklang release-notes version.', error);
+    }
+
+    const notes = releaseNotesForUpdate(
+      changelog,
+      currentVersion,
+      previousVersion,
+      isFirstInstall,
+    );
+    if (!notes) return;
+
+    this.app.workspace.onLayoutReady(() => {
+      new ChangelogModal(
+        this.app,
+        this.manifest.name,
+        currentVersion,
+        notes,
+      ).open();
     });
   }
 
