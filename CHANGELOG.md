@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.11.0](https://github.com/cooklang/cooklang-obsidian/compare/0.10.0...0.11.0) (2026-08-10)
+
+
+### Features
+
+* add interactive timer range controls ([#114](https://github.com/cooklang/cooklang-obsidian/issues/114)) ([140d162](https://github.com/cooklang/cooklang-obsidian/commit/140d1623af561f0b19c78a58cc161804fd7ca09e))
+* show changelog after plugin updates ([#115](https://github.com/cooklang/cooklang-obsidian/issues/115)) ([53b331c](https://github.com/cooklang/cooklang-obsidian/commit/53b331c165c586b480066cf5f8d078375adca88d))
+
+
+### Bug Fixes
+
+* contain wrapped text within recipe pills ([#112](https://github.com/cooklang/cooklang-obsidian/issues/112)) ([31d4a94](https://github.com/cooklang/cooklang-obsidian/commit/31d4a948062244acca9b6913ecf2b4ef46d604fa))
+* suppress Math.js dependency cycle warnings ([#113](https://github.com/cooklang/cooklang-obsidian/issues/113)) ([e14c7bd](https://github.com/cooklang/cooklang-obsidian/commit/e14c7bd16973477ba06c09344189c2bf06f1115d))
+
 ## [0.10.0](https://github.com/cooklang/cooklang-obsidian/compare/0.9.4...0.10.0) (2026-08-09)
 
 
