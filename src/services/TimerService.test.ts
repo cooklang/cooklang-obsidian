@@ -27,7 +27,7 @@ describe('TimerService timer controller', () => {
             { timersTick: false, timersRing: false } as any,
             { tickSoundUrl: 'tick.mp3', alarmSoundUrl: 'alarm.mp3' },
         );
-        const snapshots: TimerSnapshot[] = [];
+        const snapshots: Array<TimerSnapshot | null> = [];
         const unsubscribe = service.subscribe('step-1-timer-1', snapshot => {
             snapshots.push(snapshot);
         });
@@ -70,6 +70,27 @@ describe('TimerService timer controller', () => {
         service.toggle('timer', 1, 'rest');
         expect(service.getSnapshot('timer')).toMatchObject({ remaining: 1, status: 'running' });
         expect(service.getAllTimers()).toHaveLength(2);
+
+        service.dispose();
+    });
+
+    it('cancels and forgets a keyed timer so a new duration can be selected', () => {
+        const service = new TimerService(
+            { timersTick: false, timersRing: false } as any,
+            { tickSoundUrl: 'tick.mp3', alarmSoundUrl: 'alarm.mp3' },
+        );
+        const snapshots: Array<TimerSnapshot | null> = [];
+        service.subscribe('timer', snapshot => snapshots.push(snapshot));
+
+        service.toggle('timer', 120, 'rest');
+        service.reset('timer');
+
+        expect(service.getSnapshot('timer')).toBeNull();
+        expect(service.getAllTimers()).toHaveLength(0);
+        expect(snapshots[snapshots.length - 1]).toBeNull();
+
+        service.toggle('timer', 180, 'rest');
+        expect(service.getSnapshot('timer')).toMatchObject({ duration: 180, status: 'running' });
 
         service.dispose();
     });

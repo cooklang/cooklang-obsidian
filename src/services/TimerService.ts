@@ -49,7 +49,7 @@ export class TimerService {
     private timers: Map<string, Timer> = new Map();
     private timerIdsByKey: Map<string, string> = new Map();
     private keysByTimerId: Map<string, string> = new Map();
-    private listeners: Map<string, Set<(snapshot: TimerSnapshot) => void>> = new Map();
+    private listeners: Map<string, Set<(snapshot: TimerSnapshot | null) => void>> = new Map();
     private tickSound: Howl;
     private alarmSound: Howl;
 
@@ -84,7 +84,7 @@ export class TimerService {
         this.startTimer(seconds, label, undefined, key);
     }
 
-    public subscribe(key: string, listener: (snapshot: TimerSnapshot) => void): () => void {
+    public subscribe(key: string, listener: (snapshot: TimerSnapshot | null) => void): () => void {
         let listeners = this.listeners.get(key);
         if (!listeners) {
             listeners = new Set();
@@ -101,6 +101,19 @@ export class TimerService {
             current?.delete(listener);
             if (current?.size === 0) this.listeners.delete(key);
         };
+    }
+
+    /** Cancel and forget the timer assigned to a rendered timer control. */
+    public reset(key: string): void {
+        const timerId = this.timerIdsByKey.get(key);
+        const timer = timerId ? this.timers.get(timerId) : undefined;
+        if (!timerId) return;
+
+        if (timer?.intervalId !== undefined) clearInterval(timer.intervalId);
+        this.timers.delete(timerId);
+        this.timerIdsByKey.delete(key);
+        this.keysByTimerId.delete(timerId);
+        for (const listener of this.listeners.get(key) ?? []) listener(null);
     }
 
     /**
