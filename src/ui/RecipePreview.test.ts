@@ -266,6 +266,7 @@ describe('TimerButton', () => {
         expect((slider as HTMLInputElement).value).toBe('60');
         expect(screen.getAllByText('1:00')).toHaveLength(2);
         expect(screen.getByText('3:00')).toBeTruthy();
+        expect(screen.getByText('Release to start · Keyboard: Enter')).toBeTruthy();
         expect(controller.toggle).not.toHaveBeenCalled();
 
         await fireEvent.input(slider, { target: { value: '120' } });

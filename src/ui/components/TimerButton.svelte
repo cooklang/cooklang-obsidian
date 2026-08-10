@@ -219,7 +219,7 @@
                 <span>{formatTime(duration.maximumSeconds)}</span>
             </span>
             <span id={sliderHelpId} class="cook-timer-range-help">
-                Release the slider to start. Press Enter when using the keyboard.
+                Release to start · Keyboard: Enter
             </span>
         </span>
     {/if}
