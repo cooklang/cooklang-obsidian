@@ -435,7 +435,8 @@ a.cook-pill:hover { color: var(--text-normal); border-color: var(--text-accent);
 .cook-timer-range-popover.cook-timer-range-ready { opacity: 1; pointer-events: auto; }
 .cook-timer-range-header {
   display: flex; align-items: center; justify-content: space-between; gap: var(--size-4-2, 8px);
-  margin-bottom: var(--size-2-2, 6px);
+  // The custom WebKit thumb extends 7px above its track.
+  margin-bottom: var(--size-4-3, 12px);
 }
 .cook-timer-range-value { font-size: 1.05em; font-weight: 600; font-variant-numeric: tabular-nums; }
 .cook-timer-range-close {
