@@ -55,20 +55,27 @@ function markdownString() {
   };
 }
 
-function isSvelteCircularDependency(warning) {
+function isKnownDependencyCycle(warning) {
   if (warning.code !== 'CIRCULAR_DEPENDENCY' || !warning.ids?.length) {
     return false;
   }
 
-  return warning.ids.every(id =>
-    id.replaceAll('\\', '/').includes('/node_modules/svelte/')
+  const dependencyPaths = [
+    '/node_modules/mathjs/',
+    '/node_modules/svelte/'
+  ];
+
+  return dependencyPaths.some(dependencyPath =>
+    warning.ids.every(id =>
+      id.replaceAll('\\', '/').includes(dependencyPath)
+    )
   );
 }
 
 export default {
   input: 'src/main.ts',
   onwarn(warning, warn) {
-    if (!isSvelteCircularDependency(warning)) {
+    if (!isKnownDependencyCycle(warning)) {
       warn(warning);
     }
   },
