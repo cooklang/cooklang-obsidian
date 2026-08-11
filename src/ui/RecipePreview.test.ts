@@ -266,8 +266,9 @@ describe('TimerButton', () => {
         expect(slider.getAttribute('min')).toBe('60');
         expect(slider.getAttribute('max')).toBe('180');
         expect(slider.getAttribute('step')).toBe('60');
-        expect((slider as HTMLInputElement).value).toBe('60');
-        expect(screen.getAllByText('1:00')).toHaveLength(2);
+        expect((slider as HTMLInputElement).value).toBe('120');
+        expect(slider.getAttribute('aria-valuetext')).toBe('2:00');
+        expect(screen.getAllByText('1:00')).toHaveLength(1);
         expect(screen.getByText('3:00')).toBeTruthy();
         expect(screen.getByText('Release to start · Keyboard: Enter')).toBeTruthy();
         expect(dialog.querySelector('[aria-live]')).toBeNull();
@@ -377,7 +378,7 @@ describe('TimerButton', () => {
         expect(controller.toggle).toHaveBeenCalledWith('timer', 180, 'rest');
     });
 
-    it('reopens a completed range at its minimum', async () => {
+    it('reopens a completed range at its midpoint', async () => {
         const listeners: Array<(snapshot: TimerSnapshot | null) => void> = [];
         const controller: TimerController = {
             toggle: vi.fn(),
@@ -396,7 +397,7 @@ describe('TimerButton', () => {
 
         listeners[0]?.({ id: 'id', duration: 120, remaining: 0, label: 'rest', status: 'completed' });
         await fireEvent.click(await screen.findByRole('button', { name: 'Start rest (0s)' }));
-        expect((screen.getByRole('slider') as HTMLInputElement).value).toBe('60');
+        expect((screen.getByRole('slider') as HTMLInputElement).value).toBe('120');
         expect(controller.toggle).not.toHaveBeenCalled();
     });
 

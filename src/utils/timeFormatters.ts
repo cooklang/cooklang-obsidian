@@ -57,6 +57,18 @@ export function timerRangeStep(duration: TimerDuration): number {
         : 1;
 }
 
+/** Choose the step-aligned value nearest the middle of a timer range. */
+export function timerRangeMidpoint(duration: TimerDuration): number {
+    const step = timerRangeStep(duration);
+    const midpointSteps = Math.round(
+        (duration.maximumSeconds - duration.minimumSeconds) / step / 2,
+    );
+    return Math.min(
+        duration.maximumSeconds,
+        duration.minimumSeconds + midpointSteps * step,
+    );
+}
+
 /**
  * Creates a unit map for converting time units to seconds
  * @param minutesLabel - Comma-separated labels for minutes (e.g., "m,min,minute,minutes")
