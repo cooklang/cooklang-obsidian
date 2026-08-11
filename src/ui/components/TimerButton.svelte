@@ -29,6 +29,7 @@
     let selectorReady = $state(false);
     let selectedSeconds = $state(0);
     let popoverLeft = $state(0);
+    let pendingPointerStart: number | undefined;
     let status = $derived(snapshot?.status ?? 'idle');
     let isRange = $derived(duration.minimumSeconds !== duration.maximumSeconds);
     let sliderStep = $derived(timerRangeStep(duration));
@@ -65,6 +66,7 @@
         window.addEventListener('scroll', handleViewportChange, true);
 
         return () => {
+            if (pendingPointerStart !== undefined) window.clearTimeout(pendingPointerStart);
             unsubscribe();
             document.removeEventListener('pointerdown', handleOutsidePointer, true);
             document.removeEventListener('keydown', handleKeydown);
@@ -92,15 +94,28 @@
             if (!selectorOpen) return;
             positionPopover();
             selectorReady = true;
-            sliderElement?.focus();
+            focusWithoutScrolling(sliderElement);
         });
     }
 
     function closeSelector(restoreFocus: boolean): void {
         if (!selectorOpen) return;
+        if (pendingPointerStart !== undefined) {
+            window.clearTimeout(pendingPointerStart);
+            pendingPointerStart = undefined;
+        }
         selectorOpen = false;
         selectorReady = false;
-        if (restoreFocus) void tick().then(() => buttonElement?.focus());
+        if (restoreFocus) void tick().then(() => focusWithoutScrolling(buttonElement));
+    }
+
+    function focusWithoutScrolling(element?: HTMLElement): void {
+        if (!element) return;
+        try {
+            element.focus({ preventScroll: true });
+        } catch {
+            element.focus();
+        }
     }
 
     function positionPopover(): void {
@@ -137,6 +152,21 @@
         startSelected();
     }
 
+    function handleSliderPointerUp(event: PointerEvent): void {
+        const slider = event.currentTarget as HTMLInputElement;
+        if (slider.hasPointerCapture?.(event.pointerId)) {
+            slider.releasePointerCapture(event.pointerId);
+        }
+
+        // Android WebView can retain the range input's implicit pointer capture
+        // when the input is removed during its pointerup handler, blocking later
+        // scroll gestures. Let pointer teardown finish before closing the selector.
+        pendingPointerStart = window.setTimeout(() => {
+            pendingPointerStart = undefined;
+            startSelected();
+        }, 0);
+    }
+
     function closeFromButton(event: MouseEvent): void {
         event.stopPropagation();
         closeSelector(true);
@@ -146,7 +176,7 @@
         event.stopPropagation();
         closeSelector(false);
         controller.reset(timerKey);
-        void tick().then(() => buttonElement?.focus());
+        void tick().then(() => focusWithoutScrolling(buttonElement));
     }
 
 </script>
@@ -175,7 +205,7 @@
             {#if status !== 'running' && status !== 'paused'}
                 <span class="cook-timer-icon" aria-hidden="true">⏱</span>
             {/if}
-            <span class="cook-amt amount" aria-live="polite">{displayTime}</span>
+            <span class="cook-amt amount">{displayTime}</span>
             {#if label}<span class="cook-timer-name">{label}</span>{/if}
         </button>
     </span>
@@ -191,7 +221,7 @@
             style={`left: ${popoverLeft}px;`}
         >
             <span class="cook-timer-range-header">
-                <span class="cook-timer-range-value" aria-live="polite">{formatTime(selectedSeconds)}</span>
+                <span class="cook-timer-range-value">{formatTime(selectedSeconds)}</span>
                 <button
                     type="button"
                     class="cook-timer-range-close"
@@ -211,7 +241,7 @@
                 aria-valuetext={formatTime(selectedSeconds)}
                 aria-describedby={sliderHelpId}
                 oninput={updateSelection}
-                onpointerup={startSelected}
+                onpointerup={handleSliderPointerUp}
                 onkeydown={handleSliderKeydown}
             />
             <span class="cook-timer-range-bounds" aria-hidden="true">

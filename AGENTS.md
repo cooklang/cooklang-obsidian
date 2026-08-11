@@ -91,12 +91,24 @@ fenced `cook` / `cooklang` block in Markdown reading mode
 - Avoid broad edits to the legacy `src/lib/codemirror.js` stub; current syntax support lives in `src/mode/cook/` and CodeMirror 6 packages.
 - Preserve the README's privacy promise. Do not introduce telemetry, data collection, or outbound network behavior without an explicit product decision and matching documentation.
 
+## Mobile WebView compatibility
+
+- Treat iOS WKWebView and Android WebView as first-class runtimes. Prefer semantic `button`, `a`, `input`, `label`, `details`, and `summary` elements so keyboard, touch, assistive technology, and synthesized click behavior share one path.
+- Use `click` or `change` for discrete actions. Reserve pointer events for continuous gestures such as sliders, and do not add parallel touch and mouse handlers for the same interaction.
+- Do not synchronously remove, replace, or rerender an active pointer target from its `pointerup` or `pointercancel` handler. Range inputs can use implicit pointer capture; release capture when present and defer teardown until a later task so Android WebView can finish pointer cleanup and restore scrolling.
+- Keep vertical page scrolling available when adding horizontal gesture controls. A horizontal range control should declare `touch-action: pan-y`, and document-level pointer listeners must not call `preventDefault()` unless blocking native scrolling is explicitly required.
+- Give custom controls coarse-pointer hit areas of at least 48 CSS pixels where layout permits. Keep their visible glyphs compact with padding, and preserve spacing between adjacent actions. Scope hover-only feedback to `(hover: hover) and (pointer: fine)` and provide `:active` feedback for touch.
+- Include both `appearance: none` and `-webkit-appearance: none` when replacing native form-control styling. Keep focus-visible outlines, accessible names, and keyboard behavior intact.
+- Programmatic focus after a reactive render should use `{ preventScroll: true }` with a fallback, especially for popovers and range inputs. Avoid `aria-live` on values that update every second or continuously while dragging; the control's accessible name or `aria-valuetext` should expose the current value without flooding VoiceOver or TalkBack.
+- Avoid viewport-width sizing inside padded panes; prefer container-relative `width: 100%`, `max-width: 100%`, and `box-sizing: border-box`. Lazy-load below-the-fold step images to reduce memory and decoding pressure on mobile.
+
 ## Testing and definition of done
 
 - Add or update a colocated `*.test.ts` when changing pure behavior. Vitest discovers `src/**/*.test.ts`.
 - Avoid runtime imports from `obsidian` in Node tests. Extract pure logic instead of trying to instantiate Obsidian views in Vitest.
 - Run the narrowest relevant test while iterating, then run `npm test` and `npm run build` before handing off a code change.
 - DOM, lifecycle, or CSS changes also need proportionate manual verification in Obsidian because there is no automated Obsidian integration suite. Rebuild, reload/re-enable the plugin, and check the affected source/preview flow. For layout changes, check light and dark themes plus a narrow pane/mobile-sized view; for shared renderers, also check fenced Markdown embeds.
+- For touch interaction changes, manually verify both iOS and Android when devices are available: drag and release sliders, immediately scroll from the former control area, tap every adjacent action, rotate the device, and confirm VoiceOver/TalkBack does not announce continuous timer ticks.
 - A local manual setup can symlink the repository into `<vault>/.obsidian/plugins/cooklang-obsidian`; `test-recipes/curry.cook` is the starting fixture.
 - Treat build warnings separately from failures, but confirm that `main.js` and `styles.css` were actually produced.
 
