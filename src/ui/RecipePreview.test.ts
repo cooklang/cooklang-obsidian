@@ -241,7 +241,7 @@ describe('TimerButton', () => {
         expect(screen.queryByText('1:00')?.closest('[aria-live]')).toBeNull();
     });
 
-    it('releases pointer capture before starting the selected range duration', async () => {
+    it('owns the slider pointer stream and releases capture before starting', async () => {
         const controller: TimerController = {
             toggle: vi.fn(),
             reset: vi.fn(),
@@ -276,13 +276,52 @@ describe('TimerButton', () => {
 
         await fireEvent.input(slider, { target: { value: '120' } });
         expect(slider.getAttribute('aria-valuetext')).toBe('2:00');
+        const setPointerCapture = vi.fn();
         const hasPointerCapture = vi.fn(() => true);
         const releasePointerCapture = vi.fn();
-        Object.assign(slider, { hasPointerCapture, releasePointerCapture });
+        Object.assign(slider, { setPointerCapture, hasPointerCapture, releasePointerCapture });
+        const parentPointerDown = vi.fn();
+        const parentPointerMove = vi.fn();
+        const parentPointerUp = vi.fn();
+        const parentPointerCancel = vi.fn();
+        const parentTouchStart = vi.fn();
+        const parentTouchMove = vi.fn();
+        const parentTouchEnd = vi.fn();
+        dialog.addEventListener('pointerdown', parentPointerDown);
+        dialog.addEventListener('pointermove', parentPointerMove);
+        dialog.addEventListener('pointerup', parentPointerUp);
+        dialog.addEventListener('pointercancel', parentPointerCancel);
+        dialog.addEventListener('touchstart', parentTouchStart);
+        dialog.addEventListener('touchmove', parentTouchMove);
+        dialog.addEventListener('touchend', parentTouchEnd);
+
+        await fireEvent.touchStart(slider);
+        await fireEvent.touchMove(slider);
+        await fireEvent.touchEnd(slider);
+        expect(parentTouchStart).not.toHaveBeenCalled();
+        expect(parentTouchMove).not.toHaveBeenCalled();
+        expect(parentTouchEnd).not.toHaveBeenCalled();
+
+        await fireEvent.pointerDown(slider, { pointerId: 6 });
+        await fireEvent.pointerCancel(slider, { pointerId: 6 });
+        expect(releasePointerCapture).toHaveBeenCalledWith(6);
+        expect(controller.toggle).not.toHaveBeenCalled();
+        expect(screen.getByRole('dialog')).toBeTruthy();
+        setPointerCapture.mockClear();
+        hasPointerCapture.mockClear();
+        releasePointerCapture.mockClear();
+
+        await fireEvent.pointerDown(slider, { pointerId: 7 });
+        await fireEvent.pointerMove(slider, { pointerId: 7 });
         await fireEvent.pointerUp(slider, { pointerId: 7 });
 
+        expect(setPointerCapture).toHaveBeenCalledWith(7);
         expect(hasPointerCapture).toHaveBeenCalledWith(7);
         expect(releasePointerCapture).toHaveBeenCalledWith(7);
+        expect(parentPointerDown).not.toHaveBeenCalled();
+        expect(parentPointerMove).not.toHaveBeenCalled();
+        expect(parentPointerUp).not.toHaveBeenCalled();
+        expect(parentPointerCancel).not.toHaveBeenCalled();
         expect(controller.toggle).not.toHaveBeenCalled();
         expect(screen.getByRole('dialog')).toBeTruthy();
 
