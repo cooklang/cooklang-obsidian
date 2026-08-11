@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.2](https://github.com/cooklang/cooklang-obsidian/compare/0.11.1...0.11.2) (2026-08-11)
+
+
+### Bug Fixes
+
+* improve mobile WebView compatibility ([#119](https://github.com/cooklang/cooklang-obsidian/issues/119)) ([65f56a5](https://github.com/cooklang/cooklang-obsidian/commit/65f56a5b88369f6af66e7760c915f65cfb3d1ff9))
+
 ## [0.11.1](https://github.com/cooklang/cooklang-obsidian/compare/0.11.0...0.11.1) (2026-08-10)
 
 
