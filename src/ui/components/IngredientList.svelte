@@ -20,14 +20,16 @@
                     {@const checked = model.state.checkedIngredients.has(row.name)}
                     <li class:done={checked} class="cook-ing">
                         {#if model.interactive}
-                            <input
-                                id={inputId}
-                                class="cook-ing-checkbox"
-                                type="checkbox"
-                                {checked}
-                                aria-label={`${checked ? 'Uncheck' : 'Check'} ${row.name}`}
-                                onchange={() => model.callbacks.onIngredientToggle(row.name)}
-                            />
+                            <label class="cook-ing-checkbox-hit">
+                                <input
+                                    id={inputId}
+                                    class="cook-ing-checkbox"
+                                    type="checkbox"
+                                    {checked}
+                                    aria-label={`${checked ? 'Uncheck' : 'Check'} ${row.name}`}
+                                    onchange={() => model.callbacks.onIngredientToggle(row.name)}
+                                />
+                            </label>
                         {:else}
                             <span class="cook-ing-checkbox" aria-hidden="true"></span>
                         {/if}

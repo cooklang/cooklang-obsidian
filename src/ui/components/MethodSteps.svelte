@@ -71,6 +71,8 @@
                                 <img
                                     src={model.host.getResourcePath(image)}
                                     alt={`Step ${step.globalIndex + 1}`}
+                                    loading="lazy"
+                                    decoding="async"
                                 />
                             </figure>
                         {/if}

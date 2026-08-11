@@ -18,11 +18,13 @@
 
   .cook-source-view-full {
     height: 100%;
+    width: 100%;
+    box-sizing: border-box;
     padding: 0 20px;
   }
 
   .main-image {
-    width: 100vw;
+    width: 100%;
     aspect-ratio: 1.618;
     object-fit: cover;
   }
@@ -205,6 +207,8 @@
    container rule must be a compound selector (no descendant combinator). */
 .cook-preview-view.cook-rich {
   container-type: inline-size;
+  box-sizing: border-box;
+  width: 100%;
   max-width: 1000px;
   margin: 0 auto;
   padding: 0 var(--size-4-4, 16px) var(--size-4-8, 32px);
@@ -238,7 +242,6 @@
   overflow-wrap: anywhere;
   text-decoration: none;
 }
-a.cook-pill:hover { color: var(--text-normal); border-color: var(--text-accent); }
 .cook-pill-icon { flex: 0 0 auto; opacity: 0.85; }
 .cook-pill-tag { background: transparent; border-color: var(--text-accent); color: var(--text-accent); }
 
@@ -253,16 +256,15 @@ a.cook-pill:hover { color: var(--text-normal); border-color: var(--text-accent);
 }
 .cook-bar-nav { display: flex; gap: var(--size-4-4, 16px); }
 .cook-bar-link { font-size: 0.85em; font-weight: 600; color: var(--text-muted); text-decoration: none; }
-.cook-bar-link:hover { color: var(--text-accent); }
 .cook-stepper {
   margin-left: auto; display: flex; align-items: center; gap: 6px;
   border: 1px solid var(--background-modifier-border); border-radius: 14px; height: 30px; padding: 0 6px;
 }
 .cook-stepper-btn {
   width: 22px; height: 22px; border: none; border-radius: 50%;
+  -webkit-appearance: none; appearance: none;
   background: transparent; color: var(--text-muted); font-size: 1em; cursor: pointer; line-height: 1;
 }
-.cook-stepper-btn:hover { background: var(--background-modifier-hover); color: var(--text-normal); }
 .cook-stepper-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .cook-stepper-val { font-size: 0.85em; font-variant-numeric: tabular-nums; }
 .cook-stepper-val b { color: var(--text-normal); }
@@ -298,10 +300,11 @@ a.cook-pill:hover { color: var(--text-normal); border-color: var(--text-accent);
 }
 .cook-ing:last-child { border-bottom: none; }
 .cook-ing-checkbox {
-  appearance: none; margin: 0; padding: 0;
+  -webkit-appearance: none; appearance: none; margin: 0; padding: 0;
   width: 17px; height: 17px; flex: none; border-radius: 5px;
   border: 1.5px solid var(--text-faint); background: transparent; cursor: pointer;
 }
+.cook-ing-checkbox-hit { display: inline-flex; flex: none; }
 .cook-ing-checkbox:checked {
   background: var(--interactive-accent); border-color: var(--interactive-accent); position: relative;
 }
@@ -350,11 +353,12 @@ a.cook-pill:hover { color: var(--text-normal); border-color: var(--text-accent);
 .cook-step-toggle {
   align-self: flex-start; min-width: 28px; min-height: 28px; margin: -4px 0 0 -6px;
   padding: 4px 6px; border: 0; border-radius: var(--radius-s, 4px);
-  background: transparent; cursor: pointer; font: inherit;
+  -webkit-appearance: none; appearance: none; background: transparent; cursor: pointer; font: inherit;
 }
-.cook-step-toggle:hover { background: var(--background-modifier-hover); }
 .cook-step-bodywrap { flex: 1; min-width: 0; }
 .cook-step-text { line-height: 1.6; }
+.cook-ingredients,
+.cook-steps { scroll-margin-top: 64px; }
 .cook-step-image { margin: var(--size-4-2, 8px) 0 0; }
 .cook-step-image img { max-width: 100%; border-radius: var(--radius-m, 8px); }
 
@@ -366,7 +370,6 @@ a.cook-pill:hover { color: var(--text-normal); border-color: var(--text-accent);
   text-underline-offset: 2px;
   cursor: pointer;
 }
-.cook-ref-link:hover { text-decoration-style: solid; }
 .cook-ref-missing { color: var(--text-muted); font-style: italic; }
 
 /* Inline components */
@@ -376,20 +379,19 @@ a.cook-pill:hover { color: var(--text-normal); border-color: var(--text-accent);
 .cook-timer-btn {
   display: inline-flex; align-items: center; gap: 0.25em;
   min-width: 0; min-height: 22px; padding: 0; border: 0;
-  appearance: none; background: transparent !important; box-shadow: none !important;
+  -webkit-appearance: none; appearance: none; background: transparent !important; box-shadow: none !important;
   color: inherit; cursor: pointer; font: inherit;
 }
-.cook-timer-name { margin-inline-start: 0.25em; }
+.cook-timer-name { margin-inline-start: 0.25em; overflow-wrap: anywhere; }
 .cook-timer-range-anchor {
-  position: relative; display: inline-block; vertical-align: middle;
+  position: relative; display: inline-block; max-width: 100%; vertical-align: middle;
 }
 .cook-timer-chip {
   display: inline-flex; align-items: center; gap: 0.25em;
-  box-sizing: border-box; min-height: 26px; padding: 1px 8px;
+  box-sizing: border-box; max-width: 100%; min-height: 26px; padding: 1px 8px;
   background: var(--background-secondary); border: 1px solid var(--text-accent); color: var(--text-accent);
   border-radius: 13px; font-size: 0.9em;
 }
-.cook-timer-chip:hover { background: var(--background-modifier-hover); }
 .cook-timer-chip.cook-timer-running {
   animation: cook-timer-border-pulse 1.6s ease-in-out infinite;
 }
@@ -415,7 +417,7 @@ a.cook-pill:hover { color: var(--text-normal); border-color: var(--text-accent);
 .cook-timer-icon { display: inline-block; flex: 0 0 1em; width: 1em; text-align: center; }
 .cook-timer-reset-btn {
   flex: 0 0 1em; width: 1em; height: 22px; padding: 0; border: 0; border-radius: 4px;
-  appearance: none; background: transparent !important; box-shadow: none !important;
+  -webkit-appearance: none; appearance: none; background: transparent !important; box-shadow: none !important;
   color: inherit; cursor: pointer; font: inherit;
 }
 .cook-timer-chip .cook-timer-btn:hover,
@@ -442,17 +444,15 @@ a.cook-pill:hover { color: var(--text-normal); border-color: var(--text-accent);
 .cook-timer-range-close {
   display: inline-flex; align-items: center; justify-content: center;
   width: 24px; height: 24px; padding: 0; border: 0; border-radius: var(--radius-s, 4px);
-  appearance: none; background: transparent !important; box-shadow: none !important;
+  -webkit-appearance: none; appearance: none; background: transparent !important; box-shadow: none !important;
   color: var(--text-muted); cursor: pointer; font: inherit; font-size: 1.1em; line-height: 1;
-}
-.cook-timer-range-close:hover {
-  background: var(--background-modifier-hover) !important; color: var(--text-normal);
 }
 .cook-timer-range-slider {
   display: block; width: 100% !important; max-width: none !important; height: 24px;
   margin: 0 !important; padding: 0 !important; border: 0;
   appearance: none; -webkit-appearance: none;
   background: transparent !important; box-shadow: none !important; cursor: pointer;
+  touch-action: pan-y;
 }
 .cook-timer-range-slider::-webkit-slider-runnable-track {
   width: 100%; height: 4px; border: 0; border-radius: 999px;
@@ -473,6 +473,58 @@ a.cook-pill:hover { color: var(--text-normal); border-color: var(--text-accent);
 .cook-timer-range-slider::-moz-range-thumb {
   width: 18px; height: 18px; border: 2px solid var(--interactive-accent); border-radius: 50%;
   background: var(--background-primary); box-shadow: 0 1px 3px rgb(0 0 0 / 25%);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  a.cook-pill:hover { color: var(--text-normal); border-color: var(--text-accent); }
+  .cook-bar-link:hover { color: var(--text-accent); }
+  .cook-stepper-btn:hover { background: var(--background-modifier-hover); color: var(--text-normal); }
+  .cook-step-toggle:hover { background: var(--background-modifier-hover); }
+  .cook-ref-link:hover { text-decoration-style: solid; }
+  .cook-timer-chip:hover { background: var(--background-modifier-hover); }
+  .cook-timer-range-close:hover {
+    background: var(--background-modifier-hover) !important; color: var(--text-normal);
+  }
+}
+
+@media (hover: none) {
+  a.cook-pill:active { color: var(--text-normal); border-color: var(--text-accent); }
+  .cook-bar-link:active { color: var(--text-accent); }
+  .cook-stepper-btn:active,
+  .cook-step-toggle:active { background: var(--background-modifier-hover); color: var(--text-normal); }
+  .cook-ref-link:active { text-decoration-style: solid; }
+  .cook-timer-btn:active,
+  .cook-timer-reset-btn:active { opacity: 0.7; }
+  .cook-timer-range-close:active {
+    background: var(--background-modifier-hover) !important; color: var(--text-normal);
+  }
+}
+
+@media (pointer: coarse) {
+  a.cook-pill,
+  .cook-bar-link {
+    display: inline-flex; align-items: center; min-height: 48px;
+  }
+  .cook-stepper { height: 50px; border-radius: 25px; padding: 0; }
+  .cook-stepper-btn { width: 48px; height: 48px; }
+  .cook-ing { min-height: 48px; }
+  .cook-ing-checkbox-hit {
+    align-items: center; justify-content: center;
+    width: 48px; min-height: 48px; margin-block: -7px;
+  }
+  .cook-step-toggle {
+    min-width: 48px; min-height: 48px; margin: -10px 0 -10px -10px;
+  }
+  .cook-timer-chip { min-height: 52px; border-radius: 26px; padding-block: 1px; }
+  .cook-timer-btn { min-width: 48px; min-height: 48px; }
+  .cook-timer-reset-btn { flex-basis: 48px; width: 48px; height: 48px; }
+  .cook-timer-range-close { width: 48px; height: 48px; }
+  .cook-timer-range-slider { height: 48px; }
+  .cook-timer-range-slider::-webkit-slider-thumb {
+    width: 24px; height: 24px; margin-top: -10px;
+  }
+  .cook-timer-range-slider::-moz-range-thumb { width: 24px; height: 24px; }
+  .cook-more-summary { display: flex; align-items: center; min-height: 48px; }
 }
 .cook-timer-range-bounds {
   display: flex; justify-content: space-between; margin-top: 0;
@@ -527,6 +579,7 @@ a.cook-pill:hover { color: var(--text-normal); border-color: var(--text-accent);
 /* Release notes shown once after a plugin update. */
 .cook-changelog-modal {
   width: min(680px, calc(100vw - 32px));
+  max-width: 100%;
 }
 .cook-changelog > h2:first-child {
   margin-top: 0;

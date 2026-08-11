@@ -162,7 +162,9 @@ describe('RecipePreview', () => {
         expect(screen.getByText('2:00–4:00')).toBeTruthy();
         expect(screen.getByText('220 C')).toBeTruthy();
 
-        await fireEvent.click(screen.getByRole('checkbox', { name: 'Check flour' }));
+        const checkbox = screen.getByRole('checkbox', { name: 'Check flour' });
+        expect(checkbox.closest('label')?.classList.contains('cook-ing-checkbox-hit')).toBe(true);
+        await fireEvent.click(checkbox);
         expect(renderModel.callbacks.onIngredientToggle).toHaveBeenCalledWith('flour');
 
         await fireEvent.click(screen.getByRole('button', { name: 'More servings' }));
@@ -236,9 +238,10 @@ describe('TimerButton', () => {
         await fireEvent.click(screen.getByRole('button', { name: 'Start rest (1:00)' }));
         expect(controller.toggle).toHaveBeenCalledOnce();
         expect(controller.toggle).toHaveBeenCalledWith('timer', 60, 'rest');
+        expect(screen.queryByText('1:00')?.closest('[aria-live]')).toBeNull();
     });
 
-    it('opens a range selector and starts the selected duration on pointer release', async () => {
+    it('releases pointer capture before starting the selected range duration', async () => {
         const controller: TimerController = {
             toggle: vi.fn(),
             reset: vi.fn(),
@@ -267,11 +270,22 @@ describe('TimerButton', () => {
         expect(screen.getAllByText('1:00')).toHaveLength(2);
         expect(screen.getByText('3:00')).toBeTruthy();
         expect(screen.getByText('Release to start · Keyboard: Enter')).toBeTruthy();
+        expect(dialog.querySelector('[aria-live]')).toBeNull();
         expect(controller.toggle).not.toHaveBeenCalled();
 
         await fireEvent.input(slider, { target: { value: '120' } });
         expect(slider.getAttribute('aria-valuetext')).toBe('2:00');
-        await fireEvent.pointerUp(slider);
+        const hasPointerCapture = vi.fn(() => true);
+        const releasePointerCapture = vi.fn();
+        Object.assign(slider, { hasPointerCapture, releasePointerCapture });
+        await fireEvent.pointerUp(slider, { pointerId: 7 });
+
+        expect(hasPointerCapture).toHaveBeenCalledWith(7);
+        expect(releasePointerCapture).toHaveBeenCalledWith(7);
+        expect(controller.toggle).not.toHaveBeenCalled();
+        expect(screen.getByRole('dialog')).toBeTruthy();
+
+        await new Promise(resolve => window.setTimeout(resolve, 0));
 
         expect(controller.toggle).toHaveBeenCalledOnce();
         expect(controller.toggle).toHaveBeenCalledWith('timer', 120, 'rest');
@@ -359,6 +373,7 @@ describe('TimerButton', () => {
         const slider = screen.getByRole('slider');
         await fireEvent.input(slider, { target: { value: '180' } });
         await fireEvent.pointerUp(slider);
+        await new Promise(resolve => window.setTimeout(resolve, 0));
         expect(controller.toggle).toHaveBeenCalledWith('timer', 180, 'rest');
     });
 
