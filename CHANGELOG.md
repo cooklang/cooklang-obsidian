@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.3](https://github.com/cooklang/cooklang-obsidian/compare/0.11.2...0.11.3) (2026-08-12)
+
+
+### Bug Fixes
+
+* initialize timer range sliders at midpoint ([#121](https://github.com/cooklang/cooklang-obsidian/issues/121)) ([d8634e1](https://github.com/cooklang/cooklang-obsidian/commit/d8634e1f26511265ddd0c6263db90198c92791a5))
+
 ## [0.11.2](https://github.com/cooklang/cooklang-obsidian/compare/0.11.1...0.11.2) (2026-08-11)
 
 
