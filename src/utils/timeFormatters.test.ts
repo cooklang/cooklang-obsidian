@@ -5,6 +5,7 @@ import {
     DEFAULT_MINUTES_LABELS,
     DEFAULT_SECONDS_LABELS,
     formatTimerDuration,
+    timerRangeMidpoint,
     timerRangeStep,
     timerDurationFromQuantity,
 } from './timeFormatters';
@@ -105,5 +106,13 @@ describe('timerRangeStep', () => {
     it('uses second steps when either bound includes seconds', () => {
         expect(timerRangeStep({ minimumSeconds: 30, maximumSeconds: 90 })).toBe(1);
         expect(timerRangeStep({ minimumSeconds: 60, maximumSeconds: 90 })).toBe(1);
+    });
+});
+
+describe('timerRangeMidpoint', () => {
+    it('selects a step-aligned value near the middle of the range', () => {
+        expect(timerRangeMidpoint({ minimumSeconds: 60, maximumSeconds: 180 })).toBe(120);
+        expect(timerRangeMidpoint({ minimumSeconds: 600, maximumSeconds: 900 })).toBe(780);
+        expect(timerRangeMidpoint({ minimumSeconds: 30, maximumSeconds: 91 })).toBe(61);
     });
 });

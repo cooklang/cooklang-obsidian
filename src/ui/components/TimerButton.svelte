@@ -4,6 +4,7 @@
     import {
         formatTime,
         formatTimerDuration,
+        timerRangeMidpoint,
         timerRangeStep,
         type TimerDuration,
     } from '../../utils/timeFormatters';
@@ -87,7 +88,7 @@
     }
 
     function openSelector(): void {
-        selectedSeconds = duration.minimumSeconds;
+        selectedSeconds = timerRangeMidpoint(duration);
         selectorReady = false;
         selectorOpen = true;
         void tick().then(() => {
