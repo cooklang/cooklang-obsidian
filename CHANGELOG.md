@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.4](https://github.com/cooklang/cooklang-obsidian/compare/0.11.3...0.11.4) (2026-08-13)
+
+
+### Bug Fixes
+
+* isolate timer slider gestures from navigation ([#123](https://github.com/cooklang/cooklang-obsidian/issues/123)) ([9ea217e](https://github.com/cooklang/cooklang-obsidian/commit/9ea217e3900873f67e17613908fe46786553fc4c))
+
 ## [0.11.3](https://github.com/cooklang/cooklang-obsidian/compare/0.11.2...0.11.3) (2026-08-12)
 
 
