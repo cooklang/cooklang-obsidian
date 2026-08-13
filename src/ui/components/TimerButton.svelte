@@ -153,11 +153,48 @@
         startSelected();
     }
 
-    function handleSliderPointerUp(event: PointerEvent): void {
+    function ownPointerStream(slider: HTMLInputElement): { destroy: () => void } {
+        slider.addEventListener('pointerdown', handleSliderPointerDown);
+        slider.addEventListener('pointermove', handleSliderPointerMove);
+        slider.addEventListener('pointerup', handleSliderPointerUp);
+        slider.addEventListener('pointercancel', handleSliderPointerCancel);
+        slider.addEventListener('touchstart', stopSliderTouchPropagation);
+        slider.addEventListener('touchmove', stopSliderTouchPropagation);
+        slider.addEventListener('touchend', stopSliderTouchPropagation);
+        slider.addEventListener('touchcancel', stopSliderTouchPropagation);
+
+        return {
+            destroy: () => {
+                slider.removeEventListener('pointerdown', handleSliderPointerDown);
+                slider.removeEventListener('pointermove', handleSliderPointerMove);
+                slider.removeEventListener('pointerup', handleSliderPointerUp);
+                slider.removeEventListener('pointercancel', handleSliderPointerCancel);
+                slider.removeEventListener('touchstart', stopSliderTouchPropagation);
+                slider.removeEventListener('touchmove', stopSliderTouchPropagation);
+                slider.removeEventListener('touchend', stopSliderTouchPropagation);
+                slider.removeEventListener('touchcancel', stopSliderTouchPropagation);
+            },
+        };
+    }
+
+    function handleSliderPointerDown(event: PointerEvent): void {
+        event.stopPropagation();
         const slider = event.currentTarget as HTMLInputElement;
-        if (slider.hasPointerCapture?.(event.pointerId)) {
-            slider.releasePointerCapture(event.pointerId);
+        try {
+            slider.setPointerCapture(event.pointerId);
+        } catch {
+            // The pointer may already have ended before a delayed WebView event.
         }
+    }
+
+    function handleSliderPointerMove(event: PointerEvent): void {
+        event.stopPropagation();
+    }
+
+    function handleSliderPointerUp(event: PointerEvent): void {
+        event.stopPropagation();
+        const slider = event.currentTarget as HTMLInputElement;
+        releaseSliderPointer(slider, event.pointerId);
 
         // Android WebView can retain the range input's implicit pointer capture
         // when the input is removed during its pointerup handler, blocking later
@@ -166,6 +203,21 @@
             pendingPointerStart = undefined;
             startSelected();
         }, 0);
+    }
+
+    function handleSliderPointerCancel(event: PointerEvent): void {
+        event.stopPropagation();
+        releaseSliderPointer(event.currentTarget as HTMLInputElement, event.pointerId);
+    }
+
+    function stopSliderTouchPropagation(event: TouchEvent): void {
+        // Some Obsidian mobile navigation paths still observe legacy touch events.
+        // Pointer events own the slider behavior; these listeners only isolate it.
+        event.stopPropagation();
+    }
+
+    function releaseSliderPointer(slider: HTMLInputElement, pointerId: number): void {
+        if (slider.hasPointerCapture?.(pointerId)) slider.releasePointerCapture(pointerId);
     }
 
     function closeFromButton(event: MouseEvent): void {
@@ -232,6 +284,7 @@
             </span>
             <input
                 bind:this={sliderElement}
+                use:ownPointerStream
                 class="cook-timer-range-slider"
                 type="range"
                 min={duration.minimumSeconds}
@@ -242,7 +295,6 @@
                 aria-valuetext={formatTime(selectedSeconds)}
                 aria-describedby={sliderHelpId}
                 oninput={updateSelection}
-                onpointerup={handleSliderPointerUp}
                 onkeydown={handleSliderKeydown}
             />
             <span class="cook-timer-range-bounds" aria-hidden="true">
