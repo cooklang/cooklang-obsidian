@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.6](https://github.com/cooklang/cooklang-obsidian/compare/0.11.5...0.11.6) (2026-08-17)
+
+
+### Bug Fixes
+
+* keep code editor visible above mobile keyboard ([#127](https://github.com/cooklang/cooklang-obsidian/issues/127)) ([f51dcd0](https://github.com/cooklang/cooklang-obsidian/commit/f51dcd04780a70eca703ea06813976f5e5db63e0))
+
 ## [0.11.5](https://github.com/cooklang/cooklang-obsidian/compare/0.11.4...0.11.5) (2026-08-17)
 
 
