@@ -23,11 +23,11 @@ import type { CookViewMode, RecipeRenderModel } from './ui/types';
 // without giving CodeMirror an independent editor surface.
 const cooklangHighlightStyle = HighlightStyle.define([
     {tag: t.variableName, color: 'var(--text-accent)'}, // Ingredients (@flour)
-    {tag: t.keyword, color: 'var(--text-warning)'},     // Cookware (#bowl)
-    {tag: t.number, color: 'var(--text-error)'},        // Timers (~)
+    {tag: t.keyword, color: 'var(--color-green)'},      // Cookware (#bowl)
+    {tag: t.number, color: 'var(--color-pink)'},        // Timers (~)
     {tag: t.comment, color: 'var(--text-faint)'},       // Comments
     {tag: t.meta, color: 'var(--text-muted)'},          // Metadata and frontmatter
-    {tag: t.unit, color: 'var(--text-warning)'},        // Units
+    {tag: t.unit, color: 'var(--color-orange)'},        // Units
 ]);
 
 // This is the custom view
