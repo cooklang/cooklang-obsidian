@@ -18,6 +18,7 @@ import CookViewRoot from './ui/CookViewRoot.svelte';
 import { ObsidianRecipeHost } from './ui/ObsidianRecipeHost';
 import { createUiInstanceId } from './ui/instanceIds';
 import type { CookViewMode, RecipeRenderModel } from './ui/types';
+import { availableViewportHeight } from './utils/mobileViewport';
 
 // Use Obsidian's semantic colors so highlighting follows the active theme
 // without giving CodeMirror an independent editor surface.
@@ -45,6 +46,8 @@ export class CookView extends TextFileView {
     private host: ObsidianRecipeHost;
     private instanceId: string;
     private editorLineWrap: boolean;
+    private viewportFrame: number | null = null;
+    private removeViewportListeners: (() => void) | null = null;
     data: string = '';
     checkedIngredients: Set<string> = new Set();
     scale: number = 1;
@@ -99,6 +102,8 @@ export class CookView extends TextFileView {
     async onload() {
         super.onload();
 
+        this.initializeViewportTracking();
+
         // Wait for parser to be ready
         await this.parserReady;
         if (this.currentView === 'preview') this.renderPreview();
@@ -147,11 +152,59 @@ export class CookView extends TextFileView {
         });
     }
 
+    private initializeViewportTracking(): void {
+        const visualViewport = window.visualViewport;
+        const handleViewportChange = () => this.queueViewportUpdate();
+
+        window.addEventListener('resize', handleViewportChange);
+        visualViewport?.addEventListener('resize', handleViewportChange);
+        visualViewport?.addEventListener('scroll', handleViewportChange);
+        this.removeViewportListeners = () => {
+            window.removeEventListener('resize', handleViewportChange);
+            visualViewport?.removeEventListener('resize', handleViewportChange);
+            visualViewport?.removeEventListener('scroll', handleViewportChange);
+        };
+        this.queueViewportUpdate();
+    }
+
+    private queueViewportUpdate(): void {
+        if (this.viewportFrame !== null) cancelAnimationFrame(this.viewportFrame);
+        this.viewportFrame = requestAnimationFrame(() => {
+            this.viewportFrame = null;
+            this.updateSourceViewportHeight();
+        });
+    }
+
+    private updateSourceViewportHeight(): void {
+        const visualViewport = window.visualViewport;
+        if (!visualViewport || this.currentView !== 'source') return;
+
+        const containerHeight = this.contentEl.clientHeight;
+        if (containerHeight <= 0) return;
+
+        // Mobile WebViews keep the layout viewport tall while the keyboard
+        // reduces the visual viewport. Size the editor to the actually visible
+        // portion so CodeMirror scrolls the caret above the keyboard.
+        const height = availableViewportHeight(
+            this.sourceEl.getBoundingClientRect().top,
+            containerHeight,
+            visualViewport,
+        );
+        const value = `${height}px`;
+        if (this.sourceEl.style.getPropertyValue('--cook-source-viewport-height') === value) return;
+
+        this.sourceEl.style.setProperty('--cook-source-viewport-height', value);
+        this.editorView.requestMeasure();
+    }
+
     setViewMode(mode: CookViewMode) {
         this.currentView = mode;
         this.modeStore.set(mode);
         if (mode === 'preview') this.renderPreview();
-        else this.editorView.requestMeasure();
+        else {
+            this.editorView.requestMeasure();
+            this.queueViewportUpdate();
+        }
     }
 
     switchMode() {
@@ -159,6 +212,10 @@ export class CookView extends TextFileView {
     }
 
     onunload() {
+        this.removeViewportListeners?.();
+        this.removeViewportListeners = null;
+        if (this.viewportFrame !== null) cancelAnimationFrame(this.viewportFrame);
+        this.viewportFrame = null;
         if (this.editorView) {
             this.editorView.destroy();
         }
@@ -304,6 +361,7 @@ export class CookView extends TextFileView {
     // when the view is resized, refresh CodeMirror
     onResize() {
         this.editorView.requestMeasure();
+        this.queueViewportUpdate();
     }
 
     getIcon() {
