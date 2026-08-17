@@ -18,7 +18,7 @@ import CookViewRoot from './ui/CookViewRoot.svelte';
 import { ObsidianRecipeHost } from './ui/ObsidianRecipeHost';
 import { createUiInstanceId } from './ui/instanceIds';
 import type { CookViewMode, RecipeRenderModel } from './ui/types';
-import { availableViewportHeight } from './utils/mobileViewport';
+import { availableViewportHeight, caretScrollDelta } from './utils/mobileViewport';
 
 // Use Obsidian's semantic colors so highlighting follows the active theme
 // without giving CodeMirror an independent editor surface.
@@ -191,10 +191,38 @@ export class CookView extends TextFileView {
             visualViewport,
         );
         const value = `${height}px`;
-        if (this.sourceEl.style.getPropertyValue('--cook-source-viewport-height') === value) return;
+        if (this.sourceEl.style.getPropertyValue('--cook-source-viewport-height') !== value) {
+            this.sourceEl.style.setProperty('--cook-source-viewport-height', value);
+        }
 
-        this.sourceEl.style.setProperty('--cook-source-viewport-height', value);
-        this.editorView.requestMeasure();
+        // CodeMirror scrolls the selection before iOS finishes opening the
+        // keyboard. Once the visual viewport settles, its old scroll position
+        // can leave the caret below the newly shortened editor. Measure after
+        // applying the height and correct the editor's own scroll container.
+        this.editorView.requestMeasure({
+            read: (view) => {
+                if (!view.hasFocus) return 0;
+                const caret = view.coordsAtPos(view.state.selection.main.head);
+                if (!caret) return 0;
+
+                const sourceBounds = this.sourceEl.getBoundingClientRect();
+                const viewportTop = Math.max(sourceBounds.top, visualViewport.offsetTop);
+                const viewportBottom = Math.min(
+                    sourceBounds.bottom,
+                    visualViewport.offsetTop + visualViewport.height,
+                );
+                return caretScrollDelta(
+                    caret.top,
+                    caret.bottom,
+                    viewportTop,
+                    viewportBottom,
+                );
+            },
+            write: (delta, view) => {
+                if (delta !== 0) view.scrollDOM.scrollTop += delta;
+            },
+            key: 'cook-mobile-caret',
+        });
     }
 
     setViewMode(mode: CookViewMode) {
