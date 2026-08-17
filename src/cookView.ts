@@ -27,7 +27,7 @@ const cooklangHighlightStyle = HighlightStyle.define([
     {tag: t.number, color: 'var(--text-error)'},        // Timers (~)
     {tag: t.comment, color: 'var(--text-faint)'},       // Comments
     {tag: t.meta, color: 'var(--text-muted)'},          // Metadata and frontmatter
-    {tag: t.unit, color: 'var(--text-muted)'},          // Units
+    {tag: t.unit, color: 'var(--text-warning)'},        // Units
 ]);
 
 // This is the custom view
