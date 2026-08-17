@@ -3,8 +3,7 @@ import {TextFileView, WorkspaceLeaf, ViewStateResult} from 'obsidian'
 import {CooklangSettings} from './settings';
 import {EditorView, keymap, highlightActiveLine, lineNumbers} from "@codemirror/view"
 import {EditorState, Extension} from "@codemirror/state"
-import {syntaxHighlighting, defaultHighlightStyle, HighlightStyle} from "@codemirror/language"
-import {oneDark} from "@codemirror/theme-one-dark"
+import {syntaxHighlighting, HighlightStyle} from "@codemirror/language"
 import {defaultKeymap} from "@codemirror/commands"
 import {cooklang} from './mode/cook/cook'
 import {tags as t} from "@lezer/highlight"
@@ -20,15 +19,16 @@ import { ObsidianRecipeHost } from './ui/ObsidianRecipeHost';
 import { createUiInstanceId } from './ui/instanceIds';
 import type { CookViewMode, RecipeRenderModel } from './ui/types';
 
-// Define a light theme HighlightStyle for Cooklang
-const cooklangLightTheme = HighlightStyle.define([
-    {tag: t.variableName, color: "#0b76b8"},  // Ingredients (@flour)
-    {tag: t.keyword, color: "#33a058"},       // Cookware (#bowl)
-    {tag: t.number, color: "#d33682"},        // Timers (~)
-    {tag: t.comment, color: "#93a1a1"},       // Comments
-    {tag: t.meta, color: "#6c71c4"},          // Metadata and frontmatter
-    {tag: t.unit, color: "#cb4b16"}           // Units
-])
+// Use Obsidian's semantic colors so highlighting follows the active theme
+// without giving CodeMirror an independent editor surface.
+const cooklangHighlightStyle = HighlightStyle.define([
+    {tag: t.variableName, color: 'var(--text-accent)'}, // Ingredients (@flour)
+    {tag: t.keyword, color: 'var(--text-warning)'},     // Cookware (#bowl)
+    {tag: t.number, color: 'var(--text-error)'},        // Timers (~)
+    {tag: t.comment, color: 'var(--text-faint)'},       // Comments
+    {tag: t.meta, color: 'var(--text-muted)'},          // Metadata and frontmatter
+    {tag: t.unit, color: 'var(--text-muted)'},          // Units
+]);
 
 // This is the custom view
 export class CookView extends TextFileView {
@@ -87,7 +87,7 @@ export class CookView extends TextFileView {
         flushSync();
         if (!this.sourceEl) throw new Error('Svelte source editor host did not mount.');
 
-        // Initialize Editor with proper theme based on Obsidian theme
+        // Initialize the editor using Obsidian's theme colors.
         this.initializeEditor();
 
         // Set default view (used when a .cook file opens in a fresh leaf, e.g.
@@ -115,17 +115,11 @@ export class CookView extends TextFileView {
 
     // Initialize CodeMirror editor
     initializeEditor() {
-        // Determine theme based on Obsidian theme
-        const isDark = document.body.classList.contains('theme-dark');
-
         const extensions: Extension[] = [
             lineNumbers(),
             highlightActiveLine(),
             cooklang, // Our custom Cooklang language support
-            // Add theme-aware syntax highlighting
-            isDark ?
-                syntaxHighlighting(defaultHighlightStyle) :
-                syntaxHighlighting(cooklangLightTheme),
+            syntaxHighlighting(cooklangHighlightStyle),
             keymap.of([
                 ...defaultKeymap,  // Include all default editing commands (Enter, Backspace, etc.)
                 {
@@ -143,11 +137,6 @@ export class CookView extends TextFileView {
             extensions.push(EditorView.lineWrapping);
         }
         this.editorLineWrap = this.settings.lineWrap;
-
-        // Add oneDark theme only in dark mode
-        if (isDark) {
-            extensions.push(oneDark);
-        }
 
         this.editorView = new EditorView({
             state: EditorState.create({
@@ -206,27 +195,11 @@ export class CookView extends TextFileView {
         });
     }
 
-    // When Obsidian's theme changes, update the editor theme
-    onThemeChange() {
+    private reinitializeEditor() {
         const currentDoc = this.editorView.state.doc.toString();
         this.editorView.destroy();
         this.data = currentDoc;
         this.initializeEditor();
-    }
-
-    async onOpen() {
-        // Listen for theme changes
-        this.registerEvent(
-            this.app.workspace.on('css-change', () => {
-                // Check if the theme actually changed
-                const wasDark = this.editorView.state.facet(EditorView.darkTheme);
-                const isDark = document.body.classList.contains('theme-dark');
-
-                if (wasDark !== isDark) {
-                    this.onThemeChange();
-                }
-            })
-        );
     }
 
     // get the data for save
@@ -395,7 +368,7 @@ export class CookView extends TextFileView {
     updateSettings(settings: CooklangSettings): void {
         const lineWrapChanged = this.editorLineWrap !== settings.lineWrap;
         this.settings = settings;
-        if (lineWrapChanged) this.onThemeChange();
+        if (lineWrapChanged) this.reinitializeEditor();
         if (this.currentView === 'preview') this.renderPreview();
     }
 }
