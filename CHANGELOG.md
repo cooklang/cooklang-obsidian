@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.5](https://github.com/cooklang/cooklang-obsidian/compare/0.11.4...0.11.5) (2026-08-17)
+
+
+### Bug Fixes
+
+* use Obsidian colors for Cooklang editor ([#125](https://github.com/cooklang/cooklang-obsidian/issues/125)) ([3966389](https://github.com/cooklang/cooklang-obsidian/commit/39663898e16ba93f8019afe3a8ae2e6413ffb782))
+
 ## [0.11.4](https://github.com/cooklang/cooklang-obsidian/compare/0.11.3...0.11.4) (2026-08-13)
 
 
