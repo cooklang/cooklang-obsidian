@@ -22,8 +22,9 @@
 
   .cook-source-view-full {
     display: flex;
-    flex: 1 1 auto;
+    flex: 1 1 0;
     flex-direction: column;
+    height: 100%;
     min-height: 0;
     width: 100%;
     box-sizing: border-box;
@@ -194,8 +195,9 @@
 
   // CodeMirror 6 styles
   .cm-editor {
-    flex: 1 1 auto;
-    height: auto;
+    // Match Obsidian's native Markdown editor. A zero flex basis gives
+    // CodeMirror's 100%-height scroller a definite viewport on Android.
+    flex: 1 1 0;
     min-height: 0;
     font-family: var(--font-monospace);
     background-color: transparent;
