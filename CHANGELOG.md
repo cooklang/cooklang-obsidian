@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.8](https://github.com/cooklang/cooklang-obsidian/compare/0.11.7...0.11.8) (2026-08-18)
+
+
+### Bug Fixes
+
+* use native mobile editor layout ([#132](https://github.com/cooklang/cooklang-obsidian/issues/132)) ([0411507](https://github.com/cooklang/cooklang-obsidian/commit/0411507277b2feb4bc693c9199b039e51f8b8dc2))
+
 ## [0.11.7](https://github.com/cooklang/cooklang-obsidian/compare/0.11.6...0.11.7) (2026-08-18)
 
 
