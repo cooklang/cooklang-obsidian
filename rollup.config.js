@@ -88,7 +88,23 @@ export default {
     banner,
     inlineDynamicImports: true
   },
-  external: ['obsidian', 'codemirror'],
+  // Obsidian exposes these modules at runtime. Keeping them external avoids
+  // loading a second CodeMirror/Lezer instance inside the plugin bundle.
+  external: [
+    'obsidian',
+    'codemirror',
+    '@codemirror/autocomplete',
+    '@codemirror/collab',
+    '@codemirror/commands',
+    '@codemirror/language',
+    '@codemirror/lint',
+    '@codemirror/search',
+    '@codemirror/state',
+    '@codemirror/view',
+    '@lezer/common',
+    '@lezer/highlight',
+    '@lezer/lr'
+  ],
   plugins: [
     // WASM plugin must come first to properly handle wasm imports
     wasm({
