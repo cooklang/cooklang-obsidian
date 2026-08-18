@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.9](https://github.com/cooklang/cooklang-obsidian/compare/0.11.8...0.11.9) (2026-08-18)
+
+
+### Bug Fixes
+
+* fill Android editor viewport ([#134](https://github.com/cooklang/cooklang-obsidian/issues/134)) ([2b66d0f](https://github.com/cooklang/cooklang-obsidian/commit/2b66d0fe48ed20fa8c08ac65571fbfff2962ab2b))
+
 ## [0.11.8](https://github.com/cooklang/cooklang-obsidian/compare/0.11.7...0.11.8) (2026-08-18)
 
 
