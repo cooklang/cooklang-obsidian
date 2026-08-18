@@ -1,5 +1,9 @@
 .workspace-leaf-content[data-type="cook"]{
   .view-content {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
     font-family: inherit;
   }
   .cook-preview-view:not(.cook-rich),
@@ -17,13 +21,21 @@
   }
 
   .cook-source-view-full {
-    height: var(--cook-source-viewport-height, 100%);
-    max-height: 100%;
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
     min-height: 0;
     width: 100%;
     box-sizing: border-box;
     overflow: hidden;
     padding: 0 20px;
+  }
+
+  .cook-preview-view {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    width: 100%;
   }
 
   .main-image {
@@ -182,7 +194,8 @@
 
   // CodeMirror 6 styles
   .cm-editor {
-    height: 100%;
+    flex: 1 1 auto;
+    height: auto;
     min-height: 0;
     font-family: var(--font-monospace);
     background-color: transparent;
@@ -205,6 +218,12 @@
   .cm-line {
     padding: 0 4px;
   }
+}
+
+// Match Obsidian's native mobile editor behavior in WKWebView. This keeps the
+// CodeMirror content editable without introducing a second viewport model.
+.is-mobile.is-ios .workspace-leaf-content[data-type="cook"] .cm-content {
+  -webkit-user-modify: read-write;
 }
 
 /* ===== Rich Cooklang preview ===== */
