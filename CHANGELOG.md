@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.7](https://github.com/cooklang/cooklang-obsidian/compare/0.11.6...0.11.7) (2026-08-18)
+
+
+### Bug Fixes
+
+* reveal mobile caret after keyboard resize ([#129](https://github.com/cooklang/cooklang-obsidian/issues/129)) ([ae032bb](https://github.com/cooklang/cooklang-obsidian/commit/ae032bbf20bf88b6ecfbbc6d4323b49420bb5a8d))
+
 ## [0.11.6](https://github.com/cooklang/cooklang-obsidian/compare/0.11.5...0.11.6) (2026-08-17)
 
 
