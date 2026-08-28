@@ -301,7 +301,8 @@ describe('RecipePreview', () => {
         const view = render(RecipePreview, { model: renderModel });
 
         expect(view.container.querySelector('.cook-ing-details')).toBeNull();
-        expect(view.container.querySelector('.cook-ing-single-prep')?.textContent).toContain('juice 1');
+        expect(view.container.querySelector('.cook-ing-single-prep')?.textContent.trim()).toBe('— juice');
+        expect(view.container.querySelector('.cook-ing-qty')?.textContent).toBe('1');
         expect(view.container.querySelector('.cook-step-text')?.textContent).toContain('lemon, juice');
         expect(view.container.querySelector('.cook-step-text')?.textContent).not.toContain('(1)');
     });

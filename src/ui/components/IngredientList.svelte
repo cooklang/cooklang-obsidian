@@ -71,9 +71,7 @@
                                         {/if}
                                         {#if singlePreparation}
                                             <span class="cook-ing-single-prep">
-                                                — {singlePreparation.name}{#if singlePreparation.displayQty}
-                                                    {' '}<span class="cook-ing-prep-qty">{singlePreparation.displayQty}</span>
-                                                {/if}
+                                                — {singlePreparation.name}
                                             </span>
                                         {/if}
                                     </span>
