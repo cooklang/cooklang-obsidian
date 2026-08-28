@@ -2,7 +2,7 @@ import type { CooklangRecipe } from '@cooklang/cooklang';
 import {TextFileView, WorkspaceLeaf, ViewStateResult} from 'obsidian'
 import {CooklangSettings} from './settings';
 import {EditorView, keymap, highlightActiveLine, lineNumbers} from "@codemirror/view"
-import {EditorState, Extension} from "@codemirror/state"
+import {Annotation, EditorState, Extension} from "@codemirror/state"
 import {syntaxHighlighting, HighlightStyle} from "@codemirror/language"
 import {defaultKeymap} from "@codemirror/commands"
 import {cooklang} from './mode/cook/cook'
@@ -29,6 +29,10 @@ const cooklangHighlightStyle = HighlightStyle.define([
     {tag: t.meta, color: 'var(--text-muted)'},          // Metadata and frontmatter
     {tag: t.unit, color: 'var(--color-orange)'},        // Units
 ]);
+
+// File loads and view cleanup also replace the CodeMirror document. Mark those
+// transactions so only editor-originated changes schedule an Obsidian save.
+const skipSave = Annotation.define<boolean>();
 
 // This is the custom view
 export class CookView extends TextFileView {
@@ -120,6 +124,15 @@ export class CookView extends TextFileView {
             highlightActiveLine(),
             cooklang, // Our custom Cooklang language support
             syntaxHighlighting(cooklangHighlightStyle),
+            EditorView.updateListener.of((update) => {
+                if (!update.docChanged) return;
+
+                this.data = update.state.doc.toString();
+                const shouldSave = update.transactions.some((transaction) =>
+                    transaction.docChanged && transaction.annotation(skipSave) !== true
+                );
+                if (shouldSave) this.requestSave();
+            }),
             keymap.of([
                 ...defaultKeymap,  // Include all default editing commands (Enter, Backspace, etc.)
                 {
@@ -225,7 +238,8 @@ export class CookView extends TextFileView {
                     from: 0,
                     to: this.editorView.state.doc.length,
                     insert: data
-                }
+                },
+                annotations: skipSave.of(true),
             });
         } else {
             this.editorView.dispatch({
@@ -233,7 +247,8 @@ export class CookView extends TextFileView {
                     from: 0,
                     to: this.editorView.state.doc.length,
                     insert: data
-                }
+                },
+                annotations: skipSave.of(true),
             });
         }
 
@@ -254,7 +269,8 @@ export class CookView extends TextFileView {
                 from: 0,
                 to: this.editorView.state.doc.length,
                 insert: ''
-            }
+            },
+            annotations: skipSave.of(true),
         });
         this.data = '';
         this.scale = 1;
