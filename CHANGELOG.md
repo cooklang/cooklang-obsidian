@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.11](https://github.com/cooklang/cooklang-obsidian/compare/0.11.10...0.11.11) (2026-08-28)
+
+
+### Bug Fixes
+
+* show shorthand preparations in preview ([#141](https://github.com/cooklang/cooklang-obsidian/issues/141)) ([6274de1](https://github.com/cooklang/cooklang-obsidian/commit/6274de1df03fad566945d3daab394bd5d5954dcd))
+
 ## [0.11.10](https://github.com/cooklang/cooklang-obsidian/compare/0.11.9...0.11.10) (2026-08-28)
 
 
