@@ -178,6 +178,42 @@ describe('RecipePreview', () => {
         expect(renderModel.timers?.toggle).not.toHaveBeenCalled();
     });
 
+    it('keeps step tracking available while an inline timer is running', async () => {
+        let timerListener: ((snapshot: TimerSnapshot | null) => void) | undefined;
+        const renderModel = model({
+            timers: {
+                toggle: vi.fn(),
+                reset: vi.fn(),
+                subscribe: (_key, listener) => {
+                    timerListener = listener;
+                    return () => {};
+                },
+            },
+        });
+        render(RecipePreview, { model: renderModel });
+
+        timerListener?.({
+            id: 'timer-id',
+            duration: 120,
+            remaining: 90,
+            label: 'rest',
+            status: 'running',
+        });
+        await screen.findByRole('button', { name: 'Pause rest (1:30)' });
+
+        const step = document.querySelector<HTMLElement>('.cook-step');
+        expect(step).toBeTruthy();
+        if (!step) throw new Error('Expected a rendered recipe step.');
+        await fireEvent.click(step);
+
+        expect(renderModel.callbacks.onStepActivate).toHaveBeenCalledOnce();
+        expect(renderModel.callbacks.onStepActivate).toHaveBeenCalledWith(0);
+
+        await fireEvent.click(screen.getByRole('button', { name: 'Pause rest (1:30)' }));
+        expect(renderModel.timers?.toggle).toHaveBeenCalledOnce();
+        expect(renderModel.callbacks.onStepActivate).toHaveBeenCalledOnce();
+    });
+
     it('honors settings that hide optional recipe regions', () => {
         const renderModel = model({
             settings: {
