@@ -3,10 +3,9 @@ import {TextFileView, WorkspaceLeaf, ViewStateResult} from 'obsidian'
 import {CooklangSettings} from './settings';
 import {EditorView, keymap, highlightActiveLine, lineNumbers} from "@codemirror/view"
 import {Annotation, EditorState, Extension} from "@codemirror/state"
-import {syntaxHighlighting, HighlightStyle} from "@codemirror/language"
+import {syntaxHighlighting} from "@codemirror/language"
 import {defaultKeymap} from "@codemirror/commands"
-import {cooklang} from './mode/cook/cook'
-import {tags as t} from "@lezer/highlight"
+import {cooklang, cooklangHighlighter} from './mode/cook/cook'
 import { parserService } from './services/ParserService';
 import { TimerService } from './services/TimerService';
 import { parseServingsValue, computeScale, deriveServingsState } from './utils/scaling';
@@ -18,17 +17,6 @@ import CookViewRoot from './ui/CookViewRoot.svelte';
 import { ObsidianRecipeHost } from './ui/ObsidianRecipeHost';
 import { createUiInstanceId } from './ui/instanceIds';
 import type { CookViewMode, RecipeRenderModel } from './ui/types';
-
-// Use Obsidian's semantic colors so highlighting follows the active theme
-// without giving CodeMirror an independent editor surface.
-const cooklangHighlightStyle = HighlightStyle.define([
-    {tag: t.variableName, color: 'var(--text-accent)'}, // Ingredients (@flour)
-    {tag: t.keyword, color: 'var(--color-green)'},      // Cookware (#bowl)
-    {tag: t.number, color: 'var(--color-pink)'},        // Timers (~)
-    {tag: t.comment, color: 'var(--text-faint)'},       // Comments
-    {tag: t.meta, color: 'var(--text-muted)'},          // Metadata and frontmatter
-    {tag: t.unit, color: 'var(--color-orange)'},        // Units
-]);
 
 // File loads and view cleanup also replace the CodeMirror document. Mark those
 // transactions so only editor-originated changes schedule an Obsidian save.
@@ -127,7 +115,7 @@ export class CookView extends TextFileView {
             lineNumbers(),
             highlightActiveLine(),
             cooklang, // Our custom Cooklang language support
-            syntaxHighlighting(cooklangHighlightStyle),
+            syntaxHighlighting(cooklangHighlighter),
             EditorView.updateListener.of((update) => {
                 if (!update.docChanged) return;
 

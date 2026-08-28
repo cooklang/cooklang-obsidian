@@ -88,23 +88,11 @@ export default {
     banner,
     inlineDynamicImports: true
   },
-  // Obsidian exposes these modules at runtime. Keeping them external avoids
-  // loading a second CodeMirror/Lezer instance inside the plugin bundle.
-  external: [
-    'obsidian',
-    'codemirror',
-    '@codemirror/autocomplete',
-    '@codemirror/collab',
-    '@codemirror/commands',
-    '@codemirror/language',
-    '@codemirror/lint',
-    '@codemirror/search',
-    '@codemirror/state',
-    '@codemirror/view',
-    '@lezer/common',
-    '@lezer/highlight',
-    '@lezer/lr'
-  ],
+  // CookView owns a standalone CodeMirror editor, so keep its CodeMirror 6 and
+  // Lezer graph together in this bundle. Obsidian's runtime modules are an
+  // internal implementation detail and can otherwise split highlighting tags
+  // across incompatible module instances.
+  external: ['obsidian', 'codemirror'],
   plugins: [
     // WASM plugin must come first to properly handle wasm imports
     wasm({

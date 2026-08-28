@@ -1,4 +1,14 @@
 import { StreamLanguage } from "@codemirror/language"
+import { tagHighlighter, tags as t } from "@lezer/highlight"
+
+export const cooklangHighlighter = tagHighlighter([
+  {tag: t.variableName, class: "cook-token-ingredient"},
+  {tag: t.keyword, class: "cook-token-cookware"},
+  {tag: t.number, class: "cook-token-timer"},
+  {tag: t.comment, class: "cook-token-comment"},
+  {tag: t.meta, class: "cook-token-meta"},
+  {tag: t.unit, class: "cook-token-unit"}
+])
 
 // Define the Cooklang language
 export const cooklang = StreamLanguage.define({
