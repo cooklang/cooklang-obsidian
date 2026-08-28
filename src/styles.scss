@@ -347,10 +347,32 @@
   content: '✓'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
   color: var(--text-on-accent); font-size: 0.7em;
 }
-.cook-ing-name { flex: 1; }
-.cook-ing-name label { cursor: pointer; overflow-wrap: anywhere; }
-.cook-ing.done .cook-ing-name { text-decoration: line-through; color: var(--text-faint); }
+.cook-ing-content { flex: 1; min-width: 0; }
+.cook-ing-main { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.cook-ing-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.cook-ing.done .cook-ing-content { text-decoration: line-through; color: var(--text-faint); }
 .cook-ing-qty { color: var(--text-muted); font-variant-numeric: tabular-nums; font-size: 0.85em; }
+.cook-ing-single-prep { color: var(--text-muted); font-size: 0.9em; }
+.cook-ing-details > summary {
+  list-style: none; cursor: pointer;
+}
+.cook-ing-details > summary::-webkit-details-marker { display: none; }
+.cook-ing-disclosure-icon {
+  flex: none; width: 0.55em; height: 0.55em; margin-inline: 1px 3px;
+  border-inline-end: 1.5px solid var(--text-muted);
+  border-block-end: 1.5px solid var(--text-muted);
+  transform: rotate(45deg) translateY(-2px);
+}
+.cook-ing-details[open] .cook-ing-disclosure-icon { transform: rotate(225deg) translate(-1px, -1px); }
+.cook-ing-prep-list {
+  list-style: none; margin: var(--size-2-2, 6px) 0 0; padding: 0 1.15em 0 0;
+}
+.cook-ing-prep {
+  display: flex; gap: 10px; padding: 3px 0 3px var(--size-4-3, 12px);
+  color: var(--text-muted); font-size: 0.88em;
+}
+.cook-ing-prep-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.cook-ing-prep-qty { flex: none; font-variant-numeric: tabular-nums; }
 
 /* Cookware */
 .cook-cookware { margin-top: var(--size-4-6, 24px); }
@@ -410,6 +432,7 @@
 
 /* Inline components */
 .cook-ig-hl { color: var(--color-green, var(--text-accent)); font-weight: 600; }
+.cook-ig-prep { font-weight: 400; }
 .cook-cw-hl { color: var(--color-orange, var(--text-accent)); font-weight: 600; }
 .cook-amt { color: var(--text-muted); }
 .cook-timer-btn {
@@ -548,6 +571,7 @@
     align-items: center; justify-content: center;
     width: 48px; min-height: 48px; margin-block: -7px;
   }
+  .cook-ing-details > summary { min-height: 48px; }
   .cook-step-toggle {
     min-width: 48px; min-height: 48px; margin: -10px 0 -10px -10px;
   }
@@ -631,6 +655,7 @@
 
 .cook-stepper-btn:focus-visible,
 .cook-ing-checkbox:focus-visible,
+.cook-ing-details > summary:focus-visible,
 .cook-step-toggle:focus-visible,
 .cook-timer-btn:focus-visible,
 .cook-timer-reset-btn:focus-visible,

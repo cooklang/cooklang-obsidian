@@ -40,8 +40,7 @@
             />
         {:else}
             {ingredient_display_name(part.ingredient)}
-        {/if}
-        {#if model.settings.showQuantitiesInline && part.ingredient.quantity}
+        {/if}{#if part.ingredient.note?.trim()}<span class="cook-ig-prep">, {part.ingredient.note.trim()}</span>{/if}{#if model.settings.showQuantitiesInline && part.ingredient.quantity}
             {' '}<span class="cook-amt">({quantity_display(part.ingredient.quantity)})</span>
         {/if}
     </span>

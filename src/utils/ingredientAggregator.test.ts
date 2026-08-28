@@ -88,15 +88,53 @@ describe('aggregateIngredients', () => {
     it('null displayQty when no amounts', () => {
         const rows = aggregateIngredients([ing({ name: 'salt' })]);
         expect(rows[0].displayQty).toBeNull();
+        expect(rows[0].preparations).toEqual([]);
     });
 
-    it('carries the first reference and note found', () => {
+    it('carries the first reference and preparation found', () => {
         const ref = { name: 'Beans', components: ['.', 'Components'] };
         const rows = aggregateIngredients([
             ing({ name: 'Beans', quantityValue: 2, unit: 'servings', reference: ref, note: 'warm' }),
         ]);
         expect(rows[0].reference).toEqual(ref);
-        expect(rows[0].note).toBe('warm');
+        expect(rows[0].preparations).toEqual([{ name: 'warm', displayQty: '2 servings' }]);
         expect(rows[0].displayQty).toBe('2 servings');
+    });
+
+    it('keeps preparation quantities separate and in first-seen order', () => {
+        const rows = aggregateIngredients([
+            ing({ name: 'lemon', quantityValue: 1, note: 'juice' }),
+            ing({ name: 'lemon', quantityValue: 0.5, note: 'zest' }),
+        ]);
+
+        expect(rows[0].displayQty).toBe('1.5');
+        expect(rows[0].preparations).toEqual([
+            { name: 'juice', displayQty: '1' },
+            { name: 'zest', displayQty: '0.5' },
+        ]);
+    });
+
+    it('combines repeated preparations with the normal quantity rules', () => {
+        const rows = aggregateIngredients([
+            ing({ name: 'onion', quantityValue: 150, unit: 'g', note: 'diced' }),
+            ing({ name: 'onion', quantityValue: 1.35, unit: 'kg', note: 'diced' }),
+            ing({ name: 'onion', quantityValue: 1, unit: 'tbsp', note: 'fried' }),
+        ]);
+
+        expect(rows[0].preparations).toEqual([
+            { name: 'diced', displayQty: '1.5 kg' },
+            { name: 'fried', displayQty: '1 tbsp' },
+        ]);
+    });
+
+    it('omits unprepared and empty-note occurrences from the breakdown', () => {
+        const rows = aggregateIngredients([
+            ing({ name: 'lemon', quantityValue: 1 }),
+            ing({ name: 'lemon', quantityValue: 0.5, note: 'juice' }),
+            ing({ name: 'lemon', quantityValue: 0.25, note: '   ' }),
+        ]);
+
+        expect(rows[0].displayQty).toBe('1.75');
+        expect(rows[0].preparations).toEqual([{ name: 'juice', displayQty: '0.5' }]);
     });
 });

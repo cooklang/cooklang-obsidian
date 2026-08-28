@@ -42,8 +42,14 @@ export interface IngredientRow {
     name: string;
     /** Combined quantity text, or null when there's no amount. */
     displayQty: string | null;
-    note: string | null;
+    /** Preparation-specific quantities, in first-seen order. */
+    preparations: IngredientPreparationRow[];
     reference: RecipeRefTarget | null;
+}
+
+export interface IngredientPreparationRow {
+    name: string;
+    displayQty: string | null;
 }
 
 /** Round to 2 decimals and drop trailing zeros: 5.6667 -> "5.67", 16.5 -> "16.5". */
@@ -58,6 +64,11 @@ unitMath.createUnit('tsp', '1 teaspoon');
 type QuantityBucket =
     | { type: 'unit'; total: Unit }
     | { type: 'raw'; key: string; sum: number; unitDisplay: string };
+
+interface QuantityAccumulator {
+    quantities: QuantityBucket[];
+    textParts: string[];
+}
 
 const MATHJS_UNIT_ALIASES: Record<string, string> = {
     'fl oz': 'floz',
@@ -79,13 +90,58 @@ function parsedUnit(value: number, unit: string | null): Unit | null {
     }
 }
 
+function addQuantity(accumulator: QuantityAccumulator, item: AggInput): void {
+    if (item.quantityValue !== null) {
+        const quantity = parsedUnit(item.quantityValue, item.unit);
+        if (quantity) {
+            const bucket = accumulator.quantities.find(
+                (candidate): candidate is Extract<QuantityBucket, { type: 'unit' }> =>
+                    candidate.type === 'unit' && candidate.total.equalBase(quantity),
+            );
+            if (bucket) {
+                bucket.total = unitMath.add(bucket.total, quantity) as Unit;
+            } else {
+                accumulator.quantities.push({ type: 'unit', total: quantity });
+            }
+        } else {
+            const key = normalizeUnit(item.unit);
+            const bucket = accumulator.quantities.find(
+                (candidate): candidate is Extract<QuantityBucket, { type: 'raw' }> =>
+                    candidate.type === 'raw' && candidate.key === key,
+            );
+            if (bucket) {
+                bucket.sum += item.quantityValue;
+            } else {
+                accumulator.quantities.push({
+                    type: 'raw',
+                    key,
+                    sum: item.quantityValue,
+                    unitDisplay: item.unit ?? '',
+                });
+            }
+        }
+    } else if (item.quantityText) {
+        accumulator.textParts.push(item.quantityText);
+    }
+}
+
+function displayQuantity(accumulator: QuantityAccumulator): string | null {
+    const parts = accumulator.quantities.map(bucket => bucket.type === 'unit'
+        ? bucket.total.toBest().format({ precision: 3 })
+        : bucket.unitDisplay
+            ? `${formatQuantity(bucket.sum)} ${bucket.unitDisplay}`
+            : formatQuantity(bucket.sum));
+    parts.push(...accumulator.textParts);
+    return parts.length ? parts.join(' + ') : null;
+}
+
 export function aggregateIngredients(items: AggInput[]): IngredientRow[] {
     const order: string[] = [];
     const groups = new Map<string, {
         name: string;
-        quantities: QuantityBucket[];
-        textParts: string[];
-        note: string | null;
+        total: QuantityAccumulator;
+        preparationOrder: string[];
+        preparations: Map<string, QuantityAccumulator>;
         reference: RecipeRefTarget | null;
     }>();
 
@@ -94,64 +150,40 @@ export function aggregateIngredients(items: AggInput[]): IngredientRow[] {
         if (!group) {
             group = {
                 name: item.name,
-                quantities: [],
-                textParts: [],
-                note: null,
+                total: { quantities: [], textParts: [] },
+                preparationOrder: [],
+                preparations: new Map(),
                 reference: null,
             };
             groups.set(item.name, group);
             order.push(item.name);
         }
 
-        if (item.quantityValue !== null) {
-            const quantity = parsedUnit(item.quantityValue, item.unit);
-            if (quantity) {
-                const bucket = group.quantities.find(
-                    (candidate): candidate is Extract<QuantityBucket, { type: 'unit' }> =>
-                        candidate.type === 'unit' && candidate.total.equalBase(quantity),
-                );
-                if (bucket) {
-                    bucket.total = unitMath.add(bucket.total, quantity) as Unit;
-                } else {
-                    group.quantities.push({ type: 'unit', total: quantity });
-                }
-            } else {
-                const key = normalizeUnit(item.unit);
-                const bucket = group.quantities.find(
-                    (candidate): candidate is Extract<QuantityBucket, { type: 'raw' }> =>
-                        candidate.type === 'raw' && candidate.key === key,
-                );
-                if (bucket) {
-                    bucket.sum += item.quantityValue;
-                } else {
-                    group.quantities.push({
-                        type: 'raw',
-                        key,
-                        sum: item.quantityValue,
-                        unitDisplay: item.unit ?? '',
-                    });
-                }
+        addQuantity(group.total, item);
+
+        const preparationName = item.note?.trim();
+        if (preparationName) {
+            let preparation = group.preparations.get(preparationName);
+            if (!preparation) {
+                preparation = { quantities: [], textParts: [] };
+                group.preparations.set(preparationName, preparation);
+                group.preparationOrder.push(preparationName);
             }
-        } else if (item.quantityText) {
-            group.textParts.push(item.quantityText);
+            addQuantity(preparation, item);
         }
 
-        if (group.note === null && item.note) group.note = item.note;
         if (group.reference === null && item.reference) group.reference = item.reference;
     }
 
     return order.map(name => {
         const group = groups.get(name)!;
-        const parts = group.quantities.map(bucket => bucket.type === 'unit'
-            ? bucket.total.toBest().format({ precision: 3 })
-            : bucket.unitDisplay
-                ? `${formatQuantity(bucket.sum)} ${bucket.unitDisplay}`
-                : formatQuantity(bucket.sum));
-        parts.push(...group.textParts);
         return {
             name: group.name,
-            displayQty: parts.length ? parts.join(' + ') : null,
-            note: group.note,
+            displayQty: displayQuantity(group.total),
+            preparations: group.preparationOrder.map(preparationName => ({
+                name: preparationName,
+                displayQty: displayQuantity(group.preparations.get(preparationName)!),
+            })),
             reference: group.reference,
         };
     });
