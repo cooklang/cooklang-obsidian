@@ -94,4 +94,41 @@ describe('TimerService timer controller', () => {
 
         service.dispose();
     });
+
+    it('uses elapsed wall time when interval callbacks were suspended', () => {
+        vi.setSystemTime(new Date('2026-08-28T10:00:00Z'));
+        const service = new TimerService(
+            { timersTick: false, timersRing: false } as any,
+            { tickSoundUrl: 'tick.mp3', alarmSoundUrl: 'alarm.mp3' },
+        );
+
+        service.toggle('timer', 10, 'rest');
+
+        // Moving the wall clock simulates a backgrounded WebView that did not
+        // get a chance to run its once-per-second interval callbacks.
+        vi.setSystemTime(new Date('2026-08-28T10:00:04Z'));
+        vi.advanceTimersByTime(1000);
+
+        expect(service.getSnapshot('timer')).toMatchObject({ remaining: 5, status: 'running' });
+
+        service.dispose();
+    });
+
+    it('reconciles elapsed background time before pausing', () => {
+        vi.setSystemTime(new Date('2026-08-28T10:00:00Z'));
+        const service = new TimerService(
+            { timersTick: false, timersRing: false } as any,
+            { tickSoundUrl: 'tick.mp3', alarmSoundUrl: 'alarm.mp3' },
+        );
+
+        service.toggle('timer', 10, 'rest');
+        vi.setSystemTime(new Date('2026-08-28T10:00:04Z'));
+        service.toggle('timer', 10, 'rest');
+
+        expect(service.getSnapshot('timer')).toMatchObject({ remaining: 6, status: 'paused' });
+        vi.advanceTimersByTime(2000);
+        expect(service.getSnapshot('timer')).toMatchObject({ remaining: 6, status: 'paused' });
+
+        service.dispose();
+    });
 });

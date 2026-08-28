@@ -23,6 +23,20 @@
         if (!model.settings.showImages || !model.file) return null;
         return getStepImageFor(step.globalIndex + 1, model.file.basename, allImages);
     }
+
+    function trackStep(node: HTMLElement, index: number): { update: (nextIndex: number) => void; destroy: () => void } {
+        let stepIndex = index;
+        const activate = (event: MouseEvent): void => {
+            if (!model.settings.enableStepTracking || !(event.target instanceof Element)) return;
+            if (event.target.closest('button, a, input, label, select, textarea')) return;
+            model.callbacks.onStepActivate(stepIndex);
+        };
+        node.addEventListener('click', activate);
+        return {
+            update: (nextIndex: number) => { stepIndex = nextIndex; },
+            destroy: () => node.removeEventListener('click', activate),
+        };
+    }
 </script>
 
 <section class="cook-steps" id="cook-steps">
@@ -43,7 +57,13 @@
                 {@const current = tracking && model.state.currentStep === step.globalIndex}
                 {@const done = tracking && model.state.currentStep > step.globalIndex}
                 {@const image = stepImage(step)}
-                <article class:cur={current} class:done={done} class="cook-step">
+                <article
+                    class:cur={current}
+                    class:done={done}
+                    class:cook-step-trackable={tracking}
+                    class="cook-step"
+                    use:trackStep={step.globalIndex}
+                >
                     {#if tracking}
                         <button
                             type="button"
