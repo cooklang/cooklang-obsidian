@@ -116,6 +116,43 @@ function recipe(): CooklangRecipe {
     } as unknown as CooklangRecipe;
 }
 
+function preparationRecipe(notes: Array<string | null> = ['juice', 'zest']): CooklangRecipe {
+    const ingredients = notes.map((note, index) => ({
+        name: 'lemon',
+        note,
+        reference: null,
+        quantity: {
+            value: { type: 'number', value: { type: 'regular', value: index === 0 ? 1 : 0.5 } },
+            unit: null,
+            display: index === 0 ? '1' : '0.5',
+        },
+    }));
+    return {
+        ...recipe(),
+        ingredients,
+        cookware: [],
+        timers: [],
+        inlineQuantities: [],
+        sections: [{
+            name: null,
+            content: [{
+                type: 'step',
+                value: {
+                    number: 1,
+                    items: [
+                        { type: 'text', value: 'Use ' },
+                        ...ingredients.flatMap((_, index) => [
+                            ...(index > 0 ? [{ type: 'text', value: ' and ' }] : []),
+                            { type: 'ingredient', index },
+                        ]),
+                        { type: 'text', value: '.' },
+                    ],
+                },
+            }],
+        }],
+    } as unknown as CooklangRecipe;
+}
+
 function model(overrides: Partial<RecipeRenderModel> = {}): RecipeRenderModel {
     const callbacks = {
         onScaleChange: vi.fn(),
@@ -230,6 +267,44 @@ describe('RecipePreview', () => {
         expect(screen.queryByRole('heading', { name: 'Cookware' })).toBeNull();
         expect(screen.queryByRole('heading', { name: 'Timers' })).toBeNull();
         expect(screen.queryByRole('button', { name: 'More servings' })).toBeNull();
+    });
+
+    it('expands multiple preparations without toggling the ingredient checkbox', async () => {
+        const renderModel = model({ recipe: preparationRecipe() });
+        const view = render(RecipePreview, { model: renderModel });
+
+        const details = view.container.querySelector<HTMLDetailsElement>('.cook-ing-details');
+        const summary = details?.querySelector<HTMLElement>('summary');
+        expect(details?.open).toBe(false);
+        expect(Array.from(details?.querySelectorAll('.cook-ing-prep') ?? [], item => item.textContent)).toEqual([
+            'juice 1',
+            'zest 0.5',
+        ]);
+
+        await fireEvent.click(summary!);
+        expect(details?.open).toBe(true);
+        expect(renderModel.callbacks.onIngredientToggle).not.toHaveBeenCalled();
+
+        await fireEvent.click(summary!.querySelector('.cook-ing-name')!);
+        expect(details?.open).toBe(false);
+        expect(renderModel.callbacks.onIngredientToggle).not.toHaveBeenCalled();
+
+        await fireEvent.click(screen.getByRole('checkbox', { name: 'Check lemon' }));
+        expect(renderModel.callbacks.onIngredientToggle).toHaveBeenCalledWith('lemon');
+    });
+
+    it('shows one preparation inline and keeps it in the method when quantities are hidden', () => {
+        const renderModel = model({
+            recipe: preparationRecipe(['juice']),
+            settings: { ...settings(), showQuantitiesInline: false },
+        });
+        const view = render(RecipePreview, { model: renderModel });
+
+        expect(view.container.querySelector('.cook-ing-details')).toBeNull();
+        expect(view.container.querySelector('.cook-ing-single-prep')?.textContent.trim()).toBe('— juice');
+        expect(view.container.querySelector('.cook-ing-qty')?.textContent).toBe('1');
+        expect(view.container.querySelector('.cook-step-text')?.textContent).toContain('lemon, juice');
+        expect(view.container.querySelector('.cook-step-text')?.textContent).not.toContain('(1)');
     });
 
 });
