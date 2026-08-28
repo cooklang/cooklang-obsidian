@@ -19,6 +19,7 @@ export interface Timer {
     remaining: number;
     label: string;
     isRunning: boolean;
+    endsAt?: number;
     intervalId?: number;
 }
 
@@ -52,6 +53,10 @@ export class TimerService {
     private listeners: Map<string, Set<(snapshot: TimerSnapshot | null) => void>> = new Map();
     private tickSound: Howl;
     private alarmSound: Howl;
+    private readonly handleVisibilityChange = (): void => {
+        if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+        for (const timer of this.timers.values()) this.updateRunningTimer(timer);
+    };
 
     /**
      * Create a new TimerService
@@ -68,6 +73,10 @@ export class TimerService {
             src: [config.alarmSoundUrl],
             volume: config.alarmVolume ?? 0.3
         });
+
+        if (typeof document !== 'undefined') {
+            document.addEventListener('visibilitychange', this.handleVisibilityChange);
+        }
     }
 
     public toggle(key: string, seconds: number, label: string): void {
@@ -134,23 +143,14 @@ export class TimerService {
             duration: seconds,
             remaining: seconds,
             label: name,
-            isRunning: true
+            isRunning: true,
+            endsAt: Date.now() + seconds * 1000,
         };
 
         // Play tick sound when timer starts
         this.playTick();
 
-        const intervalId = window.setInterval(() => {
-            timer.remaining = Math.max(0, timer.remaining - 1);
-            onTick(timer.remaining);
-            this.notifyTimer(timer.id);
-
-            if (timer.remaining <= 0) {
-                this.stopTimer(timer.id);
-                this.playAlarm();
-                new Notice(`Timer "${name}" has finished!`, 5000);
-            }
-        }, 1000);
+        const intervalId = window.setInterval(() => this.updateRunningTimer(timer, onTick), 1000);
 
         timer.intervalId = intervalId;
         this.timers.set(timer.id, timer);
@@ -170,12 +170,11 @@ export class TimerService {
      */
     public stopTimer(timerId: string): void {
         const timer = this.timers.get(timerId);
-        if (timer && timer.intervalId !== undefined) {
-            clearInterval(timer.intervalId);
-            timer.isRunning = false;
-            timer.intervalId = undefined;
-            this.notifyTimer(timerId);
-        }
+        if (!timer) return;
+        this.clearTimerInterval(timer);
+        timer.isRunning = false;
+        timer.endsAt = undefined;
+        this.notifyTimer(timerId);
     }
 
     /**
@@ -184,12 +183,17 @@ export class TimerService {
      */
     public pauseTimer(timerId: string): void {
         const timer = this.timers.get(timerId);
-        if (timer && timer.isRunning && timer.intervalId !== undefined) {
-            clearInterval(timer.intervalId);
-            timer.isRunning = false;
-            timer.intervalId = undefined;
-            this.notifyTimer(timerId);
-        }
+        if (!timer?.isRunning) return;
+
+        // Reconcile against wall time before pausing. A backgrounded mobile
+        // WebView may not have delivered any interval callbacks in the meantime.
+        this.updateRunningTimer(timer);
+        if (!timer.isRunning) return;
+
+        this.clearTimerInterval(timer);
+        timer.isRunning = false;
+        timer.endsAt = undefined;
+        this.notifyTimer(timerId);
     }
 
     /**
@@ -201,19 +205,8 @@ export class TimerService {
         const timer = this.timers.get(timerId);
         if (!timer || timer.isRunning) return;
 
-        const intervalId = window.setInterval(() => {
-            if (timer.remaining > 0) {
-                timer.remaining--;
-                onTick(timer.remaining);
-                this.notifyTimer(timerId);
-
-                if (timer.remaining <= 0) {
-                    this.stopTimer(timerId);
-                    this.playAlarm();
-                    new Notice(`Timer "${timer.label}" has finished!`, 5000);
-                }
-            }
-        }, 1000);
+        timer.endsAt = Date.now() + timer.remaining * 1000;
+        const intervalId = window.setInterval(() => this.updateRunningTimer(timer, onTick), 1000);
 
         timer.intervalId = intervalId;
         timer.isRunning = true;
@@ -230,6 +223,7 @@ export class TimerService {
             this.stopTimer(timerId);
             timer.remaining = timer.duration;
             timer.isRunning = false;
+            timer.endsAt = undefined;
             this.notifyTimer(timerId);
         }
     }
@@ -275,6 +269,10 @@ export class TimerService {
      * Stop all timers and clean up
      */
     public dispose(): void {
+        if (typeof document !== 'undefined') {
+            document.removeEventListener('visibilitychange', this.handleVisibilityChange);
+        }
+
         // Stop all running timers
         for (const timer of this.timers.values()) {
             if (timer.intervalId !== undefined) {
@@ -296,6 +294,30 @@ export class TimerService {
      */
     private generateTimerId(): string {
         return `timer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    }
+
+    private updateRunningTimer(timer: Timer, onTick: (remaining: number) => void = () => {}): void {
+        if (!timer.isRunning || timer.endsAt === undefined) return;
+
+        timer.remaining = Math.max(0, Math.ceil((timer.endsAt - Date.now()) / 1000));
+        if (timer.remaining <= 0) {
+            this.clearTimerInterval(timer);
+            timer.isRunning = false;
+            timer.endsAt = undefined;
+        }
+
+        onTick(timer.remaining);
+        this.notifyTimer(timer.id);
+
+        if (timer.remaining <= 0) {
+            this.playAlarm();
+            new Notice(`Timer "${timer.label}" has finished!`, 5000);
+        }
+    }
+
+    private clearTimerInterval(timer: Timer): void {
+        if (timer.intervalId !== undefined) clearInterval(timer.intervalId);
+        timer.intervalId = undefined;
     }
 
     private notifyTimer(timerId: string): void {

@@ -375,6 +375,7 @@
   border-radius: 0 8px 8px 0; padding-left: 12px; margin-left: -12px;
 }
 .cook-step.done { opacity: 0.5; }
+.cook-step-trackable { cursor: pointer; }
 .cook-step-n { flex: none; color: var(--text-accent); font-weight: 700; }
 .cook-step-toggle {
   align-self: flex-start; min-width: 28px; min-height: 28px; margin: -4px 0 0 -6px;

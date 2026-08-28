@@ -49,6 +49,8 @@ export class CookView extends TextFileView {
     private host: ObsidianRecipeHost;
     private instanceId: string;
     private editorLineWrap: boolean;
+    private viewportMeasureFrame: number | null = null;
+    private removeViewportListeners: (() => void) | null = null;
     data: string = '';
     checkedIngredients: Set<string> = new Set();
     scale: number = 1;
@@ -102,6 +104,8 @@ export class CookView extends TextFileView {
 
     async onload() {
         super.onload();
+
+        this.initializeViewportRemeasure();
 
         // Wait for parser to be ready
         await this.parserReady;
@@ -160,12 +164,43 @@ export class CookView extends TextFileView {
         });
     }
 
+    private initializeViewportRemeasure(): void {
+        const editorWindow = this.sourceEl.ownerDocument.defaultView ?? window;
+        const visualViewport = editorWindow.visualViewport;
+        const handleViewportChange = () => this.queueEditorMeasure();
+
+        editorWindow.addEventListener('resize', handleViewportChange);
+        visualViewport?.addEventListener('resize', handleViewportChange);
+        visualViewport?.addEventListener('scroll', handleViewportChange);
+        this.sourceEl.addEventListener('focusin', handleViewportChange);
+
+        this.removeViewportListeners = () => {
+            editorWindow.removeEventListener('resize', handleViewportChange);
+            visualViewport?.removeEventListener('resize', handleViewportChange);
+            visualViewport?.removeEventListener('scroll', handleViewportChange);
+            this.sourceEl.removeEventListener('focusin', handleViewportChange);
+        };
+    }
+
+    private queueEditorMeasure(): void {
+        if (this.currentView !== 'source') return;
+
+        const editorWindow = this.sourceEl.ownerDocument.defaultView ?? window;
+        if (this.viewportMeasureFrame !== null) {
+            editorWindow.cancelAnimationFrame(this.viewportMeasureFrame);
+        }
+        this.viewportMeasureFrame = editorWindow.requestAnimationFrame(() => {
+            this.viewportMeasureFrame = null;
+            if (this.currentView === 'source') this.editorView.requestMeasure();
+        });
+    }
+
     setViewMode(mode: CookViewMode) {
         this.currentView = mode;
         this.modeStore.set(mode);
         if (mode === 'preview') this.renderPreview();
         else {
-            this.editorView.requestMeasure();
+            this.queueEditorMeasure();
         }
     }
 
@@ -174,6 +209,13 @@ export class CookView extends TextFileView {
     }
 
     onunload() {
+        this.removeViewportListeners?.();
+        this.removeViewportListeners = null;
+        if (this.viewportMeasureFrame !== null) {
+            const editorWindow = this.sourceEl.ownerDocument.defaultView ?? window;
+            editorWindow.cancelAnimationFrame(this.viewportMeasureFrame);
+            this.viewportMeasureFrame = null;
+        }
         if (this.editorView) {
             this.editorView.destroy();
         }
@@ -321,7 +363,7 @@ export class CookView extends TextFileView {
 
     // when the view is resized, refresh CodeMirror
     onResize() {
-        this.editorView.requestMeasure();
+        this.queueEditorMeasure();
     }
 
     getIcon() {
