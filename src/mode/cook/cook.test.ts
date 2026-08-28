@@ -1,9 +1,9 @@
 import { EditorState } from '@codemirror/state';
 import { ensureSyntaxTree } from '@codemirror/language';
-import { classHighlighter, highlightTree } from '@lezer/highlight';
+import { classHighlighter, type Highlighter, highlightTree } from '@lezer/highlight';
 import { describe, expect, it } from 'vitest';
 
-import { cooklang } from './cook';
+import { cooklang, cooklangHighlighter } from './cook';
 
 type HighlightRange = {
     from: number;
@@ -11,14 +11,14 @@ type HighlightRange = {
     classes: string;
 };
 
-function highlightedRanges(doc: string): HighlightRange[] {
+function highlightedRanges(doc: string, highlighter: Highlighter = classHighlighter): HighlightRange[] {
     const state = EditorState.create({ doc, extensions: [cooklang] });
     const tree = ensureSyntaxTree(state, doc.length, 1_000);
 
     expect(tree).not.toBeNull();
 
     const ranges: HighlightRange[] = [];
-    highlightTree(tree!, classHighlighter, (from, to, classes) => {
+    highlightTree(tree!, highlighter, (from, to, classes) => {
         ranges.push({ from, to, classes });
     });
     return ranges;
@@ -49,6 +49,31 @@ describe('Cooklang syntax highlighting', () => {
             'tok-keyword',
             'tok-variableName',
             'tok-number',
+        ]);
+    });
+
+    it('assigns stable plugin classes to Cooklang tokens', () => {
+        const doc = [
+            '---',
+            'servings: 2',
+            '---',
+            'Add @flour{200%g} to a #bowl and wait for ~rest{5%min}.',
+            '-- This is a comment.',
+        ].join('\n');
+
+        expect(highlightedRanges(doc, cooklangHighlighter).map(({ from, to, classes }) => ({
+            text: doc.slice(from, to),
+            classes,
+        }))).toEqual([
+            { text: '---', classes: 'cook-token-meta' },
+            { text: 'servings: 2', classes: 'cook-token-meta' },
+            { text: '---', classes: 'cook-token-meta' },
+            { text: '@flour', classes: 'cook-token-ingredient' },
+            { text: 'g', classes: 'cook-token-unit' },
+            { text: '#bowl', classes: 'cook-token-cookware' },
+            { text: '~rest', classes: 'cook-token-timer' },
+            { text: 'min', classes: 'cook-token-unit' },
+            { text: '-- This is a comment.', classes: 'cook-token-comment' },
         ]);
     });
 });

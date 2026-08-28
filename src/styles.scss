@@ -220,6 +220,15 @@
   .cm-line {
     padding: 0 4px;
   }
+
+  // Stable token classes keep Cooklang colors under the plugin stylesheet's
+  // scope instead of relying on CodeMirror's generated style-module classes.
+  .cook-token-ingredient { color: var(--text-accent); }
+  .cook-token-cookware { color: var(--color-green); }
+  .cook-token-timer { color: var(--color-pink); }
+  .cook-token-comment { color: var(--text-faint); }
+  .cook-token-meta { color: var(--text-muted); }
+  .cook-token-unit { color: var(--color-orange); }
 }
 
 // Match Obsidian's native mobile editor behavior in WKWebView. This keeps the
