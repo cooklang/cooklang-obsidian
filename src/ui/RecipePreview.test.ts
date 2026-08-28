@@ -269,6 +269,15 @@ describe('RecipePreview', () => {
         expect(screen.queryByRole('button', { name: 'More servings' })).toBeNull();
     });
 
+    it('renders the heading for a single explicitly named section', () => {
+        const namedSectionRecipe = recipe();
+        namedSectionRecipe.sections[0].name = 'Sauce';
+
+        render(RecipePreview, { model: model({ recipe: namedSectionRecipe }) });
+
+        expect(screen.getByRole('heading', { name: 'Sauce', level: 3 })).toBeTruthy();
+    });
+
     it('expands multiple preparations without toggling the ingredient checkbox', async () => {
         const renderModel = model({ recipe: preparationRecipe() });
         const view = render(RecipePreview, { model: renderModel });

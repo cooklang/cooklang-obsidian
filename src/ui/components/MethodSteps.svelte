@@ -42,7 +42,7 @@
 <section class="cook-steps" id="cook-steps">
     <h2 class="cook-section-title">{model.settings.methodLabel || 'Method'}</h2>
     {#each sections as section}
-        {#if section.name && sections.length > 1}
+        {#if section.name}
             <h3 class="cook-section-band">{section.name}</h3>
         {/if}
         {#each section.entries as entry}
