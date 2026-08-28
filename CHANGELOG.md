@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.11.10](https://github.com/cooklang/cooklang-obsidian/compare/0.11.9...0.11.10) (2026-08-28)
+
+
+### Bug Fixes
+
+* automatically save editor changes ([#137](https://github.com/cooklang/cooklang-obsidian/issues/137)) ([8e8b066](https://github.com/cooklang/cooklang-obsidian/commit/8e8b06656e8ab62fb605b02501ebd914ddd8fee8))
+* improve mobile editor and timer behavior ([#138](https://github.com/cooklang/cooklang-obsidian/issues/138)) ([deee01d](https://github.com/cooklang/cooklang-obsidian/commit/deee01d7f3d3a9f9258247b2214e03df2a1cd499))
+* restore editor syntax highlighting ([#140](https://github.com/cooklang/cooklang-obsidian/issues/140)) ([844b33f](https://github.com/cooklang/cooklang-obsidian/commit/844b33f5f9b8ed9196ae66b0105fd63f81cb5ac2))
+
 ## [0.11.9](https://github.com/cooklang/cooklang-obsidian/compare/0.11.8...0.11.9) (2026-08-18)
 
 
