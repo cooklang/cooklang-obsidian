@@ -269,6 +269,60 @@ describe('RecipePreview', () => {
         expect(screen.queryByRole('button', { name: 'More servings' })).toBeNull();
     });
 
+    it('uses the first parsed image URL when no sibling title image exists', () => {
+        const recipeWithImages = recipe();
+        recipeWithImages.images = [
+            'https://example.com/curry.jpg',
+            'https://example.com/curry-alt.jpg',
+        ];
+
+        render(RecipePreview, { model: model({ recipe: recipeWithImages }) });
+
+        expect(screen.getByRole('img', { name: 'Weeknight curry recipe' }).getAttribute('src'))
+            .toBe('https://example.com/curry.jpg');
+        expect(screen.queryByText('https://example.com/curry.jpg')).toBeNull();
+    });
+
+    it('does not render parsed image metadata when images are disabled', () => {
+        const recipeWithImage = recipe();
+        recipeWithImage.images = 'https://example.com/curry.jpg';
+
+        render(RecipePreview, {
+            model: model({
+                recipe: recipeWithImage,
+                settings: { ...settings(), showImages: false },
+            }),
+        });
+
+        expect(screen.queryByRole('img', { name: 'Weeknight curry recipe' })).toBeNull();
+    });
+
+    it('only makes HTTP(S) metadata values actionable', () => {
+        const recipeWithLinks = recipe();
+        recipeWithLinks.source = { name: 'Unsafe source', url: 'javascript:alert(1)' };
+        recipeWithLinks.rawMetadata = new Map([
+            ['title', 'Weeknight curry'],
+            ['website', 'https://example.com/recipe'],
+            ['script', 'javascript:alert(2)'],
+        ]);
+
+        render(RecipePreview, { model: model({ recipe: recipeWithLinks }) });
+
+        expect(screen.getByText('Unsafe source').closest('a')).toBeNull();
+        expect(screen.getByText('https://example.com/recipe').closest('a')?.getAttribute('href'))
+            .toBe('https://example.com/recipe');
+        expect(screen.getByText('javascript:alert(2)').closest('a')).toBeNull();
+    });
+
+    it('renders the heading for a single explicitly named section', () => {
+        const namedSectionRecipe = recipe();
+        namedSectionRecipe.sections[0].name = 'Sauce';
+
+        render(RecipePreview, { model: model({ recipe: namedSectionRecipe }) });
+
+        expect(screen.getByRole('heading', { name: 'Sauce', level: 3 })).toBeTruthy();
+    });
+
     it('expands multiple preparations without toggling the ingredient checkbox', async () => {
         const renderModel = model({ recipe: preparationRecipe() });
         const view = render(RecipePreview, { model: renderModel });
@@ -314,6 +368,7 @@ describe('ReferenceLink', () => {
         const reference: ResolvedRecipeReference = {
             targetPath: 'Components/Sauce.cook',
             sourcePath: 'Dinner.cook',
+            scaleRequest: null,
         };
         const renderModel = model({
             host: {
@@ -324,7 +379,7 @@ describe('ReferenceLink', () => {
         });
         render(ReferenceLink, {
             model: renderModel,
-            reference: { name: 'Sauce', components: ['Components'] },
+            reference: { name: 'Sauce', components: ['Components'], quantity: null, unit: null },
         });
 
         await fireEvent.click(screen.getByRole('link', { name: 'Sauce' }));

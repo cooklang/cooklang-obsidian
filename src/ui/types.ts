@@ -4,6 +4,7 @@ import type { Readable } from 'svelte/store';
 import type { CooklangSettings } from '../settings';
 import type { RecipeRefTarget } from '../utils/ingredientAggregator';
 import type { TimerSnapshot } from '../services/TimerService';
+import type { RecipeReferenceScaleRequest } from '../utils/scaling';
 
 export type CookViewMode = 'source' | 'preview';
 
@@ -24,6 +25,7 @@ export interface PreviewCallbacks {
 export interface ResolvedRecipeReference {
     targetPath: string;
     sourcePath: string;
+    scaleRequest: RecipeReferenceScaleRequest | null;
 }
 
 export interface RecipeHostAdapter {

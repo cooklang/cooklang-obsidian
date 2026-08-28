@@ -8,7 +8,13 @@ import {defaultKeymap} from "@codemirror/commands"
 import {cooklang, cooklangHighlighter} from './mode/cook/cook'
 import { parserService } from './services/ParserService';
 import { TimerService } from './services/TimerService';
-import { parseServingsValue, computeScale, deriveServingsState } from './utils/scaling';
+import {
+    parseServingsValue,
+    computeScale,
+    computeReferenceScale,
+    deriveServingsState,
+    type RecipeReferenceScaleRequest,
+} from './utils/scaling';
 import alarmMp3 from './alarm.mp3';
 import timerMp3 from './timer.mp3';
 import { flushSync, mount, unmount } from 'svelte';
@@ -43,6 +49,7 @@ export class CookView extends TextFileView {
     checkedIngredients: Set<string> = new Set();
     scale: number = 1;
     currentStep: number = -1;
+    private pendingReferenceScale: RecipeReferenceScaleRequest | null = null;
 
     constructor(leaf: WorkspaceLeaf, settings: CooklangSettings) {
         super(leaf);
@@ -334,6 +341,9 @@ export class CookView extends TextFileView {
 
     // Override to restore the mode from view state
     async setState(state: any, result: ViewStateResult) {
+        this.pendingReferenceScale = isReferenceScaleRequest(state.referenceScale)
+            ? state.referenceScale
+            : null;
         await super.setState(state, result);
         if (typeof state.scale === 'number' && state.scale > 0) this.scale = state.scale;
         if (typeof state.currentStep === 'number') this.currentStep = state.currentStep;
@@ -363,7 +373,7 @@ export class CookView extends TextFileView {
         if (!parserService.isReady()) return;
 
         // Re-parse at the current scale so quantities (list + inline) rescale.
-        const [rawRecipe] = parserService.parse(this.data, this.scale);
+        let [rawRecipe] = parserService.parse(this.data, this.scale);
         this.rawRecipe = rawRecipe;
 
         // The parser scales (and rounds) the `servings` metadata, so the servings
@@ -371,6 +381,16 @@ export class CookView extends TextFileView {
         // a scale-1 parse to compute scale targets and the displayed count
         // correctly (see issue #83).
         const [baseRecipe] = parserService.parse(this.data);
+        if (this.pendingReferenceScale) {
+            this.scale = computeReferenceScale(
+                this.pendingReferenceScale,
+                baseRecipe.servings,
+                baseRecipe.rawMetadata.get('yield'),
+            );
+            this.pendingReferenceScale = null;
+            [rawRecipe] = parserService.parse(this.data, this.scale);
+            this.rawRecipe = rawRecipe;
+        }
         const { baseServings, displayServings } = deriveServingsState(
             parseServingsValue(baseRecipe.servings),
             this.scale,
@@ -419,4 +439,11 @@ export class CookView extends TextFileView {
         if (lineWrapChanged) this.reinitializeEditor();
         if (this.currentView === 'preview') this.renderPreview();
     }
+}
+
+function isReferenceScaleRequest(value: unknown): value is RecipeReferenceScaleRequest {
+    if (!value || typeof value !== 'object') return false;
+    const candidate = value as Partial<RecipeReferenceScaleRequest>;
+    return typeof candidate.quantity === 'number'
+        && (typeof candidate.unit === 'string' || candidate.unit === null);
 }

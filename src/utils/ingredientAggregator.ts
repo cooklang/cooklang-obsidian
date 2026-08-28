@@ -23,6 +23,10 @@ export interface RecipeRefTarget {
     name: string;
     /** Path components from the reference, e.g. [".", "Components"]. */
     components: string[];
+    /** Numeric reference request (`{2}`, `{4%servings}`, `{150%ml}`). */
+    quantity: number | null;
+    /** Unit for servings/yield scaling; null means a direct multiplier. */
+    unit: string | null;
 }
 
 export interface AggInput {
