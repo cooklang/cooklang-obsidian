@@ -418,7 +418,7 @@
   -webkit-appearance: none; appearance: none; background: transparent; cursor: pointer; font: inherit;
 }
 .cook-step-bodywrap { flex: 1; min-width: 0; }
-.cook-step-text { line-height: 1.6; }
+.cook-step-text { line-height: 1.6; white-space: pre-line; }
 .cook-ingredients,
 .cook-steps { scroll-margin-top: 64px; }
 .cook-step-image { margin: var(--size-4-2, 8px) 0 0; }
