@@ -330,7 +330,7 @@
 /* Ingredient checklist */
 .cook-ing-list { list-style: none; margin: 0; padding: 0; }
 .cook-ing {
-  display: flex; align-items: center; gap: 10px; padding: 7px 0;
+  display: flex; align-items: flex-start; gap: 10px; padding: 7px 0;
   border-bottom: 1px solid var(--background-modifier-border); font-size: 0.92em;
 }
 .cook-ing:last-child { border-bottom: none; }
@@ -339,7 +339,11 @@
   width: 17px; height: 17px; flex: none; border-radius: 5px;
   border: 1.5px solid var(--text-faint); background: transparent; cursor: pointer;
 }
-.cook-ing-checkbox-hit { display: inline-flex; flex: none; }
+.cook-ing-checkbox-hit {
+  display: inline-flex; flex: none; align-items: center; justify-content: center;
+  min-height: 1.6em;
+}
+.cook-ing > .cook-ing-checkbox { margin-block-start: calc((1.6em - 17px) / 2); }
 .cook-ing-checkbox:checked {
   background: var(--interactive-accent); border-color: var(--interactive-accent); position: relative;
 }
@@ -566,12 +570,12 @@
   }
   .cook-stepper { height: 50px; border-radius: 25px; padding: 0; }
   .cook-stepper-btn { width: 48px; height: 48px; }
-  .cook-ing { min-height: 48px; }
+  .cook-ing { min-height: 48px; padding-block: 0; }
   .cook-ing-checkbox-hit {
-    align-items: center; justify-content: center;
-    width: 48px; min-height: 48px; margin-block: -7px;
+    width: 48px; min-height: 48px;
   }
-  .cook-ing-details > summary { min-height: 48px; }
+  .cook-ing-main { min-height: 48px; }
+  .cook-ing > .cook-ing-checkbox { margin-block-start: 15.5px; }
   .cook-step-toggle {
     min-width: 48px; min-height: 48px; margin: -10px 0 -10px -10px;
   }
