@@ -2,14 +2,14 @@ import { describe, it, expect } from 'vitest';
 import { resolveReferenceCandidatePaths, resolveReferencePath } from './recipeReferences';
 
 describe('resolveReferencePath', () => {
-    it('resolves a "./Sub/Name" reference relative to the recipe folder', () => {
-        expect(resolveReferencePath('Breakfast', ['.', 'Components'], 'Beans'))
-            .toBe('Breakfast/Components/Beans.cook');
+    it('resolves a "./Sub/Name" reference relative to the recipes root', () => {
+        expect(resolveReferencePath('', ['.', 'Components'], 'Beans'))
+            .toBe('Components/Beans.cook');
     });
 
-    it('resolves a same-folder reference', () => {
-        expect(resolveReferencePath('Breakfast', ['.'], 'Salsa'))
-            .toBe('Breakfast/Salsa.cook');
+    it('does not use the containing recipe folder as the root', () => {
+        expect(resolveReferencePath('', ['.'], 'Salsa'))
+            .toBe('Salsa.cook');
     });
 
     it('handles parent navigation with ".."', () => {
@@ -29,8 +29,8 @@ describe('resolveReferencePath', () => {
 
 describe('resolveReferenceCandidatePaths', () => {
     it('returns the .cook target before the same-path .md fallback', () => {
-        expect(resolveReferenceCandidatePaths('Breakfast', ['.', 'Components'], 'Beans'))
-            .toEqual(['Breakfast/Components/Beans.cook', 'Breakfast/Components/Beans.md']);
+        expect(resolveReferenceCandidatePaths('', ['.', 'Components'], 'Beans'))
+            .toEqual(['Components/Beans.cook', 'Components/Beans.md']);
     });
 
     it('keeps parent navigation identical for both candidate extensions', () => {

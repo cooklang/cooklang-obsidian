@@ -92,7 +92,12 @@ describe('aggregateIngredients', () => {
     });
 
     it('carries the first reference and preparation found', () => {
-        const ref = { name: 'Beans', components: ['.', 'Components'] };
+        const ref = {
+            name: 'Beans',
+            components: ['.', 'Components'],
+            quantity: 2,
+            unit: 'servings',
+        };
         const rows = aggregateIngredients([
             ing({ name: 'Beans', quantityValue: 2, unit: 'servings', reference: ref, note: 'warm' }),
         ]);

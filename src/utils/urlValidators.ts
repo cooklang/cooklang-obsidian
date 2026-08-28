@@ -2,21 +2,19 @@
  * URL validation utilities
  */
 
-/**
- * Validates if a string is a valid URL
- * @param str - The string to validate
- * @returns true if the string is a valid URL, false otherwise
- *
- * @example
- * isValidUrl('https://example.com') // true
- * isValidUrl('not a url') // false
- * isValidUrl('ftp://files.example.com') // true
- */
-export function isValidUrl(str: string): boolean {
+/** Return a normalized HTTP(S) URL that is safe to expose as an external link. */
+export function getSafeExternalUrl(value: unknown): string | null {
+    if (typeof value !== 'string') return null;
+
+    const candidate = value.trim();
+    if (!candidate) return null;
+
     try {
-        new URL(str);
-        return true;
+        const url = new URL(candidate);
+        return url.protocol === 'http:' || url.protocol === 'https:'
+            ? candidate
+            : null;
     } catch {
-        return false;
+        return null;
     }
 }

@@ -6,15 +6,21 @@
 // locally (it is `number | string`).
 type Servings = number | string;
 
-/** Numeric base servings from recipe metadata, or null if not derivable. */
+export interface RecipeReferenceScaleRequest {
+    quantity: number;
+    unit: string | null;
+}
+
+/** Numeric base servings from recipe metadata, defaulting to one when omitted. */
 export function parseServingsValue(servings: Servings | undefined): number | null {
+    if (servings === undefined) return 1;
     if (typeof servings === 'number') {
         return servings > 0 ? servings : null;
     }
     if (typeof servings === 'string') {
-        const match = servings.match(/\d+(\.\d+)?/);
+        const match = servings.match(/^\s*(\d+(?:\.\d+)?)/);
         if (match) {
-            const n = parseFloat(match[0]);
+            const n = parseFloat(match[1]);
             if (n > 0) return n;
         }
     }
@@ -27,9 +33,48 @@ export function computeScale(targetServings: number, baseServings: number): numb
     return targetServings / baseServings;
 }
 
-/** Round to an integer servings count within sane bounds. */
+interface ParsedYield {
+    quantity: number;
+    unit: string;
+}
+
+function parseYieldValue(value: unknown): ParsedYield | null {
+    if (typeof value !== 'string') return null;
+    const match = value.match(/^\s*(\d+(?:\.\d+)?)\s*(?:%|\s)\s*(\S.*?)\s*$/);
+    if (!match) return null;
+    const quantity = Number(match[1]);
+    return quantity > 0
+        ? { quantity, unit: match[2].trim() }
+        : null;
+}
+
+function normalizedUnit(unit: string): string {
+    return unit.trim().toLowerCase().replace(/s$/, '');
+}
+
+/** Resolve a reference quantity to the scale factor for the target recipe. */
+export function computeReferenceScale(
+    request: RecipeReferenceScaleRequest | null,
+    servings: Servings | undefined,
+    yieldValue: unknown,
+): number {
+    if (!request || !Number.isFinite(request.quantity) || request.quantity <= 0) return 1;
+    if (!request.unit?.trim()) return request.quantity;
+
+    if (normalizedUnit(request.unit) === 'serving') {
+        const baseServings = parseServingsValue(servings);
+        return baseServings === null ? 1 : computeScale(request.quantity, baseServings);
+    }
+
+    const parsedYield = parseYieldValue(yieldValue);
+    return parsedYield && normalizedUnit(parsedYield.unit) === normalizedUnit(request.unit)
+        ? request.quantity / parsedYield.quantity
+        : 1;
+}
+
+/** Clamp a servings count within sane bounds without discarding fractions. */
 export function clampServings(value: number, min = 1, max = 1000): number {
-    return Math.max(min, Math.min(max, Math.round(value)));
+    return Math.max(min, Math.min(max, value));
 }
 
 export interface ServingsState {

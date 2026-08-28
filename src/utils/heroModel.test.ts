@@ -48,6 +48,26 @@ describe('buildMetaPills', () => {
         expect(pill!.url).toBe('https://jane.example');
     });
 
+    it('keeps unsafe author and source URLs visible as text but not as links', () => {
+        const recipe = {
+            author: { name: 'Jane Cook', url: 'javascript:alert(1)' },
+            source: { name: null, url: 'data:text/html,dinner' },
+            tags: new Set(),
+        } as any;
+        const pills = buildMetaPills(recipe, null);
+
+        expect(pills.find(p => p.kind === 'author')).toEqual({
+            kind: 'author',
+            icon: '✍',
+            text: 'Jane Cook',
+        });
+        expect(pills.find(p => p.kind === 'source')).toEqual({
+            kind: 'source',
+            icon: '↗',
+            text: 'data:text/html,dinner',
+        });
+    });
+
     it('emits no pills when nothing is present', () => {
         const recipe = { tags: new Set() } as any;
         expect(buildMetaPills(recipe, null)).toEqual([]);

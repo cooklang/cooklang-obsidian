@@ -5,6 +5,7 @@
         quantity_display,
     } from '../../recipeHelpers';
     import { formatTimerDuration, timerDurationFromQuantity } from '../../utils/timeFormatters';
+    import { numericFromQuantity } from '../../utils/quantityValue';
     import type { StepPart } from '../../utils/sectionHelpers';
     import type { RecipeRenderModel } from '../types';
     import ReferenceLink from './ReferenceLink.svelte';
@@ -36,6 +37,10 @@
                 reference={{
                     name: part.ingredient.reference.name,
                     components: part.ingredient.reference.components ?? [],
+                    quantity: part.ingredient.quantity
+                        ? numericFromQuantity(part.ingredient.quantity)
+                        : null,
+                    unit: part.ingredient.quantity?.unit ?? null,
                 }}
             />
         {:else}

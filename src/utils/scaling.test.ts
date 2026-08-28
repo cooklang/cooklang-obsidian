@@ -1,18 +1,29 @@
 import { describe, it, expect } from 'vitest';
-import { parseServingsValue, computeScale, clampServings, deriveServingsState } from './scaling';
+import {
+    parseServingsValue,
+    computeReferenceScale,
+    computeScale,
+    clampServings,
+    deriveServingsState,
+} from './scaling';
 
 describe('parseServingsValue', () => {
     it('accepts positive numbers', () => {
         expect(parseServingsValue(4)).toBe(4);
     });
-    it('extracts leading number from strings like "4 servings"', () => {
+    it('extracts a leading number from strings like "4 servings"', () => {
         expect(parseServingsValue('4 servings')).toBe(4);
-        expect(parseServingsValue('serves 6')).toBe(6);
+        expect(parseServingsValue('  2.5 servings')).toBe(2.5);
     });
-    it('returns null for non-positive or non-numeric', () => {
+    it('defaults omitted servings to one', () => {
+        expect(parseServingsValue(undefined)).toBe(1);
+    });
+    it('rejects numbers that are not at the start', () => {
+        expect(parseServingsValue('serves 6')).toBeNull();
+    });
+    it('returns null for non-positive or non-numeric metadata', () => {
         expect(parseServingsValue(0)).toBeNull();
         expect(parseServingsValue('a lot')).toBeNull();
-        expect(parseServingsValue(undefined)).toBeNull();
     });
 });
 
@@ -26,9 +37,27 @@ describe('computeScale', () => {
     });
 });
 
+describe('computeReferenceScale', () => {
+    it('uses a unitless quantity as a direct multiplier', () => {
+        expect(computeReferenceScale({ quantity: 2, unit: null }, 4, '500%ml')).toBe(2);
+    });
+
+    it('targets the referenced recipe servings', () => {
+        expect(computeReferenceScale({ quantity: 4, unit: 'servings' }, 2, null)).toBe(2);
+    });
+
+    it('targets a matching yield unit', () => {
+        expect(computeReferenceScale({ quantity: 150, unit: 'ml' }, 2, '500%ml')).toBe(0.3);
+    });
+
+    it('does not apply yield scaling when units differ', () => {
+        expect(computeReferenceScale({ quantity: 150, unit: 'g' }, 2, '500%ml')).toBe(1);
+    });
+});
+
 describe('clampServings', () => {
-    it('rounds and clamps to [1, 1000]', () => {
-        expect(clampServings(3.6)).toBe(4);
+    it('preserves fractions and clamps to [1, 1000]', () => {
+        expect(clampServings(3.6)).toBe(3.6);
         expect(clampServings(0)).toBe(1);
         expect(clampServings(99999)).toBe(1000);
     });
@@ -44,8 +73,8 @@ describe('deriveServingsState', () => {
         expect(deriveServingsState(2, 3)).toEqual({ baseServings: 2, displayServings: 6 });
     });
 
-    it('rounds and clamps the display to a positive integer', () => {
-        expect(deriveServingsState(3, 0.5)).toEqual({ baseServings: 3, displayServings: 2 });
+    it('preserves fractional servings and clamps the display to a positive value', () => {
+        expect(deriveServingsState(3, 0.5)).toEqual({ baseServings: 3, displayServings: 1.5 });
         expect(deriveServingsState(1, 0.1)).toEqual({ baseServings: 1, displayServings: 1 });
     });
 

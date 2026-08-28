@@ -1,6 +1,6 @@
 <script lang="ts">
     import { getAdditionalMetadata } from '../../utils/metadataEntries';
-    import { isValidUrl } from '../../utils/urlValidators';
+    import { getSafeExternalUrl } from '../../utils/urlValidators';
     import type { RecipeRenderModel } from '../types';
 
     let { model }: { model: RecipeRenderModel } = $props();
@@ -12,10 +12,11 @@
         <summary class="cook-more-summary">{model.settings.metadataLabel || 'More details'}</summary>
         <ul class="cook-more-list">
             {#each entries as entry}
+                {@const url = getSafeExternalUrl(entry.value)}
                 <li>
                     <span class="cook-more-key">{entry.key}</span>
-                    {#if isValidUrl(entry.value)}
-                        <a href={entry.value} target="_blank" rel="noopener noreferrer">{entry.value}</a>
+                    {#if url}
+                        <a href={url} target="_blank" rel="noopener noreferrer">{entry.value}</a>
                     {:else}
                         {entry.value}
                     {/if}

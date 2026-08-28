@@ -3,10 +3,13 @@
     import { buildMetaPills } from '../../utils/heroModel';
     import type { RecipeRenderModel } from '../types';
 
-    let { model, mainImage }: { model: RecipeRenderModel; mainImage: TFile | null } = $props();
+    let { model, mainImage }: { model: RecipeRenderModel; mainImage: TFile | string | null } = $props();
     let title = $derived(model.recipe.title?.trim() || model.file?.basename || 'Recipe');
     let description = $derived(model.recipe.description?.trim());
     let pills = $derived(buildMetaPills(model.recipe, model.state.displayServings));
+    let mainImageUrl = $derived(
+        typeof mainImage === 'string' ? mainImage : mainImage ? model.host.getResourcePath(mainImage) : null
+    );
 </script>
 
 <header class="cook-hero">
@@ -39,9 +42,9 @@
         {/if}
     </div>
 
-    {#if model.settings.showImages && mainImage}
+    {#if model.settings.showImages && mainImageUrl}
         <figure class="cook-hero-image">
-            <img src={model.host.getResourcePath(mainImage)} alt={`${title} recipe`} />
+            <img src={mainImageUrl} alt={`${title} recipe`} />
         </figure>
     {/if}
 </header>

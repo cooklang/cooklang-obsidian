@@ -2,6 +2,7 @@
  * Pure model for hero meta pills, derived from the typed recipe fields.
  */
 import type { CooklangRecipe } from '@cooklang/cooklang';
+import { getSafeExternalUrl } from './urlValidators';
 
 // `@cooklang/cooklang` does not re-export its `RecipeTime` type, so mirror it
 // locally (minutes as a number, or a prep/cook breakdown).
@@ -85,14 +86,16 @@ export function buildMetaPills(
     if (recipe.author) {
         const text = recipe.author.name ?? recipe.author.url ?? null;
         if (text) {
-            pills.push({ kind: 'author', icon: '✍', text, url: recipe.author.url });
+            const url = getSafeExternalUrl(recipe.author.url);
+            pills.push({ kind: 'author', icon: '✍', text, ...(url ? { url } : {}) });
         }
     }
 
     if (recipe.source) {
         const text = recipe.source.name ?? recipe.source.url ?? null;
         if (text) {
-            pills.push({ kind: 'source', icon: '↗', text, url: recipe.source.url });
+            const url = getSafeExternalUrl(recipe.source.url);
+            pills.push({ kind: 'source', icon: '↗', text, ...(url ? { url } : {}) });
         }
     }
 

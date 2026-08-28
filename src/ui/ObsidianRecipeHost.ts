@@ -17,10 +17,8 @@ export class ObsidianRecipeHost implements RecipeHostAdapter {
         sourceFile: TFile | null,
         ref: RecipeRefTarget,
     ): ResolvedRecipeReference | null {
-        const folder = sourceFile?.parent?.path ?? '';
-        const normalizedFolder = folder === '/' ? '' : folder;
         const [cookPath, markdownPath] = resolveReferenceCandidatePaths(
-            normalizedFolder,
+            '',
             ref.components ?? [],
             ref.name,
         );
@@ -37,11 +35,22 @@ export class ObsidianRecipeHost implements RecipeHostAdapter {
             ? {
                 targetPath: target.path,
                 sourcePath: sourceFile?.path ?? '',
+                scaleRequest: ref.quantity !== null && ref.quantity > 0
+                    ? { quantity: ref.quantity, unit: ref.unit }
+                    : null,
             }
             : null;
     }
 
     openReference(reference: ResolvedRecipeReference): void {
-        this.app.workspace.openLinkText(reference.targetPath, reference.sourcePath, false);
+        const leaf = this.app.workspace.getLeaf(false);
+        void leaf.setViewState({
+            type: 'cook',
+            state: {
+                file: reference.targetPath,
+                mode: 'preview',
+                referenceScale: reference.scaleRequest,
+            },
+        });
     }
 }

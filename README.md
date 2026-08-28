@@ -17,8 +17,9 @@ A plugin for [Obsidian](https://obsidian.md) adding support for [Cooklang](https
 Opening a `.cook` file and toggling Preview shows a single rich recipe page:
 
 - **Hero** with the recipe title, description, **title image** (a sibling file named like
-  the recipe, e.g. `Curry.jpg`), and meta pills for total time, servings, difficulty,
-  source and tags.
+  the recipe, e.g. `Curry.jpg`, or the first URL in `image`/`images` metadata), and meta
+  pills for total time, servings, difficulty, source and tags. Metadata image URLs are
+  loaded from their remote hosts when the preview is open and images are enabled.
 - **Servings scaler** — a `− N servings +` control in the sticky bar that rescales every
   ingredient quantity (and inline quantities in the steps) in real time.
 - **Two-column layout** on wide panes: a sticky ingredient checklist beside the steps; it
@@ -26,7 +27,7 @@ Opening a `.cook` file and toggling Preview shows a single rich recipe page:
 - **Cooklang sections** (`= Section =`) group both the ingredients and the steps, and
   `> notes` render as callouts.
 - **Per-step images** following the [Cooklang convention](https://cooklang.org/docs/spec/#adding-pictures)
-  (`Recipe.0.jpg` for the first step, `Recipe.1.jpg` for the second, …).
+  (`Recipe.1.jpg` for the first step, `Recipe.2.jpg` for the second, …).
 - **Step tracking** — tap a step to mark it current and dim completed steps.
 
 Each of these can be toggled in the plugin settings (Servings scaler, Two-column layout,
@@ -35,10 +36,13 @@ Step tracking), falling back to a simple stacked list.
 ## Recipe references
 
 Reference another recipe with Cooklang ingredient syntax, for example
-`@./Components/Beans`. References resolve relative to the recipe containing
-them. The plugin opens a matching `.cook` file first, following the Cooklang
-convention. If no `.cook` file exists, it falls back to a same-path Markdown
-file only when its frontmatter contains the Boolean flag:
+`@./Components/Beans`. References resolve relative to the root of the vault,
+which acts as the Cooklang recipes root. The plugin opens a matching `.cook`
+file first, following the Cooklang convention. A quantity such as `{2}` opens
+the target at twice its base scale, `{4%servings}` targets four servings, and a
+quantity matching the target's `yield` unit scales to that yield. If no `.cook`
+file exists, the plugin falls back to a same-path Markdown file only when its
+frontmatter contains the Boolean flag:
 
 ```yaml
 ---

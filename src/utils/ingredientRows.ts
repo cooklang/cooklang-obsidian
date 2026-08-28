@@ -45,6 +45,8 @@ export function ingredientToAggInput(ingredient: Ingredient): AggInput {
             ? {
                 name: ingredient.reference.name,
                 components: ingredient.reference.components ?? [],
+                quantity: quantityValue,
+                unit,
             }
             : null,
     };
