@@ -694,3 +694,19 @@
   .cook-cookware-list { column-count: 1; }
   .cook-step { gap: var(--size-4-2, 8px); }
 }
+
+// Keep Obsidian's source-rendered DOM for lifecycle and native fallback, while
+// presenting one compact Cooklang render for a whole-note transclusion.
+.cook-recipe-note-embed {
+  > .markdown-embed-content,
+  > .markdown-embed-title {
+    display: none;
+  }
+
+  > .cook-whole-recipe {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    padding-inline: var(--size-4-4, 16px);
+  }
+}

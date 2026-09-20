@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/svelte';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen } from '@testing-library/svelte';
+import type { TFile } from 'obsidian';
 import { writable } from 'svelte/store';
 import RecipeEmbed from './RecipeEmbed.svelte';
 import type { EmbedRenderState, RecipeRenderModel } from './types';
@@ -75,6 +76,19 @@ describe('RecipeEmbed', () => {
         expect(await screen.findByRole('heading', { name: 'Method' })).toBeTruthy();
         expect(view.container.querySelector('.cook-embed')).toBeTruthy();
         expect(view.container.querySelector('.cook-hero')).toBeNull();
+        expect(view.container.querySelector('.cook-bar')).toBeNull();
+
+        const openReference = vi.fn();
+        const file = { path: 'Recipes/Dinner.cook.md' } as TFile;
+        renderState.set({ status: 'ready', model: {
+            ...model, file, host: { ...model.host, openReference },
+        } });
+        await view.rerender({ renderState, wholeNote: true });
+        const link = await screen.findByRole('link', { name: 'Dinner' });
+        await fireEvent.click(link);
+        expect(openReference).toHaveBeenCalledWith({
+            targetPath: file.path, sourcePath: file.path, scaleRequest: null,
+        });
         expect(view.container.querySelector('.cook-bar')).toBeNull();
     });
 });

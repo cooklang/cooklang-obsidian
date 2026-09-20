@@ -30,16 +30,16 @@ describe('resolveReferencePath', () => {
 describe('resolveReferenceCandidatePaths', () => {
     it('returns the .cook target before the same-path .md fallback', () => {
         expect(resolveReferenceCandidatePaths('', ['.', 'Components'], 'Beans'))
-            .toEqual(['Components/Beans.cook', 'Components/Beans.md']);
+            .toEqual(['Components/Beans.cook', 'Components/Beans.md', 'Components/Beans.cook.md']);
     });
 
-    it('keeps parent navigation identical for both candidate extensions', () => {
+    it('keeps parent navigation identical for all candidate extensions', () => {
         expect(resolveReferenceCandidatePaths('Breakfast/Quick', ['..', 'Sauces'], 'Aioli'))
-            .toEqual(['Breakfast/Sauces/Aioli.cook', 'Breakfast/Sauces/Aioli.md']);
+            .toEqual(['Breakfast/Sauces/Aioli.cook', 'Breakfast/Sauces/Aioli.md', 'Breakfast/Sauces/Aioli.cook.md']);
     });
 
-    it('returns both candidates from the vault root', () => {
+    it('returns all candidates from the vault root', () => {
         expect(resolveReferenceCandidatePaths('', ['.'], 'Beans'))
-            .toEqual(['Beans.cook', 'Beans.md']);
+            .toEqual(['Beans.cook', 'Beans.md', 'Beans.cook.md']);
     });
 });

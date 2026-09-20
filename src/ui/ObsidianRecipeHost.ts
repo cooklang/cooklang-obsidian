@@ -1,13 +1,14 @@
-import { App, TFile } from 'obsidian';
+import { App, TFile, WorkspaceLeaf } from 'obsidian';
 import type { RecipeRefTarget } from '../utils/ingredientAggregator';
 import { resolveReferenceCandidatePaths } from '../utils/recipeReferences';
+import { isRecipeFile } from '../utils/recipeFiles';
 import type {
     RecipeHostAdapter,
     ResolvedRecipeReference,
 } from './types';
 
 export class ObsidianRecipeHost implements RecipeHostAdapter {
-    constructor(private app: App) {}
+    constructor(private app: App, private onOpenRecipe?: (leaf: WorkspaceLeaf) => void) {}
 
     getResourcePath(file: TFile): string {
         return this.app.vault.getResourcePath(file);
@@ -17,19 +18,14 @@ export class ObsidianRecipeHost implements RecipeHostAdapter {
         sourceFile: TFile | null,
         ref: RecipeRefTarget,
     ): ResolvedRecipeReference | null {
-        const [cookPath, markdownPath] = resolveReferenceCandidatePaths(
+        const candidates = resolveReferenceCandidatePaths(
             '',
             ref.components ?? [],
             ref.name,
         );
-        const cookTarget = this.app.vault.getAbstractFileByPath(cookPath);
-        const markdownTarget = this.app.vault.getAbstractFileByPath(markdownPath);
-        const target = cookTarget instanceof TFile
-            ? cookTarget
-            : markdownTarget instanceof TFile
-                && this.app.metadataCache.getFileCache(markdownTarget)?.frontmatter?.recipe === true
-                ? markdownTarget
-                : null;
+        const target = candidates.map(path => this.app.vault.getAbstractFileByPath(path))
+            .find((file): file is TFile => file instanceof TFile
+                && isRecipeFile(file.path, this.app.metadataCache.getFileCache(file)?.frontmatter));
 
         return target
             ? {
@@ -44,6 +40,7 @@ export class ObsidianRecipeHost implements RecipeHostAdapter {
 
     openReference(reference: ResolvedRecipeReference): void {
         const leaf = this.app.workspace.getLeaf(false);
+        this.onOpenRecipe?.(leaf);
         void leaf.setViewState({
             type: 'cook',
             state: {

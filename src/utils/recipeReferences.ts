@@ -5,8 +5,8 @@
  * { name: "Beans", components: [".", "Components"] }. The components are a path
  * relative to the root of the recipe collection. In Obsidian, the vault root
  * is the recipe collection root. This resolves that to concrete vault paths,
- * with `.cook` remaining the primary Cooklang target and a `.md` recipe as a
- * plugin-specific fallback.
+ * with `.cook` remaining the primary target, followed by a marked `.md` recipe
+ * and finally a `.cook.md` recipe.
  */
 
 /**
@@ -28,15 +28,16 @@ export function resolveReferencePath(
 /**
  * Resolve the ordered vault-path candidates for a recipe reference. `.cook`
  * remains first to preserve the Cooklang convention; callers may use the
- * `.md` path only when it is known to be a Cooklang recipe in Obsidian.
+ * ordinary `.md` path only when it is known to be a Cooklang recipe in Obsidian.
+ * The compound suffix is recognized without a property.
  */
 export function resolveReferenceCandidatePaths(
     recipesRoot: string,
     components: string[],
     name: string,
-): [cookPath: string, markdownPath: string] {
+): [cookPath: string, markdownPath: string, cookMarkdownPath: string] {
     const basePath = resolveReferenceBasePath(recipesRoot, components, name);
-    return [basePath + '.cook', basePath + '.md'];
+    return [basePath + '.cook', basePath + '.md', basePath + '.cook.md'];
 }
 
 function resolveReferenceBasePath(

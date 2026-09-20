@@ -1,5 +1,6 @@
 import { App, Plugin, PluginSettingTab, Setting } from 'obsidian';
 import { CookView } from './cookView';
+import { RECIPE_FORMATS, type RecipeFormat } from './utils/recipeFiles';
 
 declare class CookPlugin extends Plugin {
   settings: CooklangSettings;
@@ -22,6 +23,7 @@ export class CooklangSettings {
   highlightIngredientCookware: boolean = false;
   groupIngredientsBySection: boolean = false;
   defaultView: 'source' | 'preview' = 'source';
+  defaultRecipeFormat: RecipeFormat = 'cook';
   showServingsScaler: boolean = true;
   twoColumnLayout: boolean = true;
   enableStepTracking: boolean = true;
@@ -47,6 +49,20 @@ export class CookSettingsTab extends PluginSettingTab {
     let { containerEl } = this;
 
     containerEl.empty();
+
+    new Setting(containerEl)
+      .setName('New recipe format')
+      .setDesc('Markdown recipes support Obsidian properties, search, and note embeds. Existing files are unchanged.')
+      .addDropdown(dropdown => dropdown
+        .addOption('cook', '.cook')
+        .addOption('cook.md', '.cook.md')
+        .addOption('md', '.md with recipe: true')
+        .setValue(this.plugin.settings.defaultRecipeFormat)
+        .onChange(async value => {
+          if (!RECIPE_FORMATS.includes(value as RecipeFormat)) return;
+          this.plugin.settings.defaultRecipeFormat = value as RecipeFormat;
+          await this.plugin.saveData(this.plugin.settings);
+        }));
 
     new Setting(containerEl)
       .setName('Preview Options')
