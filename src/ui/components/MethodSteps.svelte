@@ -7,7 +7,8 @@
         DEFAULT_SECONDS_LABELS,
     } from '../../utils/timeFormatters';
     import { getSections, type StepView } from '../../utils/sectionHelpers';
-    import { getStepImageFor } from '../../utils/stepImages';
+    import { getRecipeStepImage } from '../../utils/stepImages';
+    import { recipeImageBasenames } from '../../utils/recipeFiles';
     import type { RecipeRenderModel } from '../types';
     import StepPart from './StepPart.svelte';
 
@@ -21,7 +22,7 @@
 
     function stepImage(step: StepView): TFile | null {
         if (!model.settings.showImages || !model.file) return null;
-        return getStepImageFor(step.globalIndex + 1, model.file.basename, allImages);
+        return getRecipeStepImage(step.globalIndex + 1, recipeImageBasenames(model.file.path), allImages);
     }
 
     function trackStep(node: HTMLElement, index: number): { update: (nextIndex: number) => void; destroy: () => void } {

@@ -15,6 +15,14 @@ export interface ImageLike {
     extension: string;
 }
 
+export function getRecipeStepImage<T extends ImageLike>(stepNumber: number, basenames: string[], images: T[]): T | null {
+    for (const name of basenames) {
+        const image = getStepImageFor(stepNumber, name, images);
+        if (image) return image;
+    }
+    return null;
+}
+
 /**
  * Returns the 1-based step number encoded in an image basename, or null if the
  * basename is not a "<recipeBasename>.<digits>" step image.

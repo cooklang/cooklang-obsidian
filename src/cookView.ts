@@ -1,5 +1,5 @@
 import type { CooklangRecipe } from '@cooklang/cooklang';
-import {TextFileView, WorkspaceLeaf, ViewStateResult} from 'obsidian'
+import {TextFileView, WorkspaceLeaf, ViewStateResult, setIcon, setTooltip} from 'obsidian'
 import {CooklangSettings} from './settings';
 import {EditorView, keymap, highlightActiveLine, lineNumbers} from "@codemirror/view"
 import {Annotation, EditorState, Extension} from "@codemirror/state"
@@ -23,6 +23,7 @@ import CookViewRoot from './ui/CookViewRoot.svelte';
 import { ObsidianRecipeHost } from './ui/ObsidianRecipeHost';
 import { createUiInstanceId } from './ui/instanceIds';
 import type { CookViewMode, RecipeRenderModel } from './ui/types';
+import { recipeName } from './utils/recipeFiles';
 
 // File loads and view cleanup also replace the CodeMirror document. Mark those
 // transactions so only editor-originated changes schedule an Obsidian save.
@@ -45,17 +46,20 @@ export class CookView extends TextFileView {
     private editorLineWrap: boolean;
     private viewportMeasureFrame: number | null = null;
     private removeViewportListeners: (() => void) | null = null;
+    private modeButtonEl: HTMLElement | null = null;
     data: string = '';
     checkedIngredients: Set<string> = new Set();
     scale: number = 1;
     currentStep: number = -1;
     private pendingReferenceScale: RecipeReferenceScaleRequest | null = null;
 
-    constructor(leaf: WorkspaceLeaf, settings: CooklangSettings, alarms: AlarmCoordinator) {
+    constructor(leaf: WorkspaceLeaf, settings: CooklangSettings, alarms: AlarmCoordinator,
+        private editAsMarkdown?: (leaf: WorkspaceLeaf) => Promise<void>,
+        onOpenRecipe?: (leaf: WorkspaceLeaf) => void) {
         super(leaf);
         this.settings = settings;
         this.instanceId = createUiInstanceId('cook-view');
-        this.host = new ObsidianRecipeHost(this.app);
+        this.host = new ObsidianRecipeHost(this.app, onOpenRecipe);
         this.currentView = this.settings.defaultView === 'preview' ? 'preview' : 'source';
         this.modeStore = writable(this.currentView);
         this.previewStore = writable<RecipeRenderModel | null>(null);
@@ -106,13 +110,8 @@ export class CookView extends TextFileView {
         if (this.currentView === 'preview') this.renderPreview();
 
         // Add mode toggle button to the action buttons in top right
-        this.addAction('book-open', 'Toggle Preview', () => {
-            if (this.currentView === 'source') {
-                this.setViewMode('preview');
-            } else {
-                this.setViewMode('source');
-            }
-        });
+        this.modeButtonEl = this.addAction('book-open', '', () => this.switchMode());
+        this.updateModeButton();
     }
 
     // Initialize CodeMirror editor
@@ -192,6 +191,7 @@ export class CookView extends TextFileView {
     setViewMode(mode: CookViewMode) {
         this.currentView = mode;
         this.modeStore.set(mode);
+        this.updateModeButton();
         if (mode === 'preview') this.renderPreview();
         else {
             this.queueEditorMeasure();
@@ -200,6 +200,15 @@ export class CookView extends TextFileView {
 
     switchMode() {
         this.setViewMode(this.currentView === 'source' ? 'preview' : 'source');
+    }
+
+    private updateModeButton() {
+        if (!this.modeButtonEl) return;
+        const editing = this.currentView === 'source';
+        setIcon(this.modeButtonEl, editing ? 'book-open' : 'edit-3');
+        setTooltip(this.modeButtonEl, editing
+            ? 'Current view: editing\nClick to read'
+            : 'Current view: reading\nClick to edit');
     }
 
     onunload() {
@@ -225,10 +234,17 @@ export class CookView extends TextFileView {
     onPaneMenu(menu: any, source: string) {
         super.onPaneMenu(menu, source);
 
+        if (this.file?.extension === 'md' && this.editAsMarkdown) {
+            menu.addItem((item: import('obsidian').MenuItem) => item
+                .setTitle('Edit as Markdown')
+                .setIcon('file-pen')
+                .onClick(() => this.editAsMarkdown?.(this.leaf)));
+        }
+
         menu.addItem((item: any) => {
             item
                 .setTitle(this.currentView === 'source' ? 'Show Preview' : 'Show Source')
-                .setIcon(this.currentView === 'source' ? 'book-open' : 'edit')
+                .setIcon(this.currentView === 'source' ? 'book-open' : 'edit-3')
                 .onClick(() => {
                     this.setViewMode(this.currentView === 'source' ? 'preview' : 'source');
                 });
@@ -238,8 +254,8 @@ export class CookView extends TextFileView {
     onMoreOptionsMenu(menu: any) {
         menu.addItem((item: any) => {
             item
-                .setTitle('Toggle Source/Preview')
-                .setIcon('book-open')
+                .setTitle(this.currentView === 'source' ? 'Show Preview' : 'Show Source')
+                .setIcon(this.currentView === 'source' ? 'book-open' : 'edit-3')
                 .onClick(() => {
                     this.setViewMode(this.currentView === 'source' ? 'preview' : 'source');
                 });
@@ -315,7 +331,7 @@ export class CookView extends TextFileView {
     }
 
     getDisplayText() {
-        if (this.file) return this.file.basename;
+        if (this.file) return recipeName(this.file.path);
         else return "Cooklang (no file)";
     }
 

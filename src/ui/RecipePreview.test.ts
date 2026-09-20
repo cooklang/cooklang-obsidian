@@ -47,6 +47,7 @@ function settings() {
         highlightIngredientCookware: true,
         groupIngredientsBySection: false,
         defaultView: 'source' as const,
+        defaultRecipeFormat: 'cook' as const,
         showServingsScaler: true,
         twoColumnLayout: true,
         enableStepTracking: true,

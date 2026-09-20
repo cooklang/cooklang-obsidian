@@ -2,9 +2,10 @@
     import type { TFile } from 'obsidian';
     import { buildMetaPills } from '../../utils/heroModel';
     import type { RecipeRenderModel } from '../types';
+    import { recipeName } from '../../utils/recipeFiles';
 
     let { model, mainImage }: { model: RecipeRenderModel; mainImage: TFile | string | null } = $props();
-    let title = $derived(model.recipe.title?.trim() || model.file?.basename || 'Recipe');
+    let title = $derived(model.recipe.title?.trim() || (model.file && recipeName(model.file.path)) || 'Recipe');
     let description = $derived(model.recipe.description?.trim());
     let pills = $derived(buildMetaPills(model.recipe, model.state.displayServings));
     let mainImageUrl = $derived(

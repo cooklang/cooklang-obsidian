@@ -3,6 +3,8 @@
  */
 
 import { TFile } from 'obsidian';
+import { recipeImageBasenames } from './recipeFiles';
+import { getRecipeMainImage } from './recipeImages';
 
 /**
  * Supported image extensions following Cooklang conventions
@@ -27,7 +29,7 @@ export function isImageExtension(extension: string): boolean {
 /**
  * Finds recipe-related image files following Cooklang conventions
  * - Main image: same basename as recipe file (e.g., recipe.jpg for recipe.cook)
- * - Step images: basename with suffix (e.g., recipe.step1.jpg)
+ * - Step images: basename with a one-based suffix (e.g., recipe.1.jpg)
  *
  * @param recipeFile - The recipe TFile
  * @returns Object containing main image if found, and array of all related images
@@ -46,10 +48,11 @@ export function findRecipeImages(recipeFile: TFile | null): {
         return { mainImage: null, allImages: [] };
     }
 
+    const basenames = recipeImageBasenames(recipeFile.path);
     // Get all files in the same directory
     const otherFiles = recipeFile.parent.children.filter(
         f => f instanceof TFile &&
-            (f.basename === recipeFile.basename || f.basename.startsWith(recipeFile.basename + '.')) &&
+            basenames.some(name => f.basename === name || f.basename.startsWith(name + '.')) &&
             f.name !== recipeFile.name
     ) as TFile[];
 
@@ -57,7 +60,7 @@ export function findRecipeImages(recipeFile: TFile | null): {
     const imageFiles = otherFiles.filter(f => isImageExtension(f.extension));
 
     // Find main image (exact basename match)
-    const mainImage = imageFiles.find(f => f.basename === recipeFile.basename) ?? null;
+    const mainImage = getRecipeMainImage(recipeFile.path, imageFiles);
 
     return {
         mainImage,
