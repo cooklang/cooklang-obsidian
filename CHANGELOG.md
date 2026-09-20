@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.0](https://github.com/cooklang/cooklang-obsidian/compare/0.12.0...0.13.0) (2026-09-20)
+
+
+### Features
+
+* add first-class Markdown recipe support ([#147](https://github.com/cooklang/cooklang-obsidian/issues/147)) ([1d79902](https://github.com/cooklang/cooklang-obsidian/commit/1d799028b743bc7b8f86eebebc92a7b5d08fde1c))
+
 ## [0.12.0](https://github.com/cooklang/cooklang-obsidian/compare/0.11.11...0.12.0) (2026-09-20)
 
 
