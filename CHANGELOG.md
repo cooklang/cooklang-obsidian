@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.12.0](https://github.com/cooklang/cooklang-obsidian/compare/0.11.11...0.12.0) (2026-09-20)
+
+
+### Features
+
+* improve recipe previews and reference scaling ([ed77468](https://github.com/cooklang/cooklang-obsidian/commit/ed7746872e1d403608f66ff14160f1ed42d4cc55))
+* improve recipe references and metadata rendering ([72561ea](https://github.com/cooklang/cooklang-obsidian/commit/72561ea5621274431f0ac787a783eaec2bf00d89))
+
+
+### Bug Fixes
+
+* preserve forced line breaks in steps ([ccb2eb3](https://github.com/cooklang/cooklang-obsidian/commit/ccb2eb38231685541db61f4f3c520a28daba6b4d))
+* ring timer alarms until all notices are dismissed ([#146](https://github.com/cooklang/cooklang-obsidian/issues/146)) ([242af6e](https://github.com/cooklang/cooklang-obsidian/commit/242af6e8124bc17634050c0f395c1f8ecdcda589))
+* show single named section heading ([94ab3c3](https://github.com/cooklang/cooklang-obsidian/commit/94ab3c36182ffe1ffdafea977a117acf659e44c0))
+
 ## [0.11.11](https://github.com/cooklang/cooklang-obsidian/compare/0.11.10...0.11.11) (2026-08-28)
 
 
