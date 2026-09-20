@@ -657,6 +657,18 @@
   color: var(--text-muted);
 }
 
+.cook-timer-notice-dismiss {
+  margin-top: var(--size-4-2, 8px);
+}
+
+@media (pointer: coarse) {
+  .cook-timer-notice-dismiss {
+    min-height: 48px;
+    min-width: 48px;
+  }
+}
+
+.cook-timer-notice-dismiss:focus-visible,
 .cook-stepper-btn:focus-visible,
 .cook-ing-checkbox:focus-visible,
 .cook-ing-details > summary:focus-visible,

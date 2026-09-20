@@ -7,8 +7,8 @@
  */
 
 import { Howl } from 'howler';
-import { Notice } from 'obsidian';
 import type { CooklangSettings } from '../settings';
+import type { AlarmCoordinator } from './AlarmCoordinator';
 
 /**
  * Timer state data
@@ -38,9 +38,7 @@ export interface TimerSnapshot {
  */
 export interface TimerServiceConfig {
     tickSoundUrl: string;
-    alarmSoundUrl: string;
     tickVolume?: number;
-    alarmVolume?: number;
 }
 
 /**
@@ -52,7 +50,6 @@ export class TimerService {
     private keysByTimerId: Map<string, string> = new Map();
     private listeners: Map<string, Set<(snapshot: TimerSnapshot | null) => void>> = new Map();
     private tickSound: Howl;
-    private alarmSound: Howl;
     private readonly handleVisibilityChange = (): void => {
         if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
         for (const timer of this.timers.values()) this.updateRunningTimer(timer);
@@ -61,17 +58,17 @@ export class TimerService {
     /**
      * Create a new TimerService
      * @param settings - Plugin settings
-     * @param config - Configuration with sound URLs and volumes
+     * @param config - Tick sound URL and volume
+     * @param alarms - Completion alerts shared by all recipe views
      */
-    constructor(private settings: CooklangSettings, config: TimerServiceConfig) {
+    constructor(
+        private settings: Pick<CooklangSettings, 'timersTick'>,
+        config: TimerServiceConfig,
+        private readonly alarms: Pick<AlarmCoordinator, 'notify' | 'dismiss'>,
+    ) {
         this.tickSound = new Howl({
             src: [config.tickSoundUrl],
             volume: config.tickVolume ?? 0.3
-        });
-
-        this.alarmSound = new Howl({
-            src: [config.alarmSoundUrl],
-            volume: config.alarmVolume ?? 0.3
         });
 
         if (typeof document !== 'undefined') {
@@ -118,6 +115,7 @@ export class TimerService {
         const timer = timerId ? this.timers.get(timerId) : undefined;
         if (!timerId) return;
 
+        this.alarms.dismiss(timerId);
         if (timer?.intervalId !== undefined) clearInterval(timer.intervalId);
         this.timers.delete(timerId);
         this.timerIdsByKey.delete(key);
@@ -138,6 +136,10 @@ export class TimerService {
         onTick: (remaining: number) => void = () => {},
         key?: string,
     ): string {
+        if (key) {
+            const previousId = this.timerIdsByKey.get(key);
+            if (previousId) this.stopTimer(previousId);
+        }
         const timer: Timer = {
             id: this.generateTimerId(),
             duration: seconds,
@@ -169,6 +171,7 @@ export class TimerService {
      * @param timerId - ID of timer to stop
      */
     public stopTimer(timerId: string): void {
+        this.alarms.dismiss(timerId);
         const timer = this.timers.get(timerId);
         if (!timer) return;
         this.clearTimerInterval(timer);
@@ -203,7 +206,7 @@ export class TimerService {
      */
     public resumeTimer(timerId: string, onTick: (remaining: number) => void = () => {}): void {
         const timer = this.timers.get(timerId);
-        if (!timer || timer.isRunning) return;
+        if (!timer || timer.isRunning || timer.remaining <= 0) return;
 
         timer.endsAt = Date.now() + timer.remaining * 1000;
         const intervalId = window.setInterval(() => this.updateRunningTimer(timer, onTick), 1000);
@@ -259,13 +262,6 @@ export class TimerService {
     }
 
     /**
-     * Play alarm sound
-     */
-    public playAlarm(): void {
-        if (this.settings.timersRing) this.alarmSound.play();
-    }
-
-    /**
      * Stop all timers and clean up
      */
     public dispose(): void {
@@ -275,6 +271,7 @@ export class TimerService {
 
         // Stop all running timers
         for (const timer of this.timers.values()) {
+            this.alarms.dismiss(timer.id);
             if (timer.intervalId !== undefined) {
                 clearInterval(timer.intervalId);
             }
@@ -284,9 +281,8 @@ export class TimerService {
         this.keysByTimerId.clear();
         this.listeners.clear();
 
-        // Unload sounds
+        // The plugin owns the shared alarm; this view owns only its tick sound.
         this.tickSound.unload();
-        this.alarmSound.unload();
     }
 
     /**
@@ -304,15 +300,13 @@ export class TimerService {
             this.clearTimerInterval(timer);
             timer.isRunning = false;
             timer.endsAt = undefined;
+            // Register the alert before callbacks, which may reset or dispose
+            // the timer synchronously when they receive its completed state.
+            this.alarms.notify(timer.id, timer.label);
         }
 
         onTick(timer.remaining);
         this.notifyTimer(timer.id);
-
-        if (timer.remaining <= 0) {
-            this.playAlarm();
-            new Notice(`Timer "${timer.label}" has finished!`, 5000);
-        }
     }
 
     private clearTimerInterval(timer: Timer): void {
