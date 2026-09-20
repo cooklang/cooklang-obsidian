@@ -7,12 +7,12 @@ vi.mock('howler', () => ({
     },
 }));
 
-vi.mock('obsidian', () => ({ Notice: vi.fn() }));
-
 import { TimerService, type TimerSnapshot } from './TimerService';
 
 describe('TimerService timer controller', () => {
+    const alarms = { notify: vi.fn(), dismiss: vi.fn() };
     beforeEach(() => {
+        vi.clearAllMocks();
         vi.useFakeTimers();
         vi.stubGlobal('window', { setInterval: globalThis.setInterval });
     });
@@ -24,8 +24,9 @@ describe('TimerService timer controller', () => {
 
     it('publishes countdown state and toggles start, pause, and resume', () => {
         const service = new TimerService(
-            { timersTick: false, timersRing: false } as any,
-            { tickSoundUrl: 'tick.mp3', alarmSoundUrl: 'alarm.mp3' },
+            { timersTick: false },
+            { tickSoundUrl: 'tick.mp3' },
+            alarms,
         );
         const snapshots: Array<TimerSnapshot | null> = [];
         const unsubscribe = service.subscribe('step-1-timer-1', snapshot => {
@@ -59,25 +60,30 @@ describe('TimerService timer controller', () => {
 
     it('marks a completed timer and starts a fresh countdown when toggled again', () => {
         const service = new TimerService(
-            { timersTick: false, timersRing: false } as any,
-            { tickSoundUrl: 'tick.mp3', alarmSoundUrl: 'alarm.mp3' },
+            { timersTick: false },
+            { tickSoundUrl: 'tick.mp3' },
+            alarms,
         );
 
         service.toggle('timer', 1, 'rest');
         vi.advanceTimersByTime(1000);
         expect(service.getSnapshot('timer')).toMatchObject({ remaining: 0, status: 'completed' });
+        const completedId = service.getSnapshot('timer')!.id;
+        expect(alarms.notify).toHaveBeenCalledExactlyOnceWith(completedId, 'rest');
 
         service.toggle('timer', 1, 'rest');
         expect(service.getSnapshot('timer')).toMatchObject({ remaining: 1, status: 'running' });
         expect(service.getAllTimers()).toHaveLength(2);
+        expect(alarms.dismiss).toHaveBeenCalledWith(completedId);
 
         service.dispose();
     });
 
     it('cancels and forgets a keyed timer so a new duration can be selected', () => {
         const service = new TimerService(
-            { timersTick: false, timersRing: false } as any,
-            { tickSoundUrl: 'tick.mp3', alarmSoundUrl: 'alarm.mp3' },
+            { timersTick: false },
+            { tickSoundUrl: 'tick.mp3' },
+            alarms,
         );
         const snapshots: Array<TimerSnapshot | null> = [];
         service.subscribe('timer', snapshot => snapshots.push(snapshot));
@@ -98,8 +104,9 @@ describe('TimerService timer controller', () => {
     it('uses elapsed wall time when interval callbacks were suspended', () => {
         vi.setSystemTime(new Date('2026-08-28T10:00:00Z'));
         const service = new TimerService(
-            { timersTick: false, timersRing: false } as any,
-            { tickSoundUrl: 'tick.mp3', alarmSoundUrl: 'alarm.mp3' },
+            { timersTick: false },
+            { tickSoundUrl: 'tick.mp3' },
+            alarms,
         );
 
         service.toggle('timer', 10, 'rest');
@@ -117,8 +124,9 @@ describe('TimerService timer controller', () => {
     it('reconciles elapsed background time before pausing', () => {
         vi.setSystemTime(new Date('2026-08-28T10:00:00Z'));
         const service = new TimerService(
-            { timersTick: false, timersRing: false } as any,
-            { tickSoundUrl: 'tick.mp3', alarmSoundUrl: 'alarm.mp3' },
+            { timersTick: false },
+            { tickSoundUrl: 'tick.mp3' },
+            alarms,
         );
 
         service.toggle('timer', 10, 'rest');

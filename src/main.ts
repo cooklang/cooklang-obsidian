@@ -12,6 +12,8 @@ import {
 import { CookView } from './cookView'
 import { CooklangSettings, CookSettingsTab } from './settings'
 import { parserService } from './services/ParserService';
+import { AlarmCoordinator } from './services/AlarmCoordinator';
+import alarmMp3 from './alarm.mp3';
 import { mount, unmount } from 'svelte';
 import { writable } from 'svelte/store';
 import RecipeEmbed from './ui/RecipeEmbed.svelte';
@@ -27,12 +29,15 @@ export default class CookPlugin extends Plugin {
 
   settings!: CooklangSettings;
   recipeHost!: ObsidianRecipeHost;
+  private alarms!: AlarmCoordinator;
 
   async onload() {
     super.onload();
     const storedData = await this.loadData();
     const isFirstInstall = storedData == null;
     this.settings = Object.assign(new CooklangSettings(), storedData ?? {});
+    this.alarms = new AlarmCoordinator(this.settings.timersRing, alarmMp3);
+    this.register(() => this.alarms.dispose());
 
     // register a custom icon
     this.addDocumentIcon("cook");
@@ -381,10 +386,11 @@ export default class CookPlugin extends Plugin {
 
   // function to create the view
   cookViewCreator = (leaf: WorkspaceLeaf) => {
-    return new CookView(leaf, this.settings);
+    return new CookView(leaf, this.settings, this.alarms);
   }
 
   reloadCookViews() {
+    this.alarms.setEnabled(this.settings.timersRing);
     this.app.workspace.getLeavesOfType('cook').forEach(leaf => {
       if(leaf.view instanceof CookView) {
         leaf.view.updateSettings(this.settings);

@@ -8,6 +8,7 @@ import {defaultKeymap} from "@codemirror/commands"
 import {cooklang, cooklangHighlighter} from './mode/cook/cook'
 import { parserService } from './services/ParserService';
 import { TimerService } from './services/TimerService';
+import type { AlarmCoordinator } from './services/AlarmCoordinator';
 import {
     parseServingsValue,
     computeScale,
@@ -15,7 +16,6 @@ import {
     deriveServingsState,
     type RecipeReferenceScaleRequest,
 } from './utils/scaling';
-import alarmMp3 from './alarm.mp3';
 import timerMp3 from './timer.mp3';
 import { flushSync, mount, unmount } from 'svelte';
 import { writable, type Writable } from 'svelte/store';
@@ -51,7 +51,7 @@ export class CookView extends TextFileView {
     currentStep: number = -1;
     private pendingReferenceScale: RecipeReferenceScaleRequest | null = null;
 
-    constructor(leaf: WorkspaceLeaf, settings: CooklangSettings) {
+    constructor(leaf: WorkspaceLeaf, settings: CooklangSettings, alarms: AlarmCoordinator) {
         super(leaf);
         this.settings = settings;
         this.instanceId = createUiInstanceId('cook-view');
@@ -69,10 +69,9 @@ export class CookView extends TextFileView {
             this.settings,
             {
                 tickSoundUrl: timerMp3,
-                alarmSoundUrl: alarmMp3,
                 tickVolume: 0.3,
-                alarmVolume: 0.3
             },
+            alarms,
         );
 
         this.svelteRoot = mount(CookViewRoot, {

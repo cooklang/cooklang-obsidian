@@ -220,7 +220,7 @@ export class CookSettingsTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Alarm When Timers End')
-      .setDesc('Play a ring sound when a running timer finishes')
+      .setDesc('Ring until all finished timer notifications are dismissed. Notifications remain visible when sound is off.')
       .addToggle(toggle => toggle
         .setValue(this.plugin.settings.timersRing)
         .onChange((value: boolean) => {
