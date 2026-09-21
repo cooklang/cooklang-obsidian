@@ -36,12 +36,13 @@ The misspelled `instal-deps` package script is legacy and is not the canonical s
 ## Repository map
 
 - `src/main.ts`: plugin lifecycle, settings loading, view/extension registration, commands, menus, Markdown code-block processors, and `recipe: true` auto-detection.
-- `src/cookView.ts`: the `TextFileView`, CodeMirror editor, source/preview switching, per-view checklist state, persisted mode/scale/current-step state, and rich-preview entry point.
+- `src/cookView.ts`: the preview-only `TextFileView`, persisted preview mode/scale/current-step state, and rich-preview entry point. Recipe source editing uses Obsidian's native `MarkdownView`.
+- `src/services/RecipeSessions.ts`: per-leaf recipe sessions that retain timers, scaling, step position, and checked ingredients across source/preview view replacement.
 - `src/services/ParserService.ts`: singleton initialization and access to the Cooklang WASM parser.
 - `src/services/TimerService.ts`: timer intervals, Howler audio, notices, and cleanup.
 - `src/renderers/`: focused Obsidian DOM renderers. `PreviewRenderer` composes the full recipe; `MarkdownRecipeRenderer` composes compact fenced-block output. Shared state and callbacks live in `renderers/types.ts`.
 - `src/utils/`: mostly pure transformations and view models, with colocated `*.test.ts` files.
-- `src/mode/cook/`: CodeMirror `StreamLanguage` highlighting and its tests.
+- `src/mode/cook/`: Cooklang parsing and native-editor mark decorations; the native Markdown language remains installed.
 - `src/settings.ts`: settings defaults and the Obsidian settings UI.
 - `src/styles.scss`: editor, full-preview, and Markdown-embed styling.
 - `test-recipes/`: fixtures for manual testing in Obsidian.
@@ -68,8 +69,8 @@ fenced `cook` / `cooklang` block in Markdown reading mode
 ## Architecture contracts
 
 - Keep `ParserService` a singleton and keep initialization idempotent. The WASM bindings use shared global state; creating independent parser/WASM instances can corrupt it. Await `initialize()` before parsing in flows that may run before plugin startup completes.
-- `CookView` owns interactive full-preview state. Pass state and callbacks through `RenderContext`; focused renderers should not become competing state owners. Interactions normally update `CookView` and trigger a full preview render.
-- Only `mode`, `scale`, and `currentStep` are persisted in leaf state. Checked ingredients and active timers are in-memory session state and are cleared during view cleanup.
+- The plugin owns per-leaf recipe sessions; `CookView` reads and updates the session through the preview model and callbacks. UI components should not become competing state owners.
+- Preview leaf state persists `mode`, `scale`, and `currentStep`. Native source leaves retain Obsidian's own state. Checked ingredients and active timers remain in memory across same-file source/preview switches and are disposed on navigation, leaf closure, file deletion, or plugin unload.
 - Scaling intentionally parses twice: parse with the current scale for displayed quantities, and parse unscaled data to derive base servings. Never derive base servings from an already scaled recipe.
 - Section step tracking uses one global zero-based index across the recipe. Step-image filenames are one-based: `Recipe.1.jpg` is the first step. Convert between them explicitly where needed.
 - Recipe images are siblings of the recipe. The main image shares its basename; step images add a numeric suffix. Use `app.vault.getResourcePath()` for display URLs.
@@ -77,7 +78,7 @@ fenced `cook` / `cooklang` block in Markdown reading mode
 - Markdown embeds inherit most user settings, but `embedSettings()` deliberately disables images, live timers, step tracking, and the two-column layout without mutating the shared settings object.
 - Preserve navigation behavior for frontmatter-detected Markdown recipes: the transient view switch uses `sync: true` so Back returns to the previous note.
 - Dispose timers/intervals and audio resources, destroy editors, and unregister lifecycle resources through Obsidian APIs.
-- Keep the Rollup WASM plugin before the other plugins and preserve synchronous handling of `cooklang_wasm_bg.wasm`. Keep `obsidian` and `codemirror` external unless a packaging change explicitly requires otherwise.
+- Keep the Rollup WASM plugin before the other plugins and preserve synchronous handling of `cooklang_wasm_bg.wasm`. Keep `obsidian`, `codemirror`, `@codemirror/state`, and `@codemirror/view` external. Bundle the isolated Cooklang language and its Lezer highlighter together to avoid incompatible token-tag instances in Obsidian.
 
 ## Implementation conventions
 

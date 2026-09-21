@@ -27,6 +27,13 @@ import { convertRecipe, synchronizeRecipeBuffers } from './services/RecipeConver
 import { RecipeFormatModal } from './ui/RecipeFormatModal';
 import { RecipeEmbedChild } from './ui/RecipeEmbedChild';
 import { wholeRecipeEmbedRoot, WholeRecipeEmbedRegistry } from './utils/wholeRecipeEmbeds';
+import { nativeCookEditor } from './mode/cook/nativeEditor';
+import { isRecipeSource } from './utils/recipeSource';
+import { RecipeSessions, type RecipeSession } from './services/RecipeSessions';
+import { TimerService } from './services/TimerService';
+import timerMp3 from './timer.mp3';
+import type { RecipeReferenceScaleRequest } from './utils/scaling';
+import { createUiInstanceId } from './ui/instanceIds';
 
 export default class CookPlugin extends Plugin {
 
@@ -37,6 +44,31 @@ export default class CookPlugin extends Plugin {
   private conversions = new Set<TFile>();
   private renderChildren = new Set<RecipeEmbedChild>();
   private disposed = false;
+  private sessions!: RecipeSessions<WorkspaceLeaf, RecipeSession>;
+  private routeTimeout: number | null = null;
+  private routingReady = false;
+
+  saveData(data: CooklangSettings): Promise<void> {
+    const settings = { ...data } as CooklangSettings & { lineWrap?: unknown };
+    delete settings.lineWrap;
+    return super.saveData(settings);
+  }
+
+  private routeLeaves = (): void => {
+    if (this.disposed || !this.routingReady || this.routeTimeout !== null) return;
+    // Never change a leaf synchronously from a CodeMirror update or a view teardown.
+    this.routeTimeout = window.setTimeout(() => {
+      this.routeTimeout = null;
+      if (this.disposed) return;
+      const leaves = new Map<WorkspaceLeaf, string>();
+      this.app.workspace.iterateAllLeaves(leaf => {
+        const path = leaf.view instanceof TextFileView ? leaf.view.file?.path : leaf.getViewState().state?.file;
+        leaves.set(leaf, typeof path === 'string' ? path : '');
+        void this.router.route(leaf);
+      });
+      this.sessions.reconcile(leaves);
+    }, 0);
+  };
 
   async onload() {
     super.onload();
@@ -44,20 +76,35 @@ export default class CookPlugin extends Plugin {
     const storedData = await this.loadData();
     const isFirstInstall = storedData == null;
     this.settings = Object.assign(new CooklangSettings(), storedData ?? {});
+    delete (this.settings as CooklangSettings & { lineWrap?: unknown }).lineWrap;
     if (!RECIPE_FORMATS.includes(this.settings.defaultRecipeFormat)) this.settings.defaultRecipeFormat = 'cook';
     this.alarms = new AlarmCoordinator(this.settings.timersRing, alarmMp3);
     this.register(() => this.alarms.dispose());
+    this.sessions = new RecipeSessions(() => {
+      const timers = new TimerService(this.settings, { tickSoundUrl: timerMp3, tickVolume: 0.3 }, this.alarms);
+      const checkedIngredients = new Set<string>();
+      return { instanceId: createUiInstanceId('cook-session'), scale: 1, currentStep: -1, checkedIngredients, pendingReferenceScale: null, timers,
+        dispose: () => { timers.dispose(); checkedIngredients.clear(); } };
+    });
+    this.register(() => {
+      this.sessions.dispose();
+      if (this.routeTimeout !== null) window.clearTimeout(this.routeTimeout);
+    });
 
     // register a custom icon
     this.addDocumentIcon("cook");
 
     // register the view and extensions
     this.registerView("cook", this.cookViewCreator);
-    this.registerExtensions(["cook"], "cook");
+    this.registerExtensions(["cook"], "markdown");
+    this.registerEditorExtension(nativeCookEditor(this.routeLeaves));
 
     // Render ```cook / ```cooklang fenced blocks inside markdown notes as a
     // compact, read-only recipe (#73).
-    this.recipeHost = new ObsidianRecipeHost(this.app, leaf => this.router.openAsRecipe(leaf));
+    this.recipeHost = new ObsidianRecipeHost(this.app, (leaf, reference) => {
+      const file = this.app.vault.getAbstractFileByPath(reference.targetPath);
+      if (file instanceof TFile) void this.openAsRecipe(leaf, file, reference.scaleRequest);
+    });
     this.register(() => {
       for (const child of this.renderChildren) child.unload();
       this.renderChildren.clear();
@@ -102,10 +149,13 @@ export default class CookPlugin extends Plugin {
     });
 
     this.router = new RecipeViewRouter(
-      path => {
+      (path, leaf) => {
         const file = this.app.vault.getAbstractFileByPath(path);
         if (!(file instanceof TFile)) return false;
         if (isRecipeFile(path)) return true;
+        if (leaf.view instanceof MarkdownView && leaf.view.file === file) {
+          return isRecipeSource(path, leaf.view.editor.getValue(), parseYaml);
+        }
         const cache = this.app.metadataCache.getFileCache(file);
         return cache ? isRecipeFile(path, cache.frontmatter) : undefined;
       },
@@ -113,21 +163,38 @@ export default class CookPlugin extends Plugin {
         if (leaf.view instanceof TextFileView) await leaf.view.save();
         // Saving may yield while the user navigates to another note.
         if (!isCurrent()) return;
-        await leaf.setViewState({ type, state: { file: path, mode: type === 'cook' ? 'preview' : 'source', sync: true } });
+        await this.sessions.preserve(leaf, () => leaf.setViewState({ type,
+          state: { file: path, mode: type === 'cook' ? 'preview' : 'source', source: true, sync: true } }));
+        this.routeLeaves();
       },
       error => this.reportError('Could not open recipe', error),
+      () => this.settings.defaultView,
     );
     this.register(() => this.router.dispose());
-    const routeLeaves = () => this.app.workspace.iterateAllLeaves(leaf => { void this.router.route(leaf); });
+    const routeLeaves = this.routeLeaves;
     this.registerEvent(this.app.workspace.on('active-leaf-change', routeLeaves));
     this.registerEvent(this.app.workspace.on('file-open', routeLeaves));
     this.registerEvent(this.app.workspace.on('layout-change', routeLeaves));
     this.registerEvent(this.app.metadataCache.on('changed', routeLeaves));
     this.registerEvent(this.app.vault.on('rename', (file, oldPath) => {
+      this.sessions.rename(oldPath, file.path);
       this.app.workspace.iterateAllLeaves(leaf => this.router.rename(leaf, oldPath, file.path));
+      this.app.workspace.updateOptions();
       routeLeaves();
     }));
-    this.app.workspace.onLayoutReady(routeLeaves);
+    this.registerEvent(this.app.vault.on('delete', file => this.sessions.delete(file.path)));
+    this.app.workspace.onLayoutReady(() => {
+      if (this.disposed) return;
+      // Default view applies to new navigation, not restored native source tabs.
+      this.app.workspace.iterateAllLeaves(leaf => {
+        const state = leaf.getViewState();
+        if (state.type === 'markdown' && state.state?.mode === 'source' && typeof state.state.file === 'string') {
+          this.router.editAsMarkdown(leaf, state.state.file);
+        }
+      });
+      this.routingReady = true;
+      routeLeaves();
+    });
 
     this.addSettingTab(new CookSettingsTab(this.app, this));
 
@@ -149,7 +216,7 @@ export default class CookPlugin extends Plugin {
           });
         }
 
-        if (file instanceof TFile && file.extension === 'md') {
+        if (file instanceof TFile && (file.extension === 'md' || file.extension === 'cook')) {
           menu.addItem(item => item
             .setTitle('Open as Recipe')
             .setIcon('document-cook')
@@ -160,7 +227,7 @@ export default class CookPlugin extends Plugin {
 
     this.registerEvent(this.app.workspace.on('editor-menu', (menu, _editor, view) => {
       const file = view.file;
-      if (file?.extension === 'md') {
+      if (file && (file.extension === 'md' || file.extension === 'cook')) {
         menu.addItem(item => item
           .setTitle('Open as Recipe')
           .setIcon('document-cook')
@@ -203,7 +270,9 @@ export default class CookPlugin extends Plugin {
         const leaf = this.app.workspace.activeLeaf;
         if (!file || !leaf) return false;
         const format = recipeFormat(file.path);
-        if (!format || !(isRecipeFile(file.path, this.app.metadataCache.getFileCache(file)?.frontmatter)
+        if (!format || !((leaf.view instanceof MarkdownView
+            ? isRecipeSource(file.path, leaf.view.editor.getValue(), parseYaml)
+            : isRecipeFile(file.path, this.app.metadataCache.getFileCache(file)?.frontmatter))
             || leaf.view instanceof CookView)) return false;
         if (!checking) new RecipeFormatModal(this.app, format, target => {
           void this.convertFile(file, leaf, target);
@@ -214,10 +283,10 @@ export default class CookPlugin extends Plugin {
 
     this.addCommand({
       id: 'edit-as-markdown',
-      name: 'Edit as Markdown',
+      name: 'Edit recipe source',
       checkCallback: checking => {
         const leaf = this.app.workspace.activeLeaf;
-        if (!leaf || !(leaf.view instanceof CookView) || leaf.view.file?.extension !== 'md') return false;
+        if (!leaf || !(leaf.view instanceof CookView) || !leaf.view.file) return false;
         if (!checking) void this.editAsMarkdown(leaf);
         return true;
       },
@@ -226,13 +295,18 @@ export default class CookPlugin extends Plugin {
     this.addCommand({
       id: "toggle-preview-recipe",
       name: "Toggle preview recipe",
-      callback: () => {
-        const { workspace } = this.app;
-
-        const activeLeaf = workspace.activeLeaf || workspace.getLeaf();
-        if (activeLeaf && activeLeaf.view instanceof CookView) {
-          activeLeaf.view.switchMode();
+      checkCallback: checking => {
+        const leaf = this.app.workspace.activeLeaf;
+        if (!leaf) return false;
+        const view = leaf.view;
+        if (view instanceof CookView) {
+          if (!checking) void this.editAsMarkdown(leaf);
+          return true;
         }
+        if (!(view instanceof MarkdownView) || !view.file
+            || !isRecipeSource(view.file.path, view.editor.getValue(), parseYaml)) return false;
+        if (!checking) void this.openAsRecipe(leaf, view.file);
+        return true;
       },
     });
 
@@ -243,7 +317,7 @@ export default class CookPlugin extends Plugin {
         const file = this.app.workspace.getActiveFile();
         const leaf = this.app.workspace.activeLeaf;
         
-        if (!file || !leaf || file.extension !== 'md') return false;
+        if (!file || !leaf || (file.extension !== 'md' && file.extension !== 'cook')) return false;
         
         // Only show if currently in markdown view
         if (checking) return leaf.view.getViewType() === 'markdown';
@@ -261,27 +335,37 @@ export default class CookPlugin extends Plugin {
     new Notice(`${message}: ${error instanceof Error ? error.message : String(error)}`);
   }
 
-  private async openAsRecipe(leaf: WorkspaceLeaf, file: TFile): Promise<void> {
-    this.router.openAsRecipe(leaf);
+  private async openAsRecipe(leaf: WorkspaceLeaf, file: TFile, referenceScale: RecipeReferenceScaleRequest | null = null): Promise<void> {
+    const view = leaf.view;
+    const originalFile = view instanceof TextFileView ? view.file : null;
     try {
-      await leaf.setViewState({ type: 'cook', state: { file: file.path, mode: 'preview' } });
+      if (view instanceof TextFileView) await view.save();
+      if (this.disposed || leaf.view !== view || (view instanceof TextFileView && view.file !== originalFile)) return;
+      this.router.openAsRecipe(leaf);
+      await this.sessions.preserve(leaf, () => leaf.setViewState({ type: 'cook',
+        state: { file: file.path, mode: 'preview', referenceScale, sync: view instanceof TextFileView && view.file === file } }));
     } catch (error) {
       this.reportError('Could not open recipe', error);
+    } finally {
+      this.routeLeaves();
     }
   }
 
   private editAsMarkdown = async (leaf: WorkspaceLeaf): Promise<void> => {
     const view = leaf.view;
-    if (!(view instanceof CookView) || view.file?.extension !== 'md') return;
+    if (!(view instanceof CookView) || !view.file) return;
     const file = view.file;
     try {
       await view.save();
-      if (leaf.view !== view || view.file !== file) return;
+      if (this.disposed || leaf.view !== view || view.file !== file) return;
       this.router.editAsMarkdown(leaf, file.path);
-      await leaf.setViewState({ type: 'markdown', state: { file: file.path, mode: 'source', sync: true } });
+      await this.sessions.preserve(leaf, () => leaf.setViewState({ type: 'markdown',
+        state: { file: file.path, mode: 'source', source: true, sync: true } }));
     } catch (error) {
       this.router.openAsRecipe(leaf);
-      this.reportError('Could not edit as Markdown', error);
+      this.reportError('Could not edit recipe source', error);
+    } finally {
+      this.routeLeaves();
     }
   };
 
@@ -405,8 +489,8 @@ export default class CookPlugin extends Plugin {
 
   // function to create the view
   cookViewCreator = (leaf: WorkspaceLeaf) => {
-    return new CookView(leaf, this.settings, this.alarms, this.editAsMarkdown,
-      target => this.router.openAsRecipe(target));
+    return new CookView(leaf, this.settings, path => this.sessions.acquire(leaf, path),
+      this.editAsMarkdown, this.recipeHost);
   }
 
   reloadCookViews() {

@@ -1,19 +1,74 @@
 import { describe, expect, it, vi } from 'vitest';
 import { RecipeViewRouter } from './RecipeViewRouter';
 
-function setup() {
-    const leaf = { state: { type: 'markdown', state: { file: 'Dinner.md' } as Record<string, unknown> },
+function setup(defaultView: 'source' | 'preview' = 'preview') {
+    const leaf = { state: { type: 'markdown', state: { file: 'Dinner.md', mode: 'source', source: true } as Record<string, unknown> },
         getViewState() { return this.state; } };
     const recognized = vi.fn<(path: string) => boolean | undefined>(() => true);
     const switchView = vi.fn(async (target: typeof leaf, type: 'cook' | 'markdown', path: string, isCurrent: () => boolean) => {
-        if (isCurrent()) target.state = { type, state: { file: path, mode: type === 'cook' ? 'preview' : 'source', sync: true } };
+        if (isCurrent()) target.state = { type, state: { file: path, mode: type === 'cook' ? 'preview' : 'source', source: true, sync: true } };
     });
     const error = vi.fn();
-    const router = new RecipeViewRouter(recognized, switchView, error);
+    const router = new RecipeViewRouter(recognized, switchView, error, () => defaultView);
     return { leaf, recognized, switchView, router, error };
 }
 
 describe('Markdown recipe routing', () => {
+    it.each(['Dinner.cook', 'Dinner.cook.md', 'Dinner.md'])('uses native Source mode for %s with the source default', async path => {
+        const { leaf, router, switchView } = setup('source');
+        leaf.state.state = { file: path, mode: 'source', source: false };
+        await router.route(leaf);
+        expect(leaf.state).toEqual({ type: 'markdown', state: { file: path, mode: 'source', source: true, sync: true } });
+        await router.route(leaf);
+        expect(switchView).toHaveBeenCalledTimes(1);
+    });
+
+    it('routes Reading View to the recipe preview even after explicit source selection', async () => {
+        const { leaf, router } = setup('source');
+        router.editAsMarkdown(leaf, 'Dinner.md');
+        leaf.state.state.mode = 'preview';
+        await router.route(leaf);
+        expect(leaf.state.type).toBe('cook');
+    });
+
+    it('uses the source default on new navigation even when Obsidian carries over Reading View', async () => {
+        const { leaf, router } = setup('source');
+        leaf.state.state.mode = 'preview';
+        await router.route(leaf);
+        expect(leaf.state.type).toBe('markdown');
+        expect(leaf.state.state.mode).toBe('source');
+        leaf.state.state.mode = 'preview';
+        await router.route(leaf);
+        expect(leaf.state.type).toBe('cook');
+    });
+
+    it('does not jump to preview when an unsaved property makes an existing note a recipe', async () => {
+        const { leaf, router, recognized, switchView } = setup();
+        recognized.mockReturnValue(false);
+        await router.route(leaf);
+        recognized.mockReturnValue(true);
+        await router.route(leaf);
+        expect(switchView).not.toHaveBeenCalled();
+    });
+
+    it('forces Source again when a recipe is switched to Live Preview', async () => {
+        const { leaf, router } = setup('source');
+        await router.route(leaf);
+        leaf.state.state.source = false;
+        await router.route(leaf);
+        expect(leaf.state.state.source).toBe(true);
+    });
+
+    it('leaves ordinary Markdown and explicitly opened unmarked recipe previews alone', async () => {
+        const { leaf, router, recognized, switchView } = setup();
+        recognized.mockReturnValue(false);
+        await router.route(leaf);
+        leaf.state.type = 'cook';
+        router.openAsRecipe(leaf);
+        await router.route(leaf);
+        expect(switchView).not.toHaveBeenCalled();
+    });
+
     it('waits for metadata and opens the same leaf in preview without a history entry', async () => {
         const { leaf, recognized, router, switchView } = setup();
         recognized.mockReturnValue(undefined);
@@ -21,7 +76,7 @@ describe('Markdown recipe routing', () => {
         expect(switchView).not.toHaveBeenCalled();
         recognized.mockReturnValue(true);
         await router.route(leaf);
-        expect(leaf.state).toEqual({ type: 'cook', state: { file: 'Dinner.md', mode: 'preview', sync: true } });
+        expect(leaf.state).toEqual({ type: 'cook', state: { file: 'Dinner.md', mode: 'preview', source: true, sync: true } });
     });
 
     it('does not override an explicitly restored CookView', async () => {
@@ -43,6 +98,7 @@ describe('Markdown recipe routing', () => {
         expect(other.state.type).toBe('cook');
         expect(leaf.state.type).toBe('markdown');
         router.openAsRecipe(leaf);
+        leaf.state.state.mode = 'preview';
         await router.route(leaf);
         expect(leaf.state.type).toBe('cook');
     });

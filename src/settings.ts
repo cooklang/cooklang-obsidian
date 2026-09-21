@@ -19,7 +19,6 @@ export class CooklangSettings {
   showQuantitiesInline: boolean = false;
   timersTick: boolean = true;
   timersRing: boolean = true;
-  lineWrap: boolean = true;
   highlightIngredientCookware: boolean = false;
   groupIngredientsBySection: boolean = false;
   defaultView: 'source' | 'preview' = 'source';
@@ -87,17 +86,6 @@ export class CookSettingsTab extends PluginSettingTab {
         .setValue(this.plugin.settings.showImages)
         .onChange((value: boolean) => {
           this.plugin.settings.showImages = value;
-          this.plugin.saveData(this.plugin.settings);
-          this.plugin.reloadCookViews();
-        }));
-
-    new Setting(containerEl)
-      .setName('Line Wrap')
-      .setDesc('Wrap long lines')
-      .addToggle(toggle => toggle
-        .setValue(this.plugin.settings.lineWrap)
-        .onChange((value: boolean) => {
-          this.plugin.settings.lineWrap = value;
           this.plugin.saveData(this.plugin.settings);
           this.plugin.reloadCookViews();
         }));
