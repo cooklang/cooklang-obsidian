@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.0](https://github.com/cooklang/cooklang-obsidian/compare/0.13.0...0.14.0) (2026-09-21)
+
+
+### Features
+
+* use native Obsidian editor for recipe source ([#149](https://github.com/cooklang/cooklang-obsidian/issues/149)) ([e564d5d](https://github.com/cooklang/cooklang-obsidian/commit/e564d5d06531092ffa9809aafcf7141fcfd887a8))
+
 ## [0.13.0](https://github.com/cooklang/cooklang-obsidian/compare/0.12.0...0.13.0) (2026-09-20)
 
 
