@@ -8,7 +8,7 @@ import type {
 } from './types';
 
 export class ObsidianRecipeHost implements RecipeHostAdapter {
-    constructor(private app: App, private onOpenRecipe?: (leaf: WorkspaceLeaf) => void) {}
+    constructor(private app: App, private onOpenRecipe?: (leaf: WorkspaceLeaf, reference: ResolvedRecipeReference) => void) {}
 
     getResourcePath(file: TFile): string {
         return this.app.vault.getResourcePath(file);
@@ -40,7 +40,10 @@ export class ObsidianRecipeHost implements RecipeHostAdapter {
 
     openReference(reference: ResolvedRecipeReference): void {
         const leaf = this.app.workspace.getLeaf(false);
-        this.onOpenRecipe?.(leaf);
+        if (this.onOpenRecipe) {
+            this.onOpenRecipe(leaf, reference);
+            return;
+        }
         void leaf.setViewState({
             type: 'cook',
             state: {

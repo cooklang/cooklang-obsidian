@@ -13,7 +13,6 @@ function makeSettings(overrides: Partial<CooklangSettings> = {}): CooklangSettin
         showQuantitiesInline: false,
         timersTick: true,
         timersRing: true,
-        lineWrap: true,
         highlightIngredientCookware: true,
         defaultView: 'source',
         showServingsScaler: true,

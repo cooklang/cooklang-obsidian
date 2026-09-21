@@ -57,11 +57,29 @@ tags:
 Simmer @rice{200%g} in @water{400%ml} in a #pot for ~{15%min}.
 ```
 
-Markdown recipes open in recipe preview. The existing source/preview toggle keeps
-the Cooklang editor available. Use **Edit as Markdown** from the recipe pane menu
-or command palette for Obsidian's native editor and Properties UI. That choice stays
-active in the tab until you navigate elsewhere or use **Open as Recipe**. It is not
-saved across restarts. Existing restored recipe tabs retain their mode and scale.
+All recipe formats use Obsidian's native editor with Cooklang syntax colors.
+Recipes use **Source mode**, retaining Obsidian's editing commands, search,
+spellcheck, Vim mode, and editor extensions. Line wrapping and editor layout follow
+Obsidian; there is no separate Cooklang line-wrap setting. Ordinary Markdown notes
+are unaffected unless their frontmatter contains the Boolean `recipe: true`.
+
+**Default view** chooses the native editor or interactive recipe preview for newly
+opened recipes. Use Obsidian's Reading View action, **Toggle preview recipe**, or
+**Open as Recipe** to enter recipe preview; **Edit recipe source** returns to the
+native editor. Choosing source stays active in that tab until you navigate elsewhere.
+The old **Edit as Markdown** command keeps its command ID, so existing hotkeys work.
+
+Scaling, step position, checked ingredients, and running timers survive switching
+between source and preview in the same tab. Tabs have independent recipe sessions;
+navigating to another file or closing a tab clears its session and stops its timers.
+Preview tabs retain scale and step position across restarts; tabs saved in source
+mode do not persist recipe session state. Cooklang colors also update immediately
+when you edit a Markdown recipe's `recipe` property.
+
+Native editing does not make `.cook` files participate in every Markdown-only
+Obsidian feature, such as Markdown metadata indexing. Choose a Markdown recipe
+format for the fullest integration. Cooklang highlighting inside fenced blocks
+is not added by this change; their compact rendered output stays the same.
 
 Choose **New recipe format** in the plugin settings to change the format used by
 both creation commands and the folder menu. The default remains `.cook`; newly

@@ -1,30 +1,20 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, waitFor } from '@testing-library/svelte';
+import { afterEach, describe, expect, it } from 'vitest';
+import { cleanup, render } from '@testing-library/svelte';
 import { writable } from 'svelte/store';
 import CookViewRoot from './CookViewRoot.svelte';
-import type { CookViewMode, RecipeRenderModel } from './types';
+import type { RecipeRenderModel } from './types';
 
 afterEach(cleanup);
 
 describe('CookViewRoot', () => {
-    it('provides the CodeMirror host and switches modes reactively without remounting', async () => {
-        const mode = writable<CookViewMode>('source');
+    it('mounts a preview without creating a source editor', () => {
         const preview = writable<RecipeRenderModel | null>(null);
-        const onSourceReady = vi.fn();
-        const view = render(CookViewRoot, { mode, preview, onSourceReady });
+        const view = render(CookViewRoot, { preview });
 
         const source = view.container.querySelector('.cook-source-view-full');
         const previewElement = view.container.querySelector('.cook-preview-view');
-        expect(onSourceReady).toHaveBeenCalledWith(source);
-        expect(source?.classList.contains('cook-view-hidden')).toBe(false);
-        expect(previewElement?.classList.contains('cook-view-hidden')).toBe(true);
-
-        mode.set('preview');
-        await waitFor(() => {
-            expect(source?.classList.contains('cook-view-hidden')).toBe(true);
-            expect(previewElement?.classList.contains('cook-view-hidden')).toBe(false);
-        });
-        expect(onSourceReady).toHaveBeenCalledTimes(1);
+        expect(source).toBeNull();
+        expect(previewElement).not.toBeNull();
     });
 });

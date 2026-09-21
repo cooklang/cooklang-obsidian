@@ -43,7 +43,6 @@ function settings() {
         showQuantitiesInline: true,
         timersTick: false,
         timersRing: false,
-        lineWrap: true,
         highlightIngredientCookware: true,
         groupIngredientsBySection: false,
         defaultView: 'source' as const,

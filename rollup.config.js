@@ -88,11 +88,10 @@ export default {
     banner,
     inlineDynamicImports: true
   },
-  // CookView owns a standalone CodeMirror editor, so keep its CodeMirror 6 and
-  // Lezer graph together in this bundle. Obsidian's runtime modules are an
-  // internal implementation detail and can otherwise split highlighting tags
-  // across incompatible module instances.
-  external: ['obsidian', 'codemirror'],
+  // Native extensions must share Obsidian's state/view classes. Keep the isolated
+  // Cooklang parser and its Lezer highlighter together: Obsidian's language module
+  // can use a different generation of token tags from its public Lezer module.
+  external: ['obsidian', 'codemirror', '@codemirror/state', '@codemirror/view'],
   plugins: [
     // WASM plugin must come first to properly handle wasm imports
     wasm({

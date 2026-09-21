@@ -6,32 +6,6 @@
     overflow: hidden;
     font-family: inherit;
   }
-  .cook-preview-view:not(.cook-rich),
-  .cook-source-view {
-    // TODO base this on .is-readable-line-width when I can figure out how to read that
-    max-width: 700px;
-    margin-left: auto;
-    margin-right: auto;
-  }
-
-  .cook-preview-view-full,
-  .cook-source-view-full {
-    margin-left: auto;
-    margin-right: auto;
-  }
-
-  .cook-source-view-full {
-    display: flex;
-    flex: 1 1 0;
-    flex-direction: column;
-    height: 100%;
-    min-height: 0;
-    width: 100%;
-    box-sizing: border-box;
-    overflow: hidden;
-    padding: 0 20px;
-  }
-
   .cook-preview-view {
     flex: 1 1 auto;
     min-height: 0;
@@ -128,31 +102,6 @@
     font-weight: 600;
   }
 
-  .cm-ingredient,
-  .cm-cookware {
-    color: var(--text-accent);
-    font-weight: 600;
-  }
-
-  .cm-formatting {
-    color: var(--text-faint);
-  }
-
-  .cm-measurement,
-  .cm-timer,
-  .cm-unit {
-    color:var(--text-muted);
-  }
-
-  .cm-metadata,
-  .cm-metadata-key {
-    font-family: var(--font-monospace);
-  }
-
-  .cm-metadata-key {
-    font-weight: 600;
-  }
-
   .countdown {
     margin-left:12px;
 
@@ -193,48 +142,16 @@
     }
   }
 
-  // CodeMirror 6 styles
-  .cm-editor {
-    // Match Obsidian's native Markdown editor. A zero flex basis gives
-    // CodeMirror's 100%-height scroller a definite viewport on Android.
-    flex: 1 1 0;
-    min-height: 0;
-    font-family: var(--font-monospace);
-    background-color: transparent;
-  }
+}
 
-  .cm-scroller {
-    overflow: auto;
-  }
-
-  .cm-content {
-    caret-color: var(--text-normal);
-    padding: 0;
-  }
-
-  .cm-gutters {
-    background-color: transparent;
-    border: none;
-  }
-
-  .cm-line {
-    padding: 0 4px;
-  }
-
-  // Stable token classes keep Cooklang colors under the plugin stylesheet's
-  // scope instead of relying on CodeMirror's generated style-module classes.
+// Only token colors are ours; layout and editor behavior belong to Obsidian.
+.markdown-source-view {
   .cook-token-ingredient { color: var(--text-accent); }
   .cook-token-cookware { color: var(--color-green); }
   .cook-token-timer { color: var(--color-pink); }
   .cook-token-comment { color: var(--text-faint); }
   .cook-token-meta { color: var(--text-muted); }
   .cook-token-unit { color: var(--color-orange); }
-}
-
-// Match Obsidian's native mobile editor behavior in WKWebView. This keeps the
-// CodeMirror content editable without introducing a second viewport model.
-.is-mobile.is-ios .workspace-leaf-content[data-type="cook"] .cm-content {
-  -webkit-user-modify: read-write;
 }
 
 /* ===== Rich Cooklang preview ===== */
@@ -249,8 +166,6 @@
   padding: 0 var(--size-4-4, 16px) var(--size-4-8, 32px);
   color: var(--text-normal);
 }
-
-.cook-view-hidden { display: none !important; }
 
 /* Hero */
 .cook-hero {

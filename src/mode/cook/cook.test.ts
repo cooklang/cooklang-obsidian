@@ -4,6 +4,7 @@ import { classHighlighter, type Highlighter, highlightTree } from '@lezer/highli
 import { describe, expect, it } from 'vitest';
 
 import { cooklang, cooklangHighlighter } from './cook';
+import { cookHighlightRanges } from './highlightRanges';
 
 type HighlightRange = {
     from: number;
@@ -25,6 +26,16 @@ function highlightedRanges(doc: string, highlighter: Highlighter = classHighligh
 }
 
 describe('Cooklang syntax highlighting', () => {
+    it.each([
+        'Add @Möhre{200%g} to #Schüssel{} for ~rest{5%min}.',
+        '---\nrecipe: true\n---\nAdd @rice.',
+        '> Note\n\nAdd @rice.\n-- comment\n[- block\ncomment -]\n#pot',
+        '>> title: Dinner\n>> servings: 2\nMix @rice{2%cup}.',
+        '= First =\nAdd @rice{\n200%g} and ~timer{2%min}.\n= Second =\nServe.',
+    ])('native decoration ranges match the existing language highlighter: %s', source => {
+        expect(cookHighlightRanges(source)).toEqual(highlightedRanges(source, cooklangHighlighter));
+    });
+
     it('ends note highlighting at the end of the line', () => {
         const doc = [
             '> Recommendation: 280 g per portion.',

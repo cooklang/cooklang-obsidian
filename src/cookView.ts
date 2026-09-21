@@ -1,447 +1,135 @@
-import type { CooklangRecipe } from '@cooklang/cooklang';
-import {TextFileView, WorkspaceLeaf, ViewStateResult, setIcon, setTooltip} from 'obsidian'
-import {CooklangSettings} from './settings';
-import {EditorView, keymap, highlightActiveLine, lineNumbers} from "@codemirror/view"
-import {Annotation, EditorState, Extension} from "@codemirror/state"
-import {syntaxHighlighting} from "@codemirror/language"
-import {defaultKeymap} from "@codemirror/commands"
-import {cooklang, cooklangHighlighter} from './mode/cook/cook'
+import { TextFileView, WorkspaceLeaf, type ViewStateResult, type Menu, Scope } from 'obsidian';
+import type { CooklangSettings } from './settings';
 import { parserService } from './services/ParserService';
-import { TimerService } from './services/TimerService';
-import type { AlarmCoordinator } from './services/AlarmCoordinator';
-import {
-    parseServingsValue,
-    computeScale,
-    computeReferenceScale,
-    deriveServingsState,
-    type RecipeReferenceScaleRequest,
-} from './utils/scaling';
-import timerMp3 from './timer.mp3';
-import { flushSync, mount, unmount } from 'svelte';
-import { writable, type Writable } from 'svelte/store';
+import type { RecipeSession } from './services/RecipeSessions';
+import { parseServingsValue, computeScale, computeReferenceScale, deriveServingsState,
+    type RecipeReferenceScaleRequest } from './utils/scaling';
+import { mount, unmount } from 'svelte';
+import { writable } from 'svelte/store';
 import CookViewRoot from './ui/CookViewRoot.svelte';
-import { ObsidianRecipeHost } from './ui/ObsidianRecipeHost';
-import { createUiInstanceId } from './ui/instanceIds';
-import type { CookViewMode, RecipeRenderModel } from './ui/types';
+import type { RecipeHostAdapter, RecipeRenderModel } from './ui/types';
 import { recipeName } from './utils/recipeFiles';
 
-// File loads and view cleanup also replace the CodeMirror document. Mark those
-// transactions so only editor-originated changes schedule an Obsidian save.
-const skipSave = Annotation.define<boolean>();
-
-// This is the custom view
+/** Interactive preview only. Obsidian owns every source editor. */
 export class CookView extends TextFileView {
-    settings: CooklangSettings;
-    sourceEl!: HTMLElement;
-    editorView!: EditorView;
-    rawRecipe: CooklangRecipe | null = null;
-    parserReady: Promise<void>;
-    currentView!: CookViewMode;
-    timerService: TimerService;
-    private modeStore: Writable<CookViewMode>;
-    private previewStore: Writable<RecipeRenderModel | null>;
-    private svelteRoot: ReturnType<typeof mount>;
-    private host: ObsidianRecipeHost;
-    private instanceId: string;
-    private editorLineWrap: boolean;
-    private viewportMeasureFrame: number | null = null;
-    private removeViewportListeners: (() => void) | null = null;
-    private modeButtonEl: HTMLElement | null = null;
-    data: string = '';
-    checkedIngredients: Set<string> = new Set();
-    scale: number = 1;
-    currentStep: number = -1;
-    private pendingReferenceScale: RecipeReferenceScaleRequest | null = null;
+    private previewStore = writable<RecipeRenderModel | null>(null);
+    private component: ReturnType<typeof mount>;
+    private disposed = false;
+    private currentSession: RecipeSession | null = null;
 
-    constructor(leaf: WorkspaceLeaf, settings: CooklangSettings, alarms: AlarmCoordinator,
-        private editAsMarkdown?: (leaf: WorkspaceLeaf) => Promise<void>,
-        onOpenRecipe?: (leaf: WorkspaceLeaf) => void) {
+    constructor(leaf: WorkspaceLeaf, private settings: CooklangSettings,
+        private acquireSession: (path: string) => RecipeSession,
+        private editSource: (leaf: WorkspaceLeaf) => Promise<void>,
+        private host: RecipeHostAdapter) {
         super(leaf);
-        this.settings = settings;
-        this.instanceId = createUiInstanceId('cook-view');
-        this.host = new ObsidianRecipeHost(this.app, onOpenRecipe);
-        this.currentView = this.settings.defaultView === 'preview' ? 'preview' : 'source';
-        this.modeStore = writable(this.currentView);
-        this.previewStore = writable<RecipeRenderModel | null>(null);
-        this.editorLineWrap = this.settings.lineWrap;
-
-        // Initialize parser asynchronously
-        this.parserReady = parserService.initialize();
-
-        // Initialize timer service
-        this.timerService = new TimerService(
-            this.settings,
-            {
-                tickSoundUrl: timerMp3,
-                tickVolume: 0.3,
-            },
-            alarms,
-        );
-
-        this.svelteRoot = mount(CookViewRoot, {
-            target: this.contentEl,
-            props: {
-                mode: this.modeStore,
-                preview: this.previewStore,
-                onSourceReady: (element: HTMLElement) => {
-                    this.sourceEl = element;
-                },
-            },
-        });
-        flushSync();
-        if (!this.sourceEl) throw new Error('Svelte source editor host did not mount.');
-
-        // Initialize the editor using Obsidian's theme colors.
-        this.initializeEditor();
-
-        // Set default view (used when a .cook file opens in a fresh leaf, e.g.
-        // selecting it in the file tree). A persisted per-leaf mode, if any, is
-        // restored later in setState and takes precedence.
-        this.setViewMode(this.currentView);
+        this.component = mount(CookViewRoot, { target: this.contentEl, props: { preview: this.previewStore } });
+        this.scope = new Scope(this.app.scope);
+        this.scope.register(['Mod'], 'e', () => { void this.editSource(this.leaf); return false; });
     }
 
-    async onload() {
+    private get session(): RecipeSession | null {
+        this.currentSession = this.file ? this.acquireSession(this.file.path) : null;
+        return this.currentSession;
+    }
+
+    async onload(): Promise<void> {
         super.onload();
-
-        this.initializeViewportRemeasure();
-
-        // Wait for parser to be ready
-        await this.parserReady;
-        if (this.currentView === 'preview') this.renderPreview();
-
-        // Add mode toggle button to the action buttons in top right
-        this.modeButtonEl = this.addAction('book-open', '', () => this.switchMode());
-        this.updateModeButton();
+        this.addAction('edit-3', 'Edit recipe source', () => { void this.editSource(this.leaf); });
+        await parserService.initialize();
+        if (!this.disposed) this.renderPreview();
     }
 
-    // Initialize CodeMirror editor
-    initializeEditor() {
-        const extensions: Extension[] = [
-            lineNumbers(),
-            highlightActiveLine(),
-            cooklang, // Our custom Cooklang language support
-            syntaxHighlighting(cooklangHighlighter),
-            EditorView.updateListener.of((update) => {
-                if (!update.docChanged) return;
-
-                this.data = update.state.doc.toString();
-                const shouldSave = update.transactions.some((transaction) =>
-                    transaction.docChanged && transaction.annotation(skipSave) !== true
-                );
-                if (shouldSave) this.requestSave();
-            }),
-            keymap.of([
-                ...defaultKeymap,  // Include all default editing commands (Enter, Backspace, etc.)
-                {
-                    key: 'Mod-e',
-                    run: () => {
-                        this.setViewMode(this.currentView === 'source' ? 'preview' : 'source');
-                        return true;
-                    }
-                }
-            ])
-        ];
-
-        // Add `EditorView.lineWrapping` if the `lineWrap` setting is enabled.
-        if (this.settings.lineWrap) {
-            extensions.push(EditorView.lineWrapping);
-        }
-        this.editorLineWrap = this.settings.lineWrap;
-
-        this.editorView = new EditorView({
-            state: EditorState.create({
-                doc: this.data,
-                extensions
-            }),
-            parent: this.sourceEl
-        });
+    onunload(): void {
+        this.disposed = true;
+        void unmount(this.component);
+        // The plugin's session registry owns timers and checklist state.
     }
 
-    private initializeViewportRemeasure(): void {
-        const editorWindow = this.sourceEl.ownerDocument.defaultView ?? window;
-        const visualViewport = editorWindow.visualViewport;
-        const handleViewportChange = () => this.queueEditorMeasure();
-
-        editorWindow.addEventListener('resize', handleViewportChange);
-        visualViewport?.addEventListener('resize', handleViewportChange);
-        visualViewport?.addEventListener('scroll', handleViewportChange);
-        this.sourceEl.addEventListener('focusin', handleViewportChange);
-
-        this.removeViewportListeners = () => {
-            editorWindow.removeEventListener('resize', handleViewportChange);
-            visualViewport?.removeEventListener('resize', handleViewportChange);
-            visualViewport?.removeEventListener('scroll', handleViewportChange);
-            this.sourceEl.removeEventListener('focusin', handleViewportChange);
-        };
-    }
-
-    private queueEditorMeasure(): void {
-        if (this.currentView !== 'source') return;
-
-        const editorWindow = this.sourceEl.ownerDocument.defaultView ?? window;
-        if (this.viewportMeasureFrame !== null) {
-            editorWindow.cancelAnimationFrame(this.viewportMeasureFrame);
-        }
-        this.viewportMeasureFrame = editorWindow.requestAnimationFrame(() => {
-            this.viewportMeasureFrame = null;
-            if (this.currentView === 'source') this.editorView.requestMeasure();
-        });
-    }
-
-    setViewMode(mode: CookViewMode) {
-        this.currentView = mode;
-        this.modeStore.set(mode);
-        this.updateModeButton();
-        if (mode === 'preview') this.renderPreview();
-        else {
-            this.queueEditorMeasure();
-        }
-    }
-
-    switchMode() {
-        this.setViewMode(this.currentView === 'source' ? 'preview' : 'source');
-    }
-
-    private updateModeButton() {
-        if (!this.modeButtonEl) return;
-        const editing = this.currentView === 'source';
-        setIcon(this.modeButtonEl, editing ? 'book-open' : 'edit-3');
-        setTooltip(this.modeButtonEl, editing
-            ? 'Current view: editing\nClick to read'
-            : 'Current view: reading\nClick to edit');
-    }
-
-    onunload() {
-        this.removeViewportListeners?.();
-        this.removeViewportListeners = null;
-        if (this.viewportMeasureFrame !== null) {
-            const editorWindow = this.sourceEl.ownerDocument.defaultView ?? window;
-            editorWindow.cancelAnimationFrame(this.viewportMeasureFrame);
-            this.viewportMeasureFrame = null;
-        }
-        if (this.editorView) {
-            this.editorView.destroy();
-        }
-        // Clean up timer service
-        if (this.timerService) {
-            this.timerService.dispose();
-        }
-        // Clear checked ingredients state
-        this.checkedIngredients.clear();
-        void unmount(this.svelteRoot);
-    }
-
-    onPaneMenu(menu: any, source: string) {
+    onPaneMenu(menu: Menu, source: string): void {
         super.onPaneMenu(menu, source);
-
-        if (this.file?.extension === 'md' && this.editAsMarkdown) {
-            menu.addItem((item: import('obsidian').MenuItem) => item
-                .setTitle('Edit as Markdown')
-                .setIcon('file-pen')
-                .onClick(() => this.editAsMarkdown?.(this.leaf)));
-        }
-
-        menu.addItem((item: any) => {
-            item
-                .setTitle(this.currentView === 'source' ? 'Show Preview' : 'Show Source')
-                .setIcon(this.currentView === 'source' ? 'book-open' : 'edit-3')
-                .onClick(() => {
-                    this.setViewMode(this.currentView === 'source' ? 'preview' : 'source');
-                });
-        });
+        menu.addItem(item => item.setTitle('Edit recipe source').setIcon('file-pen')
+            .onClick(() => this.editSource(this.leaf)));
     }
 
-    onMoreOptionsMenu(menu: any) {
-        menu.addItem((item: any) => {
-            item
-                .setTitle(this.currentView === 'source' ? 'Show Preview' : 'Show Source')
-                .setIcon(this.currentView === 'source' ? 'book-open' : 'edit-3')
-                .onClick(() => {
-                    this.setViewMode(this.currentView === 'source' ? 'preview' : 'source');
-                });
-        });
-    }
+    getViewData(): string { return this.data ?? ''; }
 
-    private reinitializeEditor() {
-        const currentDoc = this.editorView.state.doc.toString();
-        this.editorView.destroy();
-        this.data = currentDoc;
-        this.initializeEditor();
-    }
-
-    // get the data for save
-    getViewData() {
-        this.data = this.editorView.state.doc.toString();
-        // Parse the recipe if parser is ready
-        if (parserService.isReady()) {
-            const [rawRecipe, report] = parserService.parse(this.data);
-            this.rawRecipe = rawRecipe;
-        }
-        return this.data;
-    }
-
-    // load the data into the view
-    async setViewData(data: string, clear: boolean) {
+    setViewData(data: string, clear: boolean): void {
+        if (clear) this.previewStore.set(null);
         this.data = data;
-
-        if (clear) {
-            this.editorView.dispatch({
-                changes: {
-                    from: 0,
-                    to: this.editorView.state.doc.length,
-                    insert: data
-                },
-                annotations: skipSave.of(true),
-            });
-        } else {
-            this.editorView.dispatch({
-                changes: {
-                    from: 0,
-                    to: this.editorView.state.doc.length,
-                    insert: data
-                },
-                annotations: skipSave.of(true),
-            });
-        }
-
-        // Parse the recipe
-        if (parserService.isReady()) {
-            const [rawRecipe, report] = parserService.parse(this.data);
-            this.rawRecipe = rawRecipe;
-        }
-        // if we're in preview view, also render that
-        if (this.currentView === 'preview') this.renderPreview();
+        this.renderPreview();
     }
 
-    // clear the editor, etc
-    clear() {
+    clear(): void {
         this.previewStore.set(null);
-        this.editorView.dispatch({
-            changes: {
-                from: 0,
-                to: this.editorView.state.doc.length,
-                insert: ''
-            },
-            annotations: skipSave.of(true),
-        });
         this.data = '';
-        this.scale = 1;
-        this.currentStep = -1;
-        this.checkedIngredients.clear();
+        this.currentSession = null;
     }
 
-    getDisplayText() {
-        if (this.file) return recipeName(this.file.path);
-        else return "Cooklang (no file)";
+    getDisplayText(): string { return this.file ? recipeName(this.file.path) : 'Cooklang (no file)'; }
+    // New navigation must go through the registered native view and routing policy.
+    // Otherwise Obsidian reuses this preview for unrelated Markdown notes.
+    canAcceptExtension(_extension: string): boolean { return false; }
+    getViewType(): string { return 'cook'; }
+    getIcon(): string { return 'document-cook'; }
+
+    getState(): Record<string, unknown> {
+        const session = this.currentSession;
+        return { ...super.getState(), mode: 'preview', scale: session?.scale ?? 1,
+            currentStep: session?.currentStep ?? -1 };
     }
 
-    canAcceptExtension(extension: string) {
-        return extension === 'cook';
-    }
-
-    getViewType() {
-        return "cook";
-    }
-
-    // Override to save the current mode in view state
-    getState() {
-        const state = super.getState();
-        return {
-            ...state,
-            mode: this.currentView,
-            scale: this.scale,
-            currentStep: this.currentStep,
-        };
-    }
-
-    // Override to restore the mode from view state
-    async setState(state: any, result: ViewStateResult) {
-        this.pendingReferenceScale = isReferenceScaleRequest(state.referenceScale)
-            ? state.referenceScale
-            : null;
+    async setState(state: Record<string, unknown>, result: ViewStateResult): Promise<void> {
         await super.setState(state, result);
-        if (typeof state.scale === 'number' && state.scale > 0) this.scale = state.scale;
-        if (typeof state.currentStep === 'number') this.currentStep = state.currentStep;
-
-        // If a mode was specified in the state, switch to that mode
-        if (state.mode && (state.mode === 'source' || state.mode === 'preview')) {
-            // Use setTimeout to ensure the view is fully loaded first
-            setTimeout(() => {
-                this.setViewMode(state.mode);
-            }, 10);
+        if (this.disposed) return;
+        const session = this.session;
+        if (session) {
+            if (typeof state.scale === 'number' && Number.isFinite(state.scale) && state.scale > 0) session.scale = state.scale;
+            if (typeof state.currentStep === 'number' && Number.isInteger(state.currentStep)) session.currentStep = state.currentStep;
+            if (isReferenceScaleRequest(state.referenceScale)) session.pendingReferenceScale = state.referenceScale;
         }
-
-        return;
+        // Migrate previously persisted standalone source editors after setState completes.
+        if (state.mode === 'source') {
+            const file = this.file;
+            window.setTimeout(() => {
+                if (!this.disposed && this.file === file) void this.editSource(this.leaf);
+            }, 0);
+            return;
+        }
+        this.renderPreview();
     }
 
-    // when the view is resized, refresh CodeMirror
-    onResize() {
-        this.queueEditorMeasure();
-    }
-
-    getIcon() {
-        return "document-cook";
-    }
-
-    // render the preview view
-    renderPreview() {
-        if (!parserService.isReady()) return;
-
-        // Re-parse at the current scale so quantities (list + inline) rescale.
-        let [rawRecipe] = parserService.parse(this.data, this.scale);
-        this.rawRecipe = rawRecipe;
-
-        // The parser scales (and rounds) the `servings` metadata, so the servings
-        // on `rawRecipe` already reflect `this.scale`. Read the unscaled base from
-        // a scale-1 parse to compute scale targets and the displayed count
-        // correctly (see issue #83).
+    renderPreview(): void {
+        if (this.disposed || typeof this.data !== 'string' || !parserService.isReady()) return;
+        const session = this.session;
+        if (!session) return;
+        let [recipe] = parserService.parse(this.data, session.scale);
         const [baseRecipe] = parserService.parse(this.data);
-        if (this.pendingReferenceScale) {
-            this.scale = computeReferenceScale(
-                this.pendingReferenceScale,
-                baseRecipe.servings,
-                baseRecipe.rawMetadata.get('yield'),
-            );
-            this.pendingReferenceScale = null;
-            [rawRecipe] = parserService.parse(this.data, this.scale);
-            this.rawRecipe = rawRecipe;
+        if (session.pendingReferenceScale) {
+            session.scale = computeReferenceScale(session.pendingReferenceScale,
+                baseRecipe.servings, baseRecipe.rawMetadata.get('yield'));
+            session.pendingReferenceScale = null;
+            [recipe] = parserService.parse(this.data, session.scale);
         }
         const { baseServings, displayServings } = deriveServingsState(
-            parseServingsValue(baseRecipe.servings),
-            this.scale,
-        );
-
+            parseServingsValue(baseRecipe.servings), session.scale);
         this.previewStore.set({
-            instanceId: this.instanceId,
-            interactive: true,
-            recipe: rawRecipe,
-            file: this.file,
-            settings: this.settings,
-            host: this.host,
-            timers: this.timerService,
-            state: {
-                scale: this.scale,
-                baseServings,
-                displayServings,
-                checkedIngredients: this.checkedIngredients,
-                currentStep: this.currentStep,
-            },
+            instanceId: session.instanceId, interactive: true, recipe, file: this.file,
+            settings: this.settings, host: this.host, timers: session.timers,
+            state: { scale: session.scale, baseServings, displayServings,
+                checkedIngredients: session.checkedIngredients, currentStep: session.currentStep },
             callbacks: {
-                onScaleChange: (targetServings: number) => {
+                onScaleChange: target => {
                     if (baseServings == null) return;
-                    this.scale = computeScale(targetServings, baseServings);
+                    session.scale = computeScale(target, baseServings);
                     this.renderPreview();
                 },
-                onIngredientToggle: (ingredientName: string) => {
-                    if (this.checkedIngredients.has(ingredientName)) {
-                        this.checkedIngredients.delete(ingredientName);
-                    } else {
-                        this.checkedIngredients.add(ingredientName);
-                    }
+                onIngredientToggle: name => {
+                    if (session.checkedIngredients.has(name)) session.checkedIngredients.delete(name);
+                    else session.checkedIngredients.add(name);
                     this.renderPreview();
                 },
-                onStepActivate: (index: number) => {
-                    this.currentStep = this.currentStep === index ? -1 : index;
+                onStepActivate: index => {
+                    session.currentStep = session.currentStep === index ? -1 : index;
                     this.renderPreview();
                 },
             },
@@ -449,16 +137,14 @@ export class CookView extends TextFileView {
     }
 
     updateSettings(settings: CooklangSettings): void {
-        const lineWrapChanged = this.editorLineWrap !== settings.lineWrap;
         this.settings = settings;
-        if (lineWrapChanged) this.reinitializeEditor();
-        if (this.currentView === 'preview') this.renderPreview();
+        this.renderPreview();
     }
 }
 
 function isReferenceScaleRequest(value: unknown): value is RecipeReferenceScaleRequest {
     if (!value || typeof value !== 'object') return false;
     const candidate = value as Partial<RecipeReferenceScaleRequest>;
-    return typeof candidate.quantity === 'number'
+    return typeof candidate.quantity === 'number' && Number.isFinite(candidate.quantity)
         && (typeof candidate.unit === 'string' || candidate.unit === null);
 }

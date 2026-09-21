@@ -6,8 +6,6 @@ import type { RecipeRefTarget } from '../utils/ingredientAggregator';
 import type { TimerSnapshot } from '../services/TimerService';
 import type { RecipeReferenceScaleRequest } from '../utils/scaling';
 
-export type CookViewMode = 'source' | 'preview';
-
 export interface PreviewState {
     scale: number;
     baseServings: number | null;
@@ -59,7 +57,5 @@ export type EmbedRenderState =
     | { status: 'ready'; model: RecipeRenderModel };
 
 export interface CookViewRootProps {
-    mode: Readable<CookViewMode>;
     preview: Readable<RecipeRenderModel | null>;
-    onSourceReady: (element: HTMLElement) => void;
 }
