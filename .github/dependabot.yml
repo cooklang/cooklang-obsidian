@@ -11,6 +11,9 @@ updates:
       cronjob: "0 9 1,15 * *"
     open-pull-requests-limit: 5
     ignore:
+      # obsidian pins these as exact peer dependencies; keep them in lockstep.
+      - dependency-name: "@codemirror/state"
+      - dependency-name: "@codemirror/view"
       # Keep @types/node on the Node major we target (engines: >=24 <25).
       - dependency-name: "@types/node"
         update-types:
