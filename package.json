@@ -32,7 +32,7 @@
     "@sveltejs/vite-plugin-svelte": "^7.3.0",
     "@testing-library/svelte": "^5.4.2",
     "@types/howler": "^2.2.13",
-    "@types/node": "^24.13.3",
+    "@types/node": "^26.6.3",
     "howler": "^2.2.4",
     "jsdom": "^30.0.1",
     "mathjs": "^15.2.0",
