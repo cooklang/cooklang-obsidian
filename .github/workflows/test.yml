@@ -19,7 +19,7 @@ jobs:
         with:
           helpURL: https://github.com/googleapis/release-please-action#how-should-i-write-my-commits
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: '.nvmrc'
           cache: npm
