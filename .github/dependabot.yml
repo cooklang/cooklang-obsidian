@@ -10,6 +10,11 @@ updates:
       interval: cron
       cronjob: "0 9 1,15 * *"
     open-pull-requests-limit: 5
+    ignore:
+      # Keep @types/node on the Node major we target (engines: >=24 <25).
+      - dependency-name: "@types/node"
+        update-types:
+          - version-update:semver-major
     groups:
       npm-dependencies:
         patterns:
