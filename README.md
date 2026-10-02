@@ -4,6 +4,8 @@
 
 A plugin for [Obsidian](https://obsidian.md) adding support for [Cooklang](https://cooklang.org)
 
+Want the same recipe files on your phone? [Cook Cloud sync](https://cook.md/) keeps a folder of `.cook` files in step with the Cook iOS and Android apps.
+
 ![Screenshot](https://github.com/cooklang/cooklang-obsidian/raw/main/screenshot.png)
 
 > Looking for maintainers, reach out dubadub on Discor server.
