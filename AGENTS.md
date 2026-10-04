@@ -28,8 +28,10 @@ Use Node 20.x to match CI.
 | Focused test | `npm test -- src/utils/scaling.test.ts` | A filename or Vitest filter is acceptable. |
 | Test watch mode | `npm run test:watch` | Interactive local use. |
 | Production/type gate | `npm run build` | Runs Rollup with TypeScript `noEmitOnError`; emits `main.js` and `styles.css`. |
+| Commit messages | `npm run commitlint` | Lints commits since `origin/main`, or `main` when that remote ref is absent. Set `COMMITLINT_FROM` for another base. |
+| Local CI checks | `npm run check` | Commitlint, typecheck, full test suite, and the production build. |
 
-There is no source lint or formatting command. Do not claim one was run, and do not reformat unrelated code. A standalone `tsc --noEmit` is not the authoritative gate and can expose declaration/dependency errors outside the Rollup build; use `npm run build` for project validation.
+There is no source lint or formatting command. Do not claim one was run, and do not reformat unrelated code. A standalone `tsc --noEmit` is not the authoritative gate and can expose declaration/dependency errors outside the Rollup build; use `npm run build` for project validation. Commit messages are checked with `npm run commitlint`.
 
 The misspelled `instal-deps` package script is legacy and is not the canonical setup command.
 
@@ -107,7 +109,7 @@ fenced `cook` / `cooklang` block in Markdown reading mode
 
 - Add or update a colocated `*.test.ts` when changing pure behavior. Vitest discovers `src/**/*.test.ts`.
 - Avoid runtime imports from `obsidian` in Node tests. Extract pure logic instead of trying to instantiate Obsidian views in Vitest.
-- Run the narrowest relevant test while iterating, then run `npm test` and `npm run build` before handing off a code change.
+- Run the narrowest relevant test while iterating, then run `npm run check` before handing off a code change.
 - DOM, lifecycle, or CSS changes also need proportionate manual verification in Obsidian because there is no automated Obsidian integration suite. Rebuild, reload/re-enable the plugin, and check the affected source/preview flow. For layout changes, check light and dark themes plus a narrow pane/mobile-sized view; for shared renderers, also check fenced Markdown embeds.
 - For touch interaction changes, manually verify both iOS and Android when devices are available: confirm range sliders open at their midpoint, every gesture beginning on the slider adjusts it without scrolling or host navigation, gestures beginning outside it still scroll, pointer cancellation leaves the selector usable, tap every adjacent action, rotate the device, and confirm VoiceOver/TalkBack does not announce continuous timer ticks.
 - A local manual setup can symlink the repository into `<vault>/.obsidian/plugins/cooklang-obsidian`; `test-recipes/curry.cook` is the starting fixture.
@@ -117,5 +119,5 @@ fenced `cook` / `cooklang` block in Markdown reading mode
 
 - `main.js` and `styles.css` are generated and gitignored. Never edit or commit them directly.
 - Do not commit `node_modules`, `build/`, generated WASM, source maps, or local Obsidian `data.json`.
-- Pull-request CI runs `npm ci`, `npm test`, and `npm run build`, and it checks commit messages. Use Conventional Commit subjects such as `feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `ci:`, or `chore:`.
+- Pull-request CI lints commit messages, then runs `npm ci`, `npm run typecheck`, `npm test`, and `npm run build`. `npm run check` runs those same steps locally against the installed dependencies. Use Conventional Commit subjects such as `feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `ci:`, or `chore:`.
 - Release Please owns release PRs, `CHANGELOG.md`, version synchronization across `package.json`, `package-lock.json`, `manifest.json`, and `.release-please-manifest.json`, tags, and GitHub releases. Do not manually bump versions or create release tags unless the task explicitly changes the release process.

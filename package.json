@@ -13,7 +13,9 @@
     "build": "rollup --config rollup.config.js --environment BUILD:production",
     "typecheck": "svelte-check --tsconfig ./tsconfig.json && tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "commitlint": "node scripts/lint-commits.mjs",
+    "check": "npm run commitlint && npm run typecheck && npm test && npm run build"
   },
   "keywords": [],
   "author": "",
@@ -22,6 +24,8 @@
     "@codemirror/language": "6.12.4",
     "@codemirror/state": "6.5.0",
     "@codemirror/view": "6.38.6",
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1",
     "@cooklang/cooklang": "^0.18.7",
     "@lezer/highlight": "^1.2.5",
     "@rollup/plugin-commonjs": "^29.0.3",
