@@ -376,7 +376,7 @@ describe('ReferenceLink', () => {
                 getResourcePath: file => file.path,
                 resolveReference: () => reference,
                 openReference: vi.fn(),
-        openWikiLink: vi.fn(),
+                openWikiLink: vi.fn(),
             },
         });
         render(ReferenceLink, {
