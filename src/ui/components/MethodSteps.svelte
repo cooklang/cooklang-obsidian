@@ -10,6 +10,7 @@
     import { getRecipeStepImage } from '../../utils/stepImages';
     import { recipeImageBasenames } from '../../utils/recipeFiles';
     import type { RecipeRenderModel } from '../types';
+    import InlineText from './InlineText.svelte';
     import StepPart from './StepPart.svelte';
 
     let { model, allImages }: { model: RecipeRenderModel; allImages: TFile[] } = $props();
@@ -50,7 +51,7 @@
             {#if entry.type === 'note'}
                 <aside class="cook-note">
                     <span class="cook-note-icon" aria-hidden="true">💡</span>
-                    <span class="cook-note-text">{entry.note}</span>
+                    <span class="cook-note-text"><InlineText {model} value={entry.note} /></span>
                 </aside>
             {:else}
                 {@const step = entry.step}

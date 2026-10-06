@@ -67,6 +67,7 @@ describe('RecipeEmbed', () => {
                 getResourcePath: () => '',
                 resolveReference: () => null,
                 openReference: () => {},
+                openWikiLink: () => {},
             },
             timers: null,
         } as unknown as RecipeRenderModel;

@@ -163,6 +163,7 @@ function model(overrides: Partial<RecipeRenderModel> = {}): RecipeRenderModel {
         getResourcePath: file => file.path,
         resolveReference: () => null,
         openReference: vi.fn(),
+        openWikiLink: vi.fn(),
     };
     const timers: TimerController = {
         toggle: vi.fn(),
@@ -375,6 +376,7 @@ describe('ReferenceLink', () => {
                 getResourcePath: file => file.path,
                 resolveReference: () => reference,
                 openReference: vi.fn(),
+                openWikiLink: vi.fn(),
             },
         });
         render(ReferenceLink, {
