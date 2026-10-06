@@ -8,6 +8,7 @@
     import { numericFromQuantity } from '../../utils/quantityValue';
     import type { StepPart } from '../../utils/sectionHelpers';
     import type { RecipeRenderModel } from '../types';
+    import InlineText from './InlineText.svelte';
     import ReferenceLink from './ReferenceLink.svelte';
     import TimerButton from './TimerButton.svelte';
 
@@ -28,7 +29,7 @@
 </script>
 
 {#if part.type === 'text'}
-    {part.value}
+    <InlineText {model} value={part.value} />
 {:else if part.type === 'ingredient'}
     <span class:cook-ig-hl={model.settings.highlightIngredientCookware && !part.ingredient.reference} class="cook-ig">
         {#if part.ingredient.reference}

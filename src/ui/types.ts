@@ -30,6 +30,7 @@ export interface RecipeHostAdapter {
     getResourcePath(file: TFile): string;
     resolveReference(sourceFile: TFile | null, ref: RecipeRefTarget): ResolvedRecipeReference | null;
     openReference(reference: ResolvedRecipeReference): void;
+    openWikiLink(sourcePath: string, linktext: string): void;
 }
 
 export interface TimerController {

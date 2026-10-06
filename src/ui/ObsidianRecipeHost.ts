@@ -53,4 +53,8 @@ export class ObsidianRecipeHost implements RecipeHostAdapter {
             },
         });
     }
+
+    openWikiLink(sourcePath: string, linktext: string): void {
+        void this.app.workspace.openLinkText(linktext, sourcePath);
+    }
 }
