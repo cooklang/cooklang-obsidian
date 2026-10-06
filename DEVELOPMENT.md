@@ -36,3 +36,13 @@ npm run build
 4. Find "Cooklang Editor" plugin in community plugins, install and enable (or reenable).
 
 5. Rinse and repeat from step 3
+
+## Checks
+
+Pull-request CI lints commit messages, then typechecks, tests, and builds. Run the same steps locally before pushing:
+
+```sh
+npm run check
+```
+
+`npm run commitlint` lints only the commits since `origin/main`, or `main` when `origin/main` is absent. Set `COMMITLINT_FROM` to use another base ref.
