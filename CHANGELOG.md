@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.15.0](https://github.com/cooklang/cooklang-obsidian/compare/0.14.0...0.15.0) (2026-10-09)
+
+
+### Features
+
+* add openWikiLink method to RecipeHostAdapter and implement in ObsidianRecipeHost ([f502dd2](https://github.com/cooklang/cooklang-obsidian/commit/f502dd2c37552ed84c9128dccfda60bc980d4af3))
+* render wiki and web links in recipe steps ([6da72ef](https://github.com/cooklang/cooklang-obsidian/commit/6da72ef02b70474b32a67508bc054320373513fe))
+
 ## [0.14.0](https://github.com/cooklang/cooklang-obsidian/compare/0.13.0...0.14.0) (2026-09-21)
 
 
