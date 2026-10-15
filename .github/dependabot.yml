@@ -18,6 +18,11 @@ updates:
       - dependency-name: "@types/node"
         update-types:
           - version-update:semver-major
+      # TypeScript 7 (Go-native): svelte-check peers typescript ^5 || ^6, so npm ci fails.
+      # Revisit once svelte-check supports 7.
+      - dependency-name: "typescript"
+        update-types:
+          - version-update:semver-major
     groups:
       npm-dependencies:
         patterns:
