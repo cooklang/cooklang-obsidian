@@ -25,7 +25,7 @@
     "@codemirror/state": "6.5.0",
     "@codemirror/view": "6.38.6",
     "@commitlint/cli": "^19.8.1",
-    "@commitlint/config-conventional": "^19.8.1",
+    "@commitlint/config-conventional": "^21.2.3",
     "@cooklang/cooklang": "^0.18.7",
     "@lezer/highlight": "^1.2.5",
     "@rollup/plugin-commonjs": "^29.0.3",
