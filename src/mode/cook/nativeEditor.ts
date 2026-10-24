@@ -1,4 +1,4 @@
-import { Decoration, ViewPlugin, type DecorationSet, type EditorView, type ViewUpdate } from '@codemirror/view';
+import { Decoration, EditorView, ViewPlugin, type DecorationSet, type ViewUpdate } from '@codemirror/view';
 import { editorInfoField, parseYaml } from 'obsidian';
 import { isRecipeSource } from '../../utils/recipeSource';
 import { cookHighlightRanges } from './highlightRanges';
@@ -6,6 +6,7 @@ import { cookHighlightRanges } from './highlightRanges';
 export function nativeCookEditor(onEligibilityChange: () => void) {
     return ViewPlugin.fromClass(class {
         decorations: DecorationSet = Decoration.none;
+        cookware: DecorationSet = Decoration.none;
         private path = '';
         private eligible = false;
 
@@ -23,10 +24,17 @@ export function nativeCookEditor(onEligibilityChange: () => void) {
             if (path !== this.path || eligible !== this.eligible) onEligibilityChange();
             this.path = path;
             this.eligible = eligible;
-            this.decorations = eligible
-                ? Decoration.set(cookHighlightRanges(source).map(({ from, to, classes }) =>
-                    Decoration.mark({ class: classes }).range(from, to)))
-                : Decoration.none;
+            const ranges = eligible ? cookHighlightRanges(source) : [];
+            this.decorations = Decoration.set(ranges.map(({ from, to, classes }) =>
+                Decoration.mark({ class: classes }).range(from, to)));
+            // Keep a wrapper outside native hashtag marks regardless of their
+            // precedence, so tag themes can be neutralized only inside cookware.
+            this.cookware = Decoration.set(ranges
+                .filter(({ classes }) => classes.split(' ').includes('cook-token-cookware'))
+                .map(({ from, to }) => Decoration.mark({ class: 'cook-source-cookware' }).range(from, to)));
         }
-    }, { decorations: plugin => plugin.decorations });
+    }, {
+        decorations: plugin => plugin.decorations,
+        provide: plugin => EditorView.outerDecorations.of(view => view.plugin(plugin)?.cookware ?? Decoration.none),
+    });
 }
