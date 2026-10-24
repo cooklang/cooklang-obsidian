@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.15.0](https://github.com/cooklang/cooklang-obsidian/compare/0.14.0...0.15.0) (2026-10-24)
+
+
+### Features
+
+* add openWikiLink method to RecipeHostAdapter and implement in ObsidianRecipeHost ([f502dd2](https://github.com/cooklang/cooklang-obsidian/commit/f502dd2c37552ed84c9128dccfda60bc980d4af3))
+* render wiki and web links in recipe steps ([6da72ef](https://github.com/cooklang/cooklang-obsidian/commit/6da72ef02b70474b32a67508bc054320373513fe))
+
+
+### Bug Fixes
+
+* isolate cookware from native tag styling ([#181](https://github.com/cooklang/cooklang-obsidian/issues/181)) ([0a42e08](https://github.com/cooklang/cooklang-obsidian/commit/0a42e0824e41479fd62362ef8246c7d4dd458774))
+* preserve default preview during interrupted recipe routing ([#180](https://github.com/cooklang/cooklang-obsidian/issues/180)) ([dbd9fd8](https://github.com/cooklang/cooklang-obsidian/commit/dbd9fd8b544895eb101d110c0c574f419956ef17))
+
 ## [0.14.0](https://github.com/cooklang/cooklang-obsidian/compare/0.13.0...0.14.0) (2026-09-21)
 
 
