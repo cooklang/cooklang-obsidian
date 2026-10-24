@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.1](https://github.com/cooklang/cooklang-obsidian/compare/0.15.0...0.15.1) (2026-10-24)
+
+
+### Bug Fixes
+
+* yield between interrupted recipe routing attempts ([#182](https://github.com/cooklang/cooklang-obsidian/issues/182)) ([def10a7](https://github.com/cooklang/cooklang-obsidian/commit/def10a772558ac5ffa303222e02261397390dd6c))
+
 ## [0.15.0](https://github.com/cooklang/cooklang-obsidian/compare/0.14.0...0.15.0) (2026-10-24)
 
 
