@@ -1,4 +1,5 @@
 export interface RecipeLeaf {
+    readonly view?: object;
     getViewState(): { type: string; state?: Record<string, unknown> };
 }
 
@@ -10,6 +11,7 @@ export class RecipeViewRouter<L extends RecipeLeaf> {
     private pending = new WeakMap<L, string>();
     private reroute = new WeakSet<L>();
     private suspended = new Set<string>();
+    private scheduled = new Map<L, ReturnType<typeof setTimeout>>();
     private disposed = false;
 
     constructor(
@@ -32,7 +34,21 @@ export class RecipeViewRouter<L extends RecipeLeaf> {
 
     suspend(path: string): void { this.suspended.add(path); }
     resume(path: string): void { this.suspended.delete(path); }
-    dispose(): void { this.disposed = true; this.suspended.clear(); }
+    dispose(): void {
+        this.disposed = true;
+        this.suspended.clear();
+        for (const timer of this.scheduled.values()) clearTimeout(timer);
+        this.scheduled.clear();
+    }
+
+    private schedule(leaf: L): void {
+        if (this.disposed || this.scheduled.has(leaf)) return;
+        // Navigation and rendering must get a browser task between attempts.
+        this.scheduled.set(leaf, setTimeout(() => {
+            this.scheduled.delete(leaf);
+            void this.route(leaf);
+        }, 0));
+    }
 
     rename(leaf: L, oldPath: string, newPath: string): void {
         if (this.native.get(leaf) === oldPath) this.native.set(leaf, newPath);
@@ -42,7 +58,14 @@ export class RecipeViewRouter<L extends RecipeLeaf> {
 
     async route(leaf: L): Promise<void> {
         if (this.disposed) return;
+        const scheduled = this.scheduled.get(leaf);
+        if (scheduled !== undefined) {
+            clearTimeout(scheduled);
+            this.scheduled.delete(leaf);
+        }
         const state = leaf.getViewState();
+        const view = leaf.view;
+        const mode = state.state?.mode;
         const path = typeof state.state?.file === 'string' ? state.state.file : '';
         if (this.native.get(leaf) !== path) this.native.delete(leaf);
         if (this.automatic.get(leaf) !== path) this.automatic.delete(leaf);
@@ -52,7 +75,7 @@ export class RecipeViewRouter<L extends RecipeLeaf> {
         const recognized = this.recognized(path, leaf);
         if (recognized === undefined) return;
         const fresh = this.seen.get(leaf) !== path;
-        const reading = state.state?.mode === 'preview';
+        const reading = mode === 'preview';
         const wantsPreview = fresh
             ? this.defaultView() === 'preview' && this.native.get(leaf) !== path
             : reading;
@@ -67,8 +90,8 @@ export class RecipeViewRouter<L extends RecipeLeaf> {
         this.pending.set(leaf, path);
         const isCurrent = () => {
             const current = leaf.getViewState();
-            return !this.disposed && current.type === state.type && current.state?.file === path && !this.suspended.has(path)
-                && current.state?.mode === state.state?.mode
+            return !this.disposed && leaf.view === view && current.type === state.type && current.state?.file === path && !this.suspended.has(path)
+                && current.state?.mode === mode
                 && (type === 'cook' ? this.recognized(path, leaf) === true
                     && (reading || this.native.get(leaf) !== path)
                     : this.recognized(path, leaf) === recognized);
@@ -85,6 +108,10 @@ export class RecipeViewRouter<L extends RecipeLeaf> {
             if (current.type === type && current.state?.file === path) {
                 // Consume the default only after navigation has actually settled.
                 this.seen.set(leaf, path);
+            } else if (isCurrent()) {
+                // A no-op switch must not keep retrying an unchanged view.
+                this.automatic.delete(leaf);
+                this.seen.set(leaf, path);
             } else {
                 retry = true;
             }
@@ -96,7 +123,7 @@ export class RecipeViewRouter<L extends RecipeLeaf> {
         } finally {
             this.pending.delete(leaf);
             const queued = this.reroute.delete(leaf);
-            if (retry || queued || leaf.getViewState().state?.file !== path) void this.route(leaf);
+            if (retry || queued || leaf.getViewState().state?.file !== path) this.schedule(leaf);
         }
     }
 }
