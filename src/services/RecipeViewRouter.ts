@@ -52,7 +52,6 @@ export class RecipeViewRouter<L extends RecipeLeaf> {
         const recognized = this.recognized(path, leaf);
         if (recognized === undefined) return;
         const fresh = this.seen.get(leaf) !== path;
-        this.seen.set(leaf, path);
         const reading = state.state?.mode === 'preview';
         const wantsPreview = fresh
             ? this.defaultView() === 'preview' && this.native.get(leaf) !== path
@@ -61,7 +60,10 @@ export class RecipeViewRouter<L extends RecipeLeaf> {
             ? wantsPreview ? 'cook'
                 : state.state?.mode !== 'source' || state.state?.source !== true ? 'markdown' : null
             : state.type === 'cook' && !recognized && this.automatic.get(leaf) === path ? 'markdown' : null;
-        if (!type) return;
+        if (!type) {
+            this.seen.set(leaf, path);
+            return;
+        }
         this.pending.set(leaf, path);
         const isCurrent = () => {
             const current = leaf.getViewState();
@@ -71,19 +73,30 @@ export class RecipeViewRouter<L extends RecipeLeaf> {
                     && (reading || this.native.get(leaf) !== path)
                     : this.recognized(path, leaf) === recognized);
         };
+        let retry = false;
         try {
             // Allow concurrent navigation/metadata events to settle, then verify the target.
             await Promise.resolve();
-            if (!isCurrent()) return;
+            if (!isCurrent()) { retry = true; return; }
             if (type === 'cook') this.automatic.set(leaf, path);
             else this.automatic.delete(leaf);
             await this.switchView(leaf, type, path, isCurrent);
+            const current = leaf.getViewState();
+            if (current.type === type && current.state?.file === path) {
+                // Consume the default only after navigation has actually settled.
+                this.seen.set(leaf, path);
+            } else {
+                retry = true;
+            }
         } catch (error) {
             this.automatic.delete(leaf);
+            // A failed switch should not be retried on every metadata event.
+            if (leaf.getViewState().state?.file === path) this.seen.set(leaf, path);
             this.onError(error);
         } finally {
             this.pending.delete(leaf);
-            if (this.reroute.delete(leaf) || leaf.getViewState().state?.file !== path) void this.route(leaf);
+            const queued = this.reroute.delete(leaf);
+            if (retry || queued || leaf.getViewState().state?.file !== path) void this.route(leaf);
         }
     }
 }
