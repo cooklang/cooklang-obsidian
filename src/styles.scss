@@ -144,7 +144,7 @@
 
 }
 
-// Only token colors are ours; layout and editor behavior belong to Obsidian.
+// Preserve the native editor while keeping cookware free of hashtag pill styles.
 .markdown-source-view {
   .cook-token-ingredient { color: var(--text-accent); }
   .cook-token-cookware { color: var(--color-green); }
@@ -152,6 +152,30 @@
   .cook-token-comment { color: var(--text-faint); }
   .cook-token-meta { color: var(--text-muted); }
   .cook-token-unit { color: var(--color-orange); }
+
+  .cook-source-cookware {
+    color: var(--color-green);
+
+    // Obsidian splits a hashtag into begin/end spans. Themes and tag plugins
+    // style these independently, sometimes with inline colors or !important.
+    .cm-hashtag {
+      background: none !important;
+      border: 0 !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      color: var(--color-green) !important;
+      display: inline !important;
+      font: inherit !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      text-decoration: none !important;
+
+      &::before,
+      &::after {
+        content: none !important;
+      }
+    }
+  }
 }
 
 /* ===== Rich Cooklang preview ===== */
