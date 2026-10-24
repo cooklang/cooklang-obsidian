@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RecipeViewRouter } from './RecipeViewRouter';
 
 function setup(defaultView: 'source' | 'preview' = 'preview') {
@@ -14,6 +14,8 @@ function setup(defaultView: 'source' | 'preview' = 'preview') {
 }
 
 describe('Markdown recipe routing', () => {
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
     it.each(['Dinner.cook', 'Dinner.cook.md', 'Dinner.md'])('uses native Source mode for %s with the source default', async path => {
         const { leaf, router, switchView } = setup('source');
         leaf.state.state = { file: path, mode: 'source', source: false };
@@ -123,7 +125,7 @@ describe('Markdown recipe routing', () => {
         leaf.state = { type: 'markdown', state: { file: 'Lunch.md' } };
         await router.route(leaf);
         await first;
-        await Promise.resolve();
+        await vi.runOnlyPendingTimersAsync();
         expect(switchView).toHaveBeenCalledTimes(1);
         expect(leaf.state.state.file).toBe('Lunch.md');
         expect(leaf.state.type).toBe('cook');
@@ -136,7 +138,7 @@ describe('Markdown recipe routing', () => {
         leaf.state.state = { ...leaf.state.state, mode: 'source' };
         if (queued) await router.route(leaf);
         await pending;
-        await Promise.resolve();
+        await vi.runOnlyPendingTimersAsync();
         expect(leaf.state.type).toBe('cook');
     });
 
@@ -149,9 +151,65 @@ describe('Markdown recipe routing', () => {
             if (isCurrent()) target.state = { type, state: { file: path } };
         });
         await router.route(leaf);
-        await Promise.resolve();
-        await Promise.resolve();
+        await vi.runOnlyPendingTimersAsync();
         expect(leaf.state.type).toBe('cook');
+    });
+
+    it('stops after a no-op switch instead of starving the browser task queue', async () => {
+        const { leaf, router, switchView } = setup();
+        switchView.mockImplementation(async () => {
+            // Bound the reproduction so a regression fails instead of hanging Vitest.
+            if (switchView.mock.calls.length > 5) router.dispose();
+        });
+        await router.route(leaf);
+        await vi.runOnlyPendingTimersAsync();
+        expect(switchView).toHaveBeenCalledOnce();
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('yields to navigation before retrying an interrupted switch', async () => {
+        const { leaf, router, switchView } = setup();
+        switchView.mockImplementationOnce(async () => {
+            leaf.state = { type: 'markdown', state: { file: 'Lunch.md', mode: 'source' } };
+        });
+        await router.route(leaf);
+        expect(switchView).toHaveBeenCalledOnce();
+        leaf.state = { type: 'image', state: { file: 'Photo.png' } };
+        await vi.runOnlyPendingTimersAsync();
+        expect(switchView).toHaveBeenCalledOnce();
+        expect(leaf.state.state.file).toBe('Photo.png');
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('does not start another switch before browser tasks can run', async () => {
+        const { leaf, router, switchView } = setup();
+        switchView.mockImplementation(async () => {
+            leaf.state.state = { ...leaf.state.state, mode: leaf.state.state.mode === 'source' ? 'preview' : 'source' };
+            if (switchView.mock.calls.length > 5) router.dispose();
+        });
+        await router.route(leaf);
+        await Promise.resolve();
+        expect(switchView).toHaveBeenCalledOnce();
+        expect(vi.getTimerCount()).toBe(1);
+        router.dispose();
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('rejects a replaced view even when its file and mode match', async () => {
+        const { leaf, router, switchView } = setup();
+        const target = Object.assign(leaf, { view: {} });
+        let current: (() => boolean) | undefined;
+        switchView.mockImplementationOnce(async (_target, _type, _path, isCurrent) => {
+            current = isCurrent;
+            target.view = {};
+            expect(isCurrent()).toBe(false);
+        });
+        await router.route(target);
+        expect(current?.()).toBe(false);
+        router.dispose();
+        await vi.runOnlyPendingTimersAsync();
+        expect(switchView).toHaveBeenCalledOnce();
+        expect(vi.getTimerCount()).toBe(0);
     });
 
     it('rechecks eligibility after an asynchronous save', async () => {
