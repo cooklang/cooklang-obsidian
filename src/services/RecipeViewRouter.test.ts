@@ -129,6 +129,31 @@ describe('Markdown recipe routing', () => {
         expect(leaf.state.type).toBe('cook');
     });
 
+    it.each([false, true])('retains the preview default when Source mode settles (queued event: %s)', async queued => {
+        const { leaf, router } = setup();
+        leaf.state.state = { file: 'Dinner.md' };
+        const pending = router.route(leaf);
+        leaf.state.state = { ...leaf.state.state, mode: 'source' };
+        if (queued) await router.route(leaf);
+        await pending;
+        await Promise.resolve();
+        expect(leaf.state.type).toBe('cook');
+    });
+
+    it.each([false, true])('retains the preview default during an asynchronous save (queued event: %s)', async queued => {
+        const { leaf, router, switchView } = setup();
+        leaf.state.state = { file: 'Dinner.md' };
+        switchView.mockImplementationOnce(async (target, type, path, isCurrent) => {
+            target.state.state = { ...target.state.state, mode: 'source' };
+            if (queued) await router.route(target);
+            if (isCurrent()) target.state = { type, state: { file: path } };
+        });
+        await router.route(leaf);
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(leaf.state.type).toBe('cook');
+    });
+
     it('rechecks eligibility after an asynchronous save', async () => {
         const { leaf, router, switchView } = setup();
         switchView.mockImplementation(async (target, type, path, isCurrent) => {
@@ -156,6 +181,8 @@ describe('Markdown recipe routing', () => {
         router.resume('Dinner.md');
         switchView.mockRejectedValue(new Error('failed'));
         await router.route(leaf);
+        await router.route(leaf);
+        expect(switchView).toHaveBeenCalledOnce();
         expect(error).toHaveBeenCalledOnce();
     });
 
