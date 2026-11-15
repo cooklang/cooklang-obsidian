@@ -38,7 +38,7 @@
     "@types/howler": "^2.2.13",
     "@types/node": "^24.19.2",
     "howler": "^2.2.4",
-    "jsdom": "^30.1.3",
+    "jsdom": "^31.0.0",
     "mathjs": "^15.2.0",
     "obsidian": "latest",
     "rollup": "^4.66.0",
