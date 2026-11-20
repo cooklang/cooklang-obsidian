@@ -17,6 +17,7 @@ export class CooklangSettings {
   showTotalTime: boolean = true;
   showTimersInline: boolean = true;
   showQuantitiesInline: boolean = false;
+  showIngredientPrepInline: boolean = false;
   timersTick: boolean = true;
   timersRing: boolean = true;
   highlightIngredientCookware: boolean = false;
@@ -174,6 +175,17 @@ export class CookSettingsTab extends PluginSettingTab {
         .setValue(this.plugin.settings.showQuantitiesInline)
         .onChange((value: boolean) => {
           this.plugin.settings.showQuantitiesInline = value;
+          this.plugin.saveData(this.plugin.settings);
+          this.plugin.reloadCookViews();
+        }));
+
+    new Setting(containerEl)
+      .setName('Show ingredient preparations inline')
+      .setDesc('Show the ingredient preparations inline in the recipe method')
+      .addToggle(toggle => toggle
+        .setValue(this.plugin.settings.showIngredientPrepInline)
+        .onChange((value: boolean) => {
+          this.plugin.settings.showIngredientPrepInline = value;
           this.plugin.saveData(this.plugin.settings);
           this.plugin.reloadCookViews();
         }));
