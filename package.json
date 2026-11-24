@@ -41,6 +41,7 @@
     "jsdom": "^31.0.0",
     "mathjs": "^15.2.0",
     "obsidian": "latest",
+    "pdf-lib": "1.17.1",
     "rollup": "^4.68.2",
     "rollup-plugin-svelte": "^7.2.3",
     "sass": "^1.108.2",

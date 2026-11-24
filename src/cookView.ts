@@ -1,11 +1,12 @@
-import { TextFileView, WorkspaceLeaf, type ViewStateResult, type Menu, Scope } from 'obsidian';
+import { TextFileView, WorkspaceLeaf, type ViewStateResult, type Menu, Notice, Scope } from 'obsidian';
 import type { CooklangSettings } from './settings';
 import { parserService } from './services/ParserService';
 import type { RecipeSession } from './services/RecipeSessions';
 import { parseServingsValue, computeScale, computeReferenceScale, deriveServingsState,
     type RecipeReferenceScaleRequest } from './utils/scaling';
 import { mount, unmount } from 'svelte';
-import { writable } from 'svelte/store';
+import { get, writable } from 'svelte/store';
+import { createPdf } from './renderers/recipePdf';
 import CookViewRoot from './ui/CookViewRoot.svelte';
 import type { RecipeHostAdapter, RecipeRenderModel } from './ui/types';
 import { recipeName } from './utils/recipeFiles';
@@ -34,6 +35,7 @@ export class CookView extends TextFileView {
 
     async onload(): Promise<void> {
         super.onload();
+        this.addAction('file-down', 'Export recipe to PDF', () => { void this.exportPdf(); });
         this.addAction('edit-3', 'Edit recipe source', () => { void this.editSource(this.leaf); });
         await parserService.initialize();
         if (!this.disposed) this.renderPreview();
@@ -47,8 +49,29 @@ export class CookView extends TextFileView {
 
     onPaneMenu(menu: Menu, source: string): void {
         super.onPaneMenu(menu, source);
+        menu.addItem(item => item.setTitle('Export recipe to PDF').setIcon('file-down').onClick(() => this.exportPdf()));
         menu.addItem(item => item.setTitle('Edit recipe source').setIcon('file-pen')
             .onClick(() => this.editSource(this.leaf)));
+    }
+
+    async exportPdf(): Promise<void> {
+        try {
+            const model = get(this.previewStore);
+            if (!model?.file || model.file !== this.file) throw new Error('Recipe preview is still loading.');
+            const base = model.file.path.replace(/(?:\.cook)?\.md$|\.cook$/i, '');
+            const bytes = await createPdf(model);
+            const buffer = new Uint8Array(bytes).buffer;
+            for (let n = 1; ; n++) {
+                const path = base + (n === 1 ? '' : ' (' + n + ')') + '.pdf';
+                if (await this.app.vault.adapter.exists(path)) continue;
+                try { await this.app.vault.createBinary(path, buffer); }
+                catch (error) { if (await this.app.vault.adapter.exists(path)) continue; throw error; }
+                new Notice('Saved ' + path);
+                return;
+            }
+        } catch (error) {
+            new Notice('PDF export failed: ' + (error instanceof Error ? error.message : String(error)));
+        }
     }
 
     getViewData(): string { return this.data ?? ''; }
