@@ -1,4 +1,4 @@
-import { App, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { App, Plugin, PluginSettingTab, Setting, type DropdownComponent } from 'obsidian';
 import { CookView } from './cookView';
 import { RECIPE_FORMATS, type RecipeFormat } from './utils/recipeFiles';
 
@@ -66,17 +66,32 @@ export class CookSettingsTab extends PluginSettingTab {
         }));
 
     new Setting(containerEl).setName('PDF export').setHeading();
-    for (const [key, name, description] of [
-      ['pdfFontPath', 'Custom PDF font', 'Optional path to a .ttf or .otf file in this vault. Leave blank to use built-in Helvetica. Used only in exported PDFs.'],
-      ['pdfBoldFontPath', 'Custom PDF bold font', 'Optional bold .ttf or .otf file in this vault. Requires a custom PDF font; leave blank to use that face for both weights.'],
+    const fontPaths = this.app.vault.getFiles()
+      .filter(file => /\.(ttf|otf)$/i.test(file.path))
+      .map(file => file.path)
+      .sort((a, b) => a.localeCompare(b));
+    let boldFontPicker: DropdownComponent | undefined;
+    for (const [key, name, description, defaultLabel] of [
+      ['pdfFontPath', 'PDF font', 'Choose a font from this vault. To add one, copy a .ttf or .otf file into the vault and reopen settings. Only exported PDFs use this font.', 'Helvetica (built-in)'],
+      ['pdfBoldFontPath', 'PDF bold font', 'Choose a bold face for your custom PDF font.', 'Same as PDF font'],
     ] as const) {
-      new Setting(containerEl).setName(name).setDesc(description).addText(text => text
-        .setPlaceholder('Fonts/MyFont.ttf')
-        .setValue(this.plugin.settings[key])
-        .onChange(async value => {
-          this.plugin.settings[key] = value.trim();
+      new Setting(containerEl).setName(name).setDesc(description).addDropdown(dropdown => {
+        dropdown.addOption('', defaultLabel);
+        for (const path of fontPaths) dropdown.addOption(path, path);
+        const selected = this.plugin.settings[key];
+        if (selected && !fontPaths.includes(selected)) {
+          dropdown.addOption(selected, selected + ' (unavailable)');
+        }
+        dropdown.setValue(selected).onChange(async value => {
+          this.plugin.settings[key] = value;
+          if (key === 'pdfFontPath') boldFontPicker?.setDisabled(!value);
           await this.plugin.saveData(this.plugin.settings);
-        }));
+        });
+        if (key === 'pdfBoldFontPath') {
+          boldFontPicker = dropdown;
+          dropdown.setDisabled(!this.plugin.settings.pdfFontPath);
+        }
+      });
     }
 
     new Setting(containerEl)
