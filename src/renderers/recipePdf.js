@@ -74,7 +74,7 @@ export async function createPdf(model) {
   const body = embedGeist(pdf, 'Regular');
   const bold = embedGeist(pdf, 'SemiBold');
   const ink = rgb(.15,.14,.14), muted = rgb(.35,.33,.32);
-  const accent = rgb(.52,.22,.16), rule = rgb(.85,.81,.78);
+  const accent = rgb(.31,.40,.48), rule = rgb(.80,.83,.85);
   const left = 43, right = 569, bottom = 49;
   let page, y, step = 0;
   const glyphs = new Map();
@@ -178,7 +178,7 @@ export async function createPdf(model) {
     if (capacity < 1) return null;
     const lines = block.lines.splice(0,capacity);
     const height = 2*notePadding + lines.length*noteLeading;
-    page.drawRectangle({x,y:top-height,width,height,color:rgb(.982,.961,.949)});
+    page.drawRectangle({x,y:top-height,width,height,color:rgb(.95,.965,.975)});
     page.drawRectangle({x,y:top-height,width:1.7,height,color:accent});
     let baseline = top-notePadding-9;
     for (const line of lines) {
