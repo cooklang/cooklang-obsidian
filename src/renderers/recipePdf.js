@@ -23,7 +23,7 @@ export function recipeSections(recipe, modelInlineQuantities = false) {
     const ingredients = [];
     const seen = new Set();
     const entries = section.content.map(entry => {
-      if (entry.type === 'text') return { note: entry.value };
+      if (entry.type === 'text') return { note: entry.value.replace(/\n[ \t]*>[ \t]?/g, '\n') };
       const timers = [];
       const text = entry.value.items.map(part => {
         switch (part.type) {
@@ -158,6 +158,32 @@ export async function createPdf(model) {
     if (lines.length <= 12) room(lines.length * leading);
     for (const line of lines) { room(leading); await draw(line,x,y,font,size,color); y -= leading; }
   }
+  const noteLeading = 13, notePadding = 8;
+  function noteBlock(text, width) {
+    return { isNote:true, lines:wrap(text,body,10,width-2*notePadding), after:7 };
+  }
+  async function noteChunk(block, x, top, width) {
+    const capacity = Math.floor((top-bottom-2*notePadding)/noteLeading);
+    if (capacity < 1) return null;
+    const lines = block.lines.splice(0,capacity);
+    const height = 2*notePadding + lines.length*noteLeading;
+    page.drawRectangle({x,y:top-height,width,height,color:rgb(.982,.961,.949)});
+    page.drawRectangle({x,y:top-height,width:1.7,height,color:accent});
+    let baseline = top-notePadding-9;
+    for (const line of lines) {
+      await draw(line,x+notePadding+1,baseline,body,10,ink);
+      baseline-=noteLeading;
+    }
+    return top-height-block.after;
+  }
+  async function openingNote(entry) {
+    const block = noteBlock(entry.note,right-left);
+    while (block.lines.length) {
+      room(2*notePadding+noteLeading*Math.min(3,block.lines.length)+1);
+      y = await noteChunk(block,left,y,right-left);
+      if (block.lines.length) newPage();
+    }
+  }
   newPage();
   // Balance multi-line titles at a fixed reading size, keeping short titles on one line.
   const titleSize = 23, maxWidth = right-left;
@@ -182,21 +208,25 @@ export async function createPdf(model) {
   y -= 3;
   const methodLeft = 230, numberWidth = 20, leading = 15.5;
   for (const section of recipeSections(recipe,model.settings?.showQuantitiesInline)) {
-    if (!section.ingredients.length && section.entries.every(entry => 'note' in entry)) {
+    const firstStep = section.entries.findIndex(entry => 'text' in entry);
+    const first = firstStep < 0 ? section.entries.length : firstStep;
+    const opening = section.entries.slice(0,first);
+    if (firstStep < 0) {
       if (section.name) await paragraph(section.name,bold,15,21);
-      for (const entry of section.entries) await paragraph(entry.note,body,10,14,muted);
-      y -= 3;
+      for (const entry of opening) await openingNote(entry);
       continue;
     }
+    if (!section.name) for (const entry of opening) await openingNote(entry);
     // Flow each column independently, then start the next section below both.
     const ingredients = section.ingredients.map(text => ({
       lines: wrap(text,body,10.7,methodLeft-left-21), font:body, size:10.7, after:3
     }));
-    const method = section.entries.map(entry => ({
-      lines:wrap(entry.note ?? entry.text,body,11.1,right-methodLeft-numberWidth,entry.timers),
-      font:body, size:11.1, after:6, number:'note' in entry ? null : ++step
+    const method = section.entries.slice(first).map(entry => 'note' in entry
+      ? noteBlock(entry.note,right-methodLeft-numberWidth) : ({
+      lines:wrap(entry.text,body,11.1,right-methodLeft-numberWidth,entry.timers),
+      font:body, size:11.1, after:6, number:++step
     }));
-    const height = (blocks, advance) => blocks.reduce((sum,b) => sum + b.lines.length*advance+b.after,0);
+    const height = (blocks, advance) => blocks.reduce((sum,b) => sum + (b.isNote ? 2*notePadding+b.lines.length*noteLeading : b.lines.length*advance)+b.after,0);
     const sectionHeight = Math.max(height(ingredients,14),height(method,leading)) + 56;
     // Move an intact section to a fresh page when it can fit there.
     if (sectionHeight < 680 && sectionHeight > y-bottom ) newPage();
@@ -205,6 +235,8 @@ export async function createPdf(model) {
     page.drawLine({start:{x:left,y},end:{x:right,y},thickness:.5,color:rule});
     y -= 20;
     if (section.name) await paragraph(section.name,bold,15,21);
+    if (section.name) for (const entry of opening) await openingNote(entry);
+    room(46);
     function columnLabels() {
       bold.draw(page,'Ingredients',left,y,9.5,accent);
       bold.draw(page,'Method',methodLeft,y,9.5,accent);
@@ -216,6 +248,14 @@ export async function createPdf(model) {
       const lineHeight = numbered ? leading : 14;
       while (blocks.length) {
         const block=blocks[0];
+        if (block.isNote) {
+          const end = await noteChunk(block,x+numberWidth,pos+5,right-x-numberWidth);
+          if (end === null) break;
+          pos=end-8;
+          if (block.lines.length) break;
+          blocks.shift();
+          continue;
+        }
         const available=Math.floor((pos-bottom)/lineHeight);
         if (available<=0 || (block.lines.length>available && available<3)) break;
         if (numbered && block.number) {
