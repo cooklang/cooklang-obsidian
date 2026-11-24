@@ -126,8 +126,8 @@ export default {
     markdownString(),
     sassStyles(),
     url({
-      include: ['**/*.mp3'],
-      limit: 100000
+      include: ['**/*.mp3', '**/Geist-*.ttf'],
+      limit: 200000
     })
   ]
 };

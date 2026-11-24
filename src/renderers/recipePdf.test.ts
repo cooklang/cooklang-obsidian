@@ -1,6 +1,15 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { PDFDocument } from 'pdf-lib';
 import { createPdf, recipeSections } from './recipePdf';
+
+// Match the data URLs emitted by Rollup for the two bundled typefaces.
+async function fontAsset(name: string) {
+    const { readFile } = await import('node:fs/promises');
+    const font = await readFile(new URL('./fonts/' + name, import.meta.url));
+    return { default: 'data:font/ttf;base64,' + font.toString('base64') };
+}
+vi.mock('./fonts/Geist-Regular.ttf', () => fontAsset('Geist-Regular.ttf'));
+vi.mock('./fonts/Geist-SemiBold.ttf', () => fontAsset('Geist-SemiBold.ttf'));
 
 describe('recipe PDF', () => {
     const recipe = {
@@ -14,5 +23,8 @@ describe('recipe PDF', () => {
         const pdf = await PDFDocument.load(await createPdf({ recipe, file: { basename: 'Tea' } }));
         expect(pdf.getTitle()).toBe('Tea');
         expect(pdf.getPageCount()).toBe(1);
+        const fonts = pdf.context.enumerateIndirectObjects().map(([, obj]) => obj.toString().slice(0, 160));
+        expect(fonts.some(value => value.includes('/BaseFont /Geist-SemiBold'))).toBe(true);
+        expect(fonts.some(value => value.includes('/BaseFont /Geist-Regular'))).toBe(true);
     });
 });
