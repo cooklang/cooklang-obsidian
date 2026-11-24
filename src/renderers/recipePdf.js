@@ -25,7 +25,7 @@ export function recipeSections(recipe, modelInlineQuantities = false) {
     const entries = section.content.map(entry => {
       if (entry.type === 'text') return { note: entry.value.replace(/\n[ \t]*>[ \t]?/g, '\n') };
       const timers = [];
-      const text = entry.value.items.map(part => {
+      function renderPart(part) {
         switch (part.type) {
           case 'text': return part.value;
           case 'inlineQuantity': return amount(recipe.inlineQuantities[part.index]);
@@ -48,8 +48,17 @@ export function recipeSections(recipe, modelInlineQuantities = false) {
           }
           default: throw new Error('Unsupported Cooklang step item: ' + part.type);
         }
-      }).join('');
-      return { text, timers };
+      }
+      const ingredientRanges = [];
+      let text = '';
+      for (const part of entry.value.items) {
+        if (part.type === 'ingredient') {
+          const name = label(recipe.ingredients[part.index]);
+          ingredientRanges.push([text.length,text.length + name.length]);
+        }
+        text += renderPart(part);
+      }
+      return ingredientRanges.length ? { text, timers, ingredientRanges } : { text, timers };
     });
     return { name: section.name, ingredients, entries };
   });
@@ -90,9 +99,9 @@ export async function createPdf(model) {
       return glyphs.get(key);
     }
   }
-  function wrap(text, font, size, width, times) {
+  function wrap(text, font, size, width, times, ingredientRanges = []) {
     const ranges = [];
-    const timeColor = accent;
+    const ingredientInk = rgb(.29,.23,.20);
     const source = String(text);
     if (times) {
       // Preserve semantic timers and also highlight written ranges such as
@@ -108,20 +117,20 @@ export async function createPdf(model) {
     let line = [], used = 0;
     const gap = font.widthOfTextAtSize(' ', size);
     function flush() { if (line.length) lines.push(line); line = []; used = 0; }
-    function add(word, highlight) {
-      const face = highlight ? bold : font;
+    function add(word, tint) {
+      const face = tint ? bold : font;
       const m = metrics(word,face,size);
       if (line.length && used + gap + m.width > width) flush();
       if (m.width > width && Array.from(word).length > 1) {
         let piece = '';
         for (const char of word) {
-          if (piece && metrics(piece + char,face,size).width > width) { add(piece,highlight); flush(); piece = ''; }
+          if (piece && metrics(piece + char,face,size).width > width) { add(piece,tint); flush(); piece = ''; }
           piece += char;
         }
-        add(piece,highlight); return;
+        add(piece,tint); return;
       }
       if (line.length) used += gap;
-      line.push({ word, m, offset: used, font: face, color: highlight ? timeColor : null }); used += m.width;
+      line.push({ word, m, offset: used, font: face, color: tint }); used += m.width;
     }
     for (const m of source.matchAll(/\S+/gu)) {
       const phrase = ranges.find(([start]) => start === m.index);
@@ -129,7 +138,9 @@ export async function createPdf(model) {
         const widthNeeded = metrics(source.slice(phrase[0],phrase[1]),bold,size).width;
         if (widthNeeded <= width && used + gap + widthNeeded > width) flush();
       }
-      add(m[0], ranges.some(([start,end]) => start < m.index+m[0].length && end > m.index));
+      const overlaps = ([start,end]) => start < m.index+m[0].length && end > m.index;
+      const tint = ranges.some(overlaps) ? accent : ingredientRanges.some(overlaps) ? ingredientInk : null;
+      add(m[0], tint);
     }
     flush(); return lines;
   }
@@ -223,7 +234,7 @@ export async function createPdf(model) {
     }));
     const method = section.entries.slice(first).map(entry => 'note' in entry
       ? noteBlock(entry.note,right-methodLeft-numberWidth) : ({
-      lines:wrap(entry.text,body,11.1,right-methodLeft-numberWidth,entry.timers),
+      lines:wrap(entry.text,body,11.1,right-methodLeft-numberWidth,entry.timers,entry.ingredientRanges),
       font:body, size:11.1, after:6, number:++step
     }));
     const height = (blocks, advance) => blocks.reduce((sum,b) => sum + (b.isNote ? 2*notePadding+b.lines.length*noteLeading : b.lines.length*advance)+b.after,0);
