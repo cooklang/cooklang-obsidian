@@ -110,7 +110,8 @@ export default {
     }),
     typescript({
       tsconfig: './tsconfig.json',
-      outDir: '.',
+      rootDir: '.',
+      outDir: 'build/typescript',
       noEmitOnError: true,
       sourceMap: true,
       inlineSources: !isProd
