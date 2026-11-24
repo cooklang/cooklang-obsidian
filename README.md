@@ -35,6 +35,14 @@ Opening a recipe in Preview shows a single rich recipe page:
 Each of these can be toggled in the plugin settings (Servings scaler, Two-column layout,
 Step tracking), falling back to a simple stacked list.
 
+## PDF export
+
+From a recipe preview, use the download toolbar action, pane menu, or **Cooklang Editor: Export recipe to PDF** command. The PDF uses the selected serving scale and is saved beside the recipe. Repeated exports receive numbered filenames.
+
+PDFs use built-in Helvetica by default. Under **Settings → Cooklang Editor → PDF export**, optionally enter vault-relative paths to local `.ttf` or `.otf` files for regular and bold text. Only exported PDFs use these fonts; the live preview keeps its theme font. A supplied font is subset and embedded in the PDF. If no bold file is supplied, the regular face serves both weights. No font files are downloaded or bundled with the plugin.
+
+Text outside the selected font's character set, and Arabic/Hebrew text requiring bidirectional layout, is rendered as complete lines using the platform's font support. Those fallback lines are images rather than selectable PDF text. Grouped ingredient totals appear in the definition's section; separately declared ingredients appear in the first section.
+
 ## Markdown recipes
 
 Recipes can be stored in three formats:

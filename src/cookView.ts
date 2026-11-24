@@ -1,4 +1,4 @@
-import { TextFileView, WorkspaceLeaf, type ViewStateResult, type Menu, Notice, Scope } from 'obsidian';
+import { TextFileView, WorkspaceLeaf, type ViewStateResult, type Menu, Notice, Scope, normalizePath } from 'obsidian';
 import type { CooklangSettings } from './settings';
 import { parserService } from './services/ParserService';
 import type { RecipeSession } from './services/RecipeSessions';
@@ -59,7 +59,19 @@ export class CookView extends TextFileView {
             const model = get(this.previewStore);
             if (!model?.file || model.file !== this.file) throw new Error('Recipe preview is still loading.');
             const base = model.file.path.replace(/(?:\.cook)?\.md$|\.cook$/i, '');
-            const bytes = await createPdf(model);
+            const readFont = async (path: string): Promise<Uint8Array> => {
+                if (!/\.(ttf|otf)$/i.test(path) || path.split(/[\\/]/).includes('..') || /^[\\/]/.test(path)) {
+                    throw new Error('Choose a .ttf or .otf font path inside the vault.');
+                }
+                return new Uint8Array(await this.app.vault.adapter.readBinary(normalizePath(path)));
+            };
+            const regularPath = this.settings.pdfFontPath?.trim();
+            const boldPath = this.settings.pdfBoldFontPath?.trim();
+            const fonts = regularPath ? {
+                regular: await readFont(regularPath),
+                bold: boldPath ? await readFont(boldPath) : undefined,
+            } : undefined;
+            const bytes = await createPdf(model, fonts);
             const buffer = new Uint8Array(bytes).buffer;
             for (let n = 1; ; n++) {
                 const path = base + (n === 1 ? '' : ' (' + n + ')') + '.pdf';

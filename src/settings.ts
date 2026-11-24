@@ -10,6 +10,8 @@ declare class CookPlugin extends Plugin {
 export class CooklangSettings {
   /** Internal marker used to show release notes only once per plugin version. */
   lastSeenVersion?: string;
+  pdfFontPath: string = '';
+  pdfBoldFontPath: string = '';
   showImages: boolean = true;
   showIngredientList: boolean = true;
   showCookwareList: boolean = true;
@@ -62,6 +64,20 @@ export class CookSettingsTab extends PluginSettingTab {
           this.plugin.settings.defaultRecipeFormat = value as RecipeFormat;
           await this.plugin.saveData(this.plugin.settings);
         }));
+
+    new Setting(containerEl).setName('PDF export').setHeading();
+    for (const [key, name, description] of [
+      ['pdfFontPath', 'Custom PDF font', 'Optional path to a .ttf or .otf file in this vault. Leave blank to use built-in Helvetica. Used only in exported PDFs.'],
+      ['pdfBoldFontPath', 'Custom PDF bold font', 'Optional bold .ttf or .otf file in this vault. Requires a custom PDF font; leave blank to use that face for both weights.'],
+    ] as const) {
+      new Setting(containerEl).setName(name).setDesc(description).addText(text => text
+        .setPlaceholder('Fonts/MyFont.ttf')
+        .setValue(this.plugin.settings[key])
+        .onChange(async value => {
+          this.plugin.settings[key] = value.trim();
+          await this.plugin.saveData(this.plugin.settings);
+        }));
+    }
 
     new Setting(containerEl)
       .setName('Preview Options')

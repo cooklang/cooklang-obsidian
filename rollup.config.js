@@ -1,6 +1,7 @@
 import typescript from '@rollup/plugin-typescript';
 import {nodeResolve} from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
+import json from '@rollup/plugin-json';
 import url from '@rollup/plugin-url';
 import wasm from '@rollup/plugin-wasm';
 import svelte from 'rollup-plugin-svelte';
@@ -110,8 +111,7 @@ export default {
     }),
     typescript({
       tsconfig: './tsconfig.json',
-      rootDir: '.',
-      outDir: 'build/typescript',
+      outDir: '.',
       noEmitOnError: true,
       sourceMap: true,
       inlineSources: !isProd
@@ -124,11 +124,12 @@ export default {
     commonjs({
       include: ['node_modules/**', 'src/mode/**']
     }),
+    json(),
     markdownString(),
     sassStyles(),
     url({
-      include: ['**/*.mp3', '**/Geist-*.ttf'],
-      limit: 200000
+      include: ['**/*.mp3'],
+      limit: 100000
     })
   ]
 };
