@@ -1,6 +1,6 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage, type PDFImage, type RGB } from 'pdf-lib';
 import { recipeSections, recipePdfDetails, type TextRange } from '../utils/recipePdfModel';
-import { canvasTextLines, textDirection } from '../utils/pdfTextLayout';
+import { canvasTextLineRanges, textDirection } from '../utils/pdfTextLayout';
 import type { RecipeRenderModel } from '../ui/types';
 
 type PdfModel = Pick<RecipeRenderModel, 'recipe' | 'file'> & {
@@ -36,6 +36,18 @@ export async function createPdf(model: PdfModel, customFonts?: { regular: Uint8A
       await face.load(); document.fonts.add(face); localFaces.push(face);
     }
   }
+  // Standalone SVG images cannot access the document's FontFace set.
+  const fontData = (bytes: Uint8Array) => {
+    let binary = '';
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    return btoa(binary);
+  };
+  let svgFonts: string | undefined;
+  function embeddedSvgFonts() {
+    return svgFonts ??= customFonts ? ([['400',customFonts.regular],['700',customFonts.bold ?? customFonts.regular]] as const)
+      .map(([weight,bytes]) => `@font-face{font-family:${family};font-weight:${weight};src:url(data:font/ttf;base64,${fontData(bytes)})}`).join('') : '';
+  }
+
   const ink = rgb(.15,.14,.14), muted = rgb(.35,.33,.32);
   const accent = rgb(.31,.40,.48), rule = rgb(.80,.83,.85);
   const left = 43, right = 569, bottom = 49;
@@ -65,20 +77,38 @@ export async function createPdf(model: PdfModel, customFonts?: { regular: Uint8A
     }
     return glyphs.get(key)!;
   }
+  function rasterStyledLine(runs: { text: string; tint: RGB | null }[], font: PDFFont, size: number,
+    direction: 'rtl' | 'ltr', measuredWidth: number): WordMetrics {
+    const escape = (value: string) => value.replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&apos;' }[char]!));
+    const width = Math.ceil(measuredWidth * 3) + 6, height = Math.ceil(size * 4.5);
+    const color = (tint: RGB) => `rgb(${Math.round(tint.red*255)},${Math.round(tint.green*255)},${Math.round(tint.blue*255)})`;
+    const contents = runs.map(run => `<tspan font-weight="${run.tint || font === bold ? 700 : 400}" fill="${color(run.tint || ink)}">${escape(run.text)}</tspan>`).join('');
+    // SVG lays out all logical runs together; drawing separate canvas words
+    // would lose the bidi ordering and shaping context of the complete line.
+    const key = JSON.stringify([runs,font.name,size,direction]);
+    if (!glyphs.has(key)) {
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><style>${embeddedSvgFonts()}</style><text x="${direction === 'rtl' ? width-3 : 3}" y="${size*3}" font-family="${family}" font-size="${size*3}" direction="${direction}" text-anchor="start" xml:space="preserve">${contents}</text></svg>`;
+      const image = new Promise<PDFImage>((resolve,reject) => {
+        const source = new Image();
+        source.onload = () => {
+          try {
+            const { canvas,ctx } = canvasContext(font,size);
+            canvas.width = width; canvas.height = height;
+            ctx.drawImage(source,0,0);
+            resolve(pdf.embedPng(canvas.toDataURL()));
+          } catch (error) { reject(error); }
+        };
+        source.onerror = () => reject(new Error('Could not render styled PDF text.'));
+        source.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+      });
+      glyphs.set(key,{ width:width/3,height:height/3,image });
+    }
+    return glyphs.get(key)!;
+  }
   function metrics(word: string, font: PDFFont, size: number): WordMetrics {
     return { width: font.widthOfTextAtSize(word, size) };
   }
   function wrap(text: string, font: PDFFont, size: number, width: number, times?: string[], ingredientRanges: TextRange[] = []): Line[] {
-    let needsCanvas = /[\p{Script=Arabic}\p{Script=Hebrew}]/u.test(text);
-    if (Array.from(text).some(char => !supported.get(font)!.has(char.codePointAt(0)!))) needsCanvas = true;
-    if (needsCanvas) {
-      const direction = textDirection(text);
-      const { ctx } = canvasContext(font,size);
-      return canvasTextLines(text, width - 2, value => ctx.measureText(value).width / 3).map(word => {
-        const m = rasterLine(word,font,size,direction);
-        return [{ word, m, offset: direction === 'rtl' ? Math.max(0,width-m.width) : 0, font, color:null }];
-      });
-    }
     const ranges: TextRange[] = [];
     const ingredientInk = rgb(.29,.23,.20);
     const source = String(text);
@@ -87,10 +117,59 @@ export async function createPdf(model: PdfModel, customFonts?: { regular: Uint8A
       // "1 minute to 2 minutes" where only one endpoint was a Cooklang timer.
       const duration = /\b(?:\d+(?:[./]\d+)?(?:\s+\d+\/\d+)?(?:\s*[-–—]\s*\d+(?:[./]\d+)?)?\s*(?:seconds?|secs?|minutes?|mins?|hours?|hrs?|days?)\b)/gi;
       for (const m of source.matchAll(duration)) ranges.push([m.index,m.index+m[0].length]);
+      // Join written endpoints before adding semantic timers so the whole
+      // phrase, including "to", is both protected and emphasized.
+      for (let i = 0; i + 1 < ranges.length;) {
+        if (/^\s+(?:to|[-–—])\s+$/i.test(source.slice(ranges[i][1], ranges[i + 1][0]))) {
+          ranges[i][1] = ranges[i + 1][1]; ranges.splice(i + 1, 1);
+        } else i++;
+      }
       for (const time of times) {
         for (let i=source.indexOf(time); i>=0; i=source.indexOf(time,i+time.length))
           ranges.push([i,i+time.length]);
       }
+    }
+    const tintAt = (start: number, end: number) => {
+      const overlaps = ([a,b]: TextRange) => a < end && b > start;
+      return ranges.some(overlaps) ? accent : ingredientRanges.some(overlaps) ? ingredientInk : null;
+    };
+    // Coverage belongs to the face that will actually draw each word.
+    const needsCanvas = /[\p{Script=Arabic}\p{Script=Hebrew}]/u.test(text) ||
+      Array.from(source.matchAll(/\S+/gu)).some(m => {
+        const face = tintAt(m.index,m.index+m[0].length) ? bold : font;
+        return Array.from(m[0]).some(char => !supported.get(face)!.has(char.codePointAt(0)!));
+      });
+    if (needsCanvas) {
+      const direction = textDirection(text);
+      const { ctx } = canvasContext(font,size);
+      const normalFace = ctx.font;
+      const boldFace = canvasContext(bold,size).ctx.font;
+      function runs(start: number, end: number) {
+        const boundaries = new Set([start,end]);
+        for (const [a,b] of [...ranges,...ingredientRanges]) {
+          if (a > start && a < end) boundaries.add(a);
+          if (b > start && b < end) boundaries.add(b);
+        }
+        const points = [...boundaries].sort((a,b) => a-b);
+        return points.slice(0,-1).map((a,i) => ({ text:source.slice(a,points[i+1]), tint:tintAt(a,points[i+1]) }));
+      }
+      function measure(start: number, end: number) {
+        ctx.font = normalFace;
+        let width = ctx.measureText(source.slice(start,end)).width;
+        for (const run of runs(start,end)) if (run.tint) {
+          ctx.font = normalFace; width -= ctx.measureText(run.text).width;
+          ctx.font = boldFace; width += ctx.measureText(run.text).width;
+        }
+        return width / 3;
+      }
+      return canvasTextLineRanges(text,width-2,measure,ranges).map(([start,end]) => {
+        const word = source.slice(start,end);
+        const styled = runs(start,end);
+        const m = styled.some(run => run.tint)
+          ? rasterStyledLine(styled,font,size,direction,measure(start,end))
+          : rasterLine(word,font,size,direction);
+        return [{ word,m,offset:direction === 'rtl' ? Math.max(0,width-m.width) : 0,font,color:null }];
+      });
     }
     const lines: Line[] = [];
     let line: Line = [], used = 0;

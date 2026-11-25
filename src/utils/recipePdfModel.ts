@@ -1,47 +1,39 @@
 import type { CooklangRecipe, Item, Quantity } from '@cooklang/cooklang';
-import { ingredient_should_be_listed, grouped_quantity_display, grouped_quantity_is_empty } from '@cooklang/cooklang';
+import { ingredient_should_be_listed, quantity_display } from '@cooklang/cooklang';
 import { formatDuration } from './heroModel';
+import { ingredientToAggInput } from './ingredientRows';
+import { aggregateIngredients, type AggInput } from './ingredientAggregator';
 export type TextRange = [number, number];
 type Entry = { note: string } | { text: string; timers: string[]; ingredientRanges?: TextRange[] };
 
-// The WASM declaration calls this `Number`, but the runtime returns a tagged value.
-type CookNumber = { type: 'regular'; value: number } | { type: 'fraction'; value: { whole: number; num: number; den: number } };
-function numeric(value: unknown) {
-  const n = value as CookNumber;
-  if (n.type === 'regular') return String(n.value);
-  const { whole, num, den } = n.value;
-  return [whole || '', num ? num + '/' + den : ''].filter(Boolean).join(' ') || '0';
-}
-
 function amount(q: Quantity | null) {
-  if (!q) return '';
-  const v = q.value;
-  let value;
-  if (v.type === 'number') value = numeric(v.value);
-  else if (v.type === 'range') value = numeric(v.value.start) + '–' + numeric(v.value.end);
-  else value = String(v.value);
-  return [value, q.unit].filter(Boolean).join(' ');
+  return q ? quantity_display(q) : '';
 }
 
 export function recipeSections(recipe: CooklangRecipe, modelInlineQuantities = false) {
   // Place grouped totals at the definition's section. Definitions outside method
   // steps belong to the first section, so ingredient-only mode is included too.
   const sections = recipe.sections.length ? recipe.sections : [{ name: null, content: [] }];
-  const rows = sections.map(() => [] as string[]);
+  const rows = sections.map(() => [] as AggInput[]);
   for (const [ingredient, quantity] of recipe.groupedIngredients) {
     if (!ingredient_should_be_listed(ingredient)) continue;
     const index = recipe.ingredients.indexOf(ingredient);
     const sectionIndex = sections.findIndex(section => section.content.some(entry =>
       entry.type === 'step' && entry.value.items.some(part => part.type === 'ingredient' && part.index === index)));
-    rows[Math.max(0, sectionIndex)].push([
-      grouped_quantity_is_empty(quantity) ? '' : grouped_quantity_display(quantity),
-      ingredient.alias || ingredient.name,
-      ingredient.note ? '(' + ingredient.note + ')' : ''
-    ].filter(Boolean).join(' '));
+    const quantities = [...Object.values(quantity.known), ...Object.values(quantity.unknown), quantity.no_unit, ...quantity.other]
+      .filter((value): value is Quantity => value !== null);
+    for (const total of quantities.length ? quantities : [null]) {
+      rows[Math.max(0, sectionIndex)].push(ingredientToAggInput({ ...ingredient, quantity: total }));
+    }
   }
   const label = (item: { alias: string | null; name: string }) => item.alias || item.name;
   return sections.map((section, sectionIndex) => {
-    const ingredients = rows[sectionIndex];
+    const ingredients = aggregateIngredients(rows[sectionIndex]).map(row => {
+      const preparations = row.preparations.map(preparation => row.preparations.length > 1 || preparation.displayQty !== row.displayQty
+        ? [preparation.displayQty, preparation.name].filter(Boolean).join(' ')
+        : preparation.name).join('; ');
+      return [row.displayQty, row.name, preparations ? '(' + preparations + ')' : ''].filter(Boolean).join(' ');
+    });
     const entries: Entry[] = section.content.map(entry => {
       if (entry.type === 'text') return { note: entry.value.replace(/\n[ \t]*>[ \t]?/g, '\n') };
       const timers: string[] = [];
