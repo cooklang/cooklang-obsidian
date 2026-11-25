@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.2](https://github.com/cooklang/cooklang-obsidian/compare/0.15.1...0.15.2) (2026-11-25)
+
+
+### Bug Fixes
+
+* **deps:** bump @cooklang/cooklang to 0.20.0 ([#192](https://github.com/cooklang/cooklang-obsidian/issues/192)) ([1624ff8](https://github.com/cooklang/cooklang-obsidian/commit/1624ff83802113fcbae801f17db51e4a45555ff8))
+
 ## [0.15.1](https://github.com/cooklang/cooklang-obsidian/compare/0.15.0...0.15.1) (2026-10-24)
 
 
