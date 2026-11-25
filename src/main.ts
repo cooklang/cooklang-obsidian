@@ -282,6 +282,17 @@ export default class CookPlugin extends Plugin {
     });
 
     this.addCommand({
+      id: 'export-recipe-pdf',
+      name: 'Export recipe to PDF',
+      checkCallback: checking => {
+        const view = this.app.workspace.activeLeaf?.view;
+        if (!(view instanceof CookView)) return false;
+        if (!checking) void view.exportPdf();
+        return true;
+      },
+    });
+
+    this.addCommand({
       id: 'edit-as-markdown',
       name: 'Edit recipe source',
       checkCallback: checking => {

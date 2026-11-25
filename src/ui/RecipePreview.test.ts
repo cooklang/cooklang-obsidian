@@ -34,6 +34,8 @@ afterEach(cleanup);
 
 function settings() {
     return {
+        pdfFontPath: '',
+        pdfBoldFontPath: '',
         showImages: true,
         showIngredientList: true,
         showCookwareList: true,
